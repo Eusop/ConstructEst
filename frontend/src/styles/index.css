@@ -1,0 +1,18 @@
+/* Ensure the app fills the viewport so the full-bleed background covers it. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Reserve the vertical scrollbar's space at all times so pages whose content
+   is short enough to fit the viewport (no scrollbar) don't render narrower
+   than pages tall enough to need one — that mismatch is what causes the
+   layout to visibly shift width when navigating between them. */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+}

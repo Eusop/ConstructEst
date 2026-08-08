@@ -1,0 +1,172 @@
+import { useState } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Link from '@mui/material/Link';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Button from '@mui/material/Button';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import LockRoundedIcon from '@mui/icons-material/LockRounded';
+import FormTextField from '../../../components/FormTextField';
+import PasswordField from '../../../components/PasswordField';
+import { loginRequest } from '../../../services/authService';
+import { useUser } from '../../../context/UserContext';
+import { ROUTES } from '../../../routes/paths';
+import { colors } from '../../../theme/palette';
+import { isRequired } from '../../../utils/validators';
+
+const INITIAL_FORM = { identifier: '', password: '' };
+
+function validate(form) {
+  const errors = {};
+  if (!isRequired(form.identifier)) errors.identifier = 'Email or User ID is required';
+  if (!isRequired(form.password)) errors.password = 'Password is required';
+  return errors;
+}
+
+// No real backend to look up an account's name from, so this makes a
+// reasonable display name out of whatever identifier was typed (email
+// local-part or User ID) — e.g. "m.reyes@email.com" or "m_reyes" -> "M Reyes".
+function deriveNameFromIdentifier(identifier) {
+  const localPart = identifier.includes('@') ? identifier.split('@')[0] : identifier;
+  return localPart
+    .split(/[._\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+/**
+ * Sign in form: "Email or User ID" + password fields, a "Keep me signed in"
+ * preference, the primary Sign in action, and the "Create an account" prompt.
+ *
+ * Frontend-only for now — submitting validates, calls the placeholder auth
+ * service (see services/authService.js), and mock-navigates to the Dashboard
+ * as if sign-in succeeded. No real session is created, so wiring up a real
+ * backend later won't require changing this component.
+ */
+function LoginForm() {
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const { setCurrentUser } = useUser();
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const validationErrors = validate(form);
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
+
+    setIsSubmitting(true);
+    try {
+      await loginRequest({ ...form, keepSignedIn });
+      setCurrentUser(deriveNameFromIdentifier(form.identifier));
+      navigate(ROUTES.DASHBOARD);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Box component="form" onSubmit={handleSubmit} noValidate>
+      <Typography component="h1" sx={{ fontWeight: 800, fontSize: '1.5rem', color: 'text.primary', mb: 0.5 }}>
+        Welcome back
+      </Typography>
+      <Typography sx={{ color: 'primary.main', fontSize: '0.9rem', mb: 3 }}>
+        Sign in to your ConstructEst account.
+      </Typography>
+
+      <Stack spacing={2.5}>
+        <Box>
+          <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>
+            Email or User ID
+          </Typography>
+          <FormTextField
+            name="identifier"
+            placeholder="mreyes"
+            autoComplete="username"
+            icon={<PersonRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+            value={form.identifier}
+            onChange={handleChange}
+            error={Boolean(errors.identifier)}
+            helperText={errors.identifier || ' '}
+          />
+        </Box>
+
+        <Box>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+            <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
+              Password
+            </Typography>
+            <Link href="#" underline="none" sx={{ color: 'primary.main', fontWeight: 600, fontSize: '0.8rem' }}>
+              Forgot password?
+            </Link>
+          </Stack>
+          <PasswordField
+            name="password"
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            showToggle
+            icon={<LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+            value={form.password}
+            onChange={handleChange}
+            error={Boolean(errors.password)}
+            helperText={errors.password || ' '}
+          />
+        </Box>
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={keepSignedIn}
+              onChange={(event) => setKeepSignedIn(event.target.checked)}
+              sx={{ py: 0 }}
+            />
+          }
+          label={<Typography sx={{ fontSize: '0.9rem', color: 'text.primary' }}>Keep me signed in</Typography>}
+        />
+
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          disableElevation
+          disabled={isSubmitting}
+          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+        >
+          Sign in
+        </Button>
+
+        <Divider>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>or</Typography>
+        </Divider>
+
+        <Typography sx={{ textAlign: 'center', color: 'text.secondary', fontSize: '0.9rem' }}>
+          New to ConstructEst?{' '}
+          <Link
+            component={RouterLink}
+            to={ROUTES.SIGNUP}
+            underline="none"
+            sx={{ color: 'primary.main', fontWeight: 700 }}
+          >
+            Create an account
+          </Link>
+        </Typography>
+      </Stack>
+    </Box>
+  );
+}
+
+export default LoginForm;

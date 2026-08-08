@@ -1,0 +1,17 @@
+export const ROUTES = {
+  HOME: '/',
+  LOGIN: '/login',
+  SIGNUP: '/signup',
+  DASHBOARD: '/dashboard',
+  PROJECTS: '/projects',
+  NEW_PROJECT: '/projects/new',
+  PROJECT_PROCESSING: '/projects/new/processing',
+  PROJECT_RESULTS: '/projects/new/results',
+  MATERIAL_ESTIMATION: '/projects/material-estimation',
+  STORE_LOCATOR: '/projects/store-locator',
+  BRAND_SELECTION: '/projects/brand-selection',
+  BILL_OF_MATERIALS: '/projects/bill-of-materials',
+  SETTINGS: '/settings',
+  PROFILE: '/profile',
+  NOTIFICATIONS: '/notifications',
+};

@@ -1,0 +1,183 @@
+-- ConstructEst backend schema (MySQL 8+)
+-- Run against an empty database, e.g.:
+--   mysql -u root -p constructest < schema.sql
+
+CREATE DATABASE IF NOT EXISTS constructest CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE constructest;
+
+-- ---------------------------------------------------------------------------
+-- Users. Two access roles only (`user`, `admin`) per the project's confirmed
+-- design — homeowner/engineer are both `user`; prc_license is informational,
+-- not a gate on any feature.
+-- ---------------------------------------------------------------------------
+CREATE TABLE users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  user_id VARCHAR(50) NOT NULL UNIQUE,       -- login "username" (SignUpForm's userId)
+  email VARCHAR(255) NOT NULL UNIQUE,
+  prc_license VARCHAR(50) NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  access_role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+  avatar_url VARCHAR(500) NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Projects (one per uploaded floor plan / estimation run).
+-- ---------------------------------------------------------------------------
+CREATE TABLE projects (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  project_name VARCHAR(255) NOT NULL,
+  location VARCHAR(255) NOT NULL,
+  budget_ceiling DECIMAL(14, 2) NOT NULL,
+  storeys TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  include_roofing TINYINT(1) NOT NULL DEFAULT 1,
+  status ENUM('parsing', 'parsed', 'failed') NOT NULL DEFAULT 'parsing',
+  dxf_file_path VARCHAR(500) NULL,
+  dxf_original_name VARCHAR(255) NULL,
+  selected_store_id INT UNSIGNED NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Estimation results: one row per computed run of the rule-based engine for
+-- a project (re-running after a calibration change adds a new row rather
+-- than overwriting, matching FR-9/FR-17's "previously saved estimations are
+-- not retroactively affected").
+-- ---------------------------------------------------------------------------
+CREATE TABLE estimation_results (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id INT UNSIGNED NOT NULL,
+  total_wall_length DECIMAL(10, 2) NULL,   -- meters
+  floor_area DECIMAL(10, 2) NULL,          -- m^2
+  roof_area DECIMAL(10, 2) NULL,           -- m^2
+  rooms_detected SMALLINT UNSIGNED NULL,
+  estimated_cost DECIMAL(14, 2) NULL,
+  is_current TINYINT(1) NOT NULL DEFAULT 1,
+  computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_estimation_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Quantity take-off line items for one estimation run. `material_key` is the
+-- stable identifier already used throughout the frontend (hollowBlocks,
+-- cement, sand, gravel, steelRebar, tieWire, roofingSheets, purlins, ridge,
+-- flashing, angleBar, plywood, lumber, steelProps, scaffolding).
+CREATE TABLE estimation_line_items (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  estimation_id INT UNSIGNED NOT NULL,
+  material_key VARCHAR(50) NOT NULL,
+  name VARCHAR(150) NOT NULL,
+  quantity DECIMAL(12, 3) NOT NULL,
+  unit VARCHAR(30) NOT NULL,
+  basis VARCHAR(255) NULL,
+  CONSTRAINT fk_line_item_estimation FOREIGN KEY (estimation_id) REFERENCES estimation_results(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Material brand catalog (admin-managed). `is_commodity` marks sand/gravel:
+-- priced flat, never shown in Brand Selection, matching BASE_PRICING's split
+-- in brandOptionsMock.js.
+-- ---------------------------------------------------------------------------
+CREATE TABLE material_brands (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  material_key VARCHAR(50) NOT NULL,
+  material_name VARCHAR(150) NOT NULL,
+  unit VARCHAR(30) NOT NULL,
+  brand VARCHAR(100) NOT NULL,
+  spec VARCHAR(150) NULL,
+  base_price DECIMAL(12, 2) NOT NULL,
+  quality TINYINT UNSIGNED NULL,          -- 1-5, used by the Premium/Budget tiers
+  category VARCHAR(50) NULL,
+  is_commodity TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_material_brands_key ON material_brands(material_key);
+
+-- ---------------------------------------------------------------------------
+-- Hardware stores (admin-managed) + per-store material availability/pricing.
+-- ---------------------------------------------------------------------------
+CREATE TABLE stores (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  address VARCHAR(255) NOT NULL,
+  lat DECIMAL(10, 6) NOT NULL,
+  lng DECIMAL(10, 6) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+ALTER TABLE projects
+  ADD CONSTRAINT fk_projects_store FOREIGN KEY (selected_store_id) REFERENCES stores(id) ON DELETE SET NULL;
+
+-- A store may carry only some brands (partial store entries, per FR-17) —
+-- absence of a row here means "not carried", not "price 0".
+CREATE TABLE store_material_prices (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  store_id INT UNSIGNED NOT NULL,
+  material_brand_id INT UNSIGNED NOT NULL,
+  price DECIMAL(12, 2) NOT NULL,
+  in_stock TINYINT(1) NOT NULL DEFAULT 1,
+  CONSTRAINT fk_smp_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  CONSTRAINT fk_smp_brand FOREIGN KEY (material_brand_id) REFERENCES material_brands(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_store_brand (store_id, material_brand_id)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Per-project brand selection (Brand Selection page's "choices" object).
+-- ---------------------------------------------------------------------------
+CREATE TABLE project_brand_selections (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id INT UNSIGNED NOT NULL,
+  material_key VARCHAR(50) NOT NULL,
+  material_brand_id INT UNSIGNED NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pbs_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pbs_brand FOREIGN KEY (material_brand_id) REFERENCES material_brands(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_project_material (project_id, material_key)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Estimation calibration constants. One global default row (project_id
+-- NULL); a project may override it (matches Settings page + FR-9's
+-- per-project calibration, FR-18's admin-managed defaults).
+-- ---------------------------------------------------------------------------
+CREATE TABLE estimation_constants (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id INT UNSIGNED NULL,
+  cement_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.08,
+  steel_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.05,
+  roofing_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.07,
+  wastage_percent DECIMAL(5, 2) NOT NULL DEFAULT 5.00,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_constants_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_constants_project (project_id)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Notifications + dashboard activity feed.
+-- ---------------------------------------------------------------------------
+CREATE TABLE notifications (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message VARCHAR(500) NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE activity_log (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  project_id INT UNSIGNED NULL,
+  type VARCHAR(50) NOT NULL,
+  message VARCHAR(500) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_activity_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
