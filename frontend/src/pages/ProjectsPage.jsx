@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -21,10 +21,16 @@ import { colors } from '../theme/palette';
 function ProjectsPage() {
   const { projects, activeProjectId, setActiveProject, deleteProject } = useProjects();
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const navigate = useNavigate();
 
   const handleConfirmDelete = () => {
     deleteProject(pendingDeleteId);
     setPendingDeleteId(null);
+  };
+
+  const handleSelectProject = (projectId) => {
+    setActiveProject(projectId);
+    navigate(ROUTES.MATERIAL_ESTIMATION);
   };
 
   return (
@@ -62,7 +68,7 @@ function ProjectsPage() {
               key={project.id}
               project={project}
               active={project.id === activeProjectId}
-              onSelect={() => setActiveProject(project.id)}
+              onSelect={() => handleSelectProject(project.id)}
               onDeleteRequest={() => setPendingDeleteId(project.id)}
             />
           ))}

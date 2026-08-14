@@ -7,6 +7,8 @@ import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
 import Divider from '@mui/material/Divider';
 import Collapse from '@mui/material/Collapse';
+import Drawer from '@mui/material/Drawer';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
 import FolderRoundedIcon from '@mui/icons-material/FolderRounded';
@@ -91,10 +93,19 @@ function RowContent({ item, open, active, trailing }) {
   );
 }
 
-function NavRow({ item, open, active }) {
+// `onNavigate`, when supplied, fires alongside the row's own click handling
+// (if any) — it's how the mobile/tablet overlay closes itself once the user
+// actually picks a destination. Desktop's permanent sidebar never passes
+// it, so there `onNavigate` is undefined and this is a no-op, leaving
+// desktop's behavior exactly as it was.
+function NavRow({ item, open, active, onNavigate }) {
+  const handleClick = (event) => {
+    item.onClick?.(event);
+    onNavigate?.();
+  };
   const linkProps = item.to
-    ? { component: RouterLink, to: item.to, onClick: item.onClick }
-    : { component: 'a', href: item.href, onClick: item.onClick };
+    ? { component: RouterLink, to: item.to, onClick: handleClick }
+    : { component: 'a', href: item.href, onClick: handleClick };
 
   return (
     // Tooltip stays mounted at all times (only its content toggles) so the
@@ -130,19 +141,23 @@ function NavRow({ item, open, active }) {
  * `open` flips, so their own opacity/max-width/padding CSS transitions can
  * actually animate instead of instantly popping in at a different size.
  *
- * Expanded sidebar: the row navigates to /projects like any other item; a
- * separate chevron (stopping propagation) toggles the children's
- * visibility independently. Collapsed sidebar: there's no room for a
- * separate chevron, so clicking the row does both at once — it navigates
- * to /projects *and* toggles the children, every time (toggling doesn't
- * suppress the navigation, and vice versa). Either way `expanded`/
- * `onToggle` is the one state Sidebar owns — toggling the sidebar's own
- * open/closed state never resets or desyncs it.
+ * Expanded sidebar: the row navigates to /projects *and* opens the children
+ * if they aren't already open (never collapses them); a separate chevron
+ * (stopping propagation) still toggles the children's visibility
+ * independently for anyone who wants to close it again. Collapsed sidebar:
+ * there's no room for a separate chevron, so clicking the row does both at
+ * once — it navigates to /projects *and* toggles the children, every time
+ * (toggling doesn't suppress the navigation, and vice versa). Either way
+ * `expanded`/`onToggle` is the one state Sidebar owns — toggling the
+ * sidebar's own open/closed state never resets or desyncs it.
  *
  * Defaults to expanded whenever the current route is /projects or one of
- * its children, and stays manually toggle-able afterward.
+ * its children, and stays manually toggle-able afterward. `onNavigate` (see
+ * NavRow) closes the mobile/tablet overlay after either the row itself or
+ * one of its children is clicked; it's undefined on desktop, so it's a
+ * no-op there.
  */
-function NavGroup({ item, open, active, expanded, onToggle }) {
+function NavGroup({ item, open, active, expanded, onToggle, onNavigate }) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -155,7 +170,15 @@ function NavGroup({ item, open, active, expanded, onToggle }) {
       // like clicking "Projects" in the expanded sidebar navigates while
       // the chevron independently toggles.
       onToggle();
+    } else if (!expanded) {
+      // Expanded: navigation is handled by the underlying RouterLink itself
+      // (nothing here prevents it); additionally open the children if they
+      // aren't already open, so the user never has to click the chevron
+      // separately. Only opens — never collapses an already-open list, so
+      // clicking "Projects" again while browsing a child page doesn't hide it.
+      onToggle();
     }
+    onNavigate?.();
   };
 
   return (
@@ -175,6 +198,7 @@ function NavGroup({ item, open, active, expanded, onToggle }) {
               event.preventDefault();
               onToggle();
               navigate(item.to);
+              onNavigate?.();
             }
           }}
           sx={{
@@ -243,7 +267,7 @@ function NavGroup({ item, open, active, expanded, onToggle }) {
         >
           {item.children.map((child) => {
             const childActive = location.pathname === child.to || location.pathname.startsWith(`${child.to}/`);
-            return <NavRow key={child.label} item={child} open={open} active={childActive} />;
+            return <NavRow key={child.label} item={child} open={open} active={childActive} onNavigate={onNavigate} />;
           })}
         </Stack>
       </Collapse>
@@ -259,10 +283,25 @@ function NavGroup({ item, open, active, expanded, onToggle }) {
  * place rather than mounting or jumping. The "Projects" item is a
  * collapsible group (see NavGroup) so its 4 workspace pages live as a
  * submenu instead of flat top-level items.
+ *
+ * Desktop (`md` and up) renders exactly as before: a normal flex sibling
+ * that's always visible and pushes the page content over as it widens.
+ * Below `md`, the same nav content instead renders inside a MUI `Drawer`
+ * (`variant="temporary"`) — a fixed-position overlay with its own backdrop,
+ * shown only while `open`, that never reserves layout space and never
+ * moves the page underneath. Both branches render the exact same nav item
+ * list/labels/icons/animation; only the outer container and how `open` is
+ * interpreted differ, so "desktop behavior" and "mobile/tablet behavior"
+ * can't drift apart from each other by accident.
+ *
+ * @param {object} props
+ * @param {boolean} props.open Desktop: expanded vs icon-only. Mobile/tablet: overlay shown vs hidden.
+ * @param {() => void} [props.onClose] Mobile/tablet only — closes the overlay (backdrop click, Escape, or picking a nav item).
  */
-function Sidebar({ open }) {
+function Sidebar({ open, onClose }) {
   const theme = useTheme();
   const location = useLocation();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [manualExpanded, setManualExpanded] = useState(null);
   const { unreadCount } = useNotifications();
   const { logout } = useUser();
@@ -275,31 +314,18 @@ function Sidebar({ open }) {
   // stays active on /projects/new), not just on an exact pathname match.
   const isActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`);
 
-  return (
-    <Box
-      component="nav"
-      sx={{
-        width: open ? SIDEBAR_WIDTH_OPEN : SIDEBAR_WIDTH_CLOSED,
-        flexShrink: 0,
-        bgcolor: colors.ctaBackground,
-        color: 'common.white',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        px: 1.5,
-        py: 2.5,
-        transition: theme.transitions.create('width', {
-          easing: theme.transitions.easing.sharp,
-          duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
-        }),
-        overflow: 'hidden',
-        overflowY: 'auto',
-      }}
-    >
+  // On desktop the sidebar is always visible and `open` picks its width
+  // (icon-only vs labeled). On the mobile/tablet overlay there's no
+  // icon-only state — it's either shown fully labeled, or not shown at
+  // all — and picking a destination should close it, the way any mobile
+  // nav drawer does.
+  const contentOpen = isDesktop ? open : true;
+  const onNavigate = isDesktop ? undefined : onClose;
+
+  const content = (
+    <>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start', pl: 0.75, flexShrink: 0 }}>
-        <BrandMark height={30} variant="dark" iconOnly={!open} />
+        <BrandMark height={30} variant="dark" iconOnly={!contentOpen} />
       </Box>
 
       <Typography
@@ -311,13 +337,13 @@ function Sidebar({ open }) {
           px: 1.5,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          opacity: open ? 1 : 0,
-          maxHeight: open ? 20 : 0,
-          mb: open ? 1 : 0,
+          opacity: contentOpen ? 1 : 0,
+          maxHeight: contentOpen ? 20 : 0,
+          mb: contentOpen ? 1 : 0,
           transition: (theme) =>
             theme.transitions.create(['opacity', 'max-height', 'margin-bottom'], {
               easing: theme.transitions.easing.easeInOut,
-              duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
+              duration: contentOpen ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
             }),
         }}
       >
@@ -334,14 +360,23 @@ function Sidebar({ open }) {
               <NavGroup
                 key={item.label}
                 item={item}
-                open={open}
+                open={contentOpen}
                 active={groupActive}
                 expanded={expanded}
                 onToggle={() => setManualExpanded(!expanded)}
+                onNavigate={onNavigate}
               />
             );
           }
-          return <NavRow key={item.label} item={item} open={open} active={Boolean(item.to) && isActive(item.to)} />;
+          return (
+            <NavRow
+              key={item.label}
+              item={item}
+              open={contentOpen}
+              active={Boolean(item.to) && isActive(item.to)}
+              onNavigate={onNavigate}
+            />
+          );
         })}
       </Stack>
 
@@ -349,15 +384,97 @@ function Sidebar({ open }) {
 
       <Stack spacing={0.5}>
         {utilityItems.map((item) => (
-          <NavRow key={item.label} item={item} open={open} active={Boolean(item.to) && isActive(item.to)} />
+          <NavRow
+            key={item.label}
+            item={item}
+            open={contentOpen}
+            active={Boolean(item.to) && isActive(item.to)}
+            onNavigate={onNavigate}
+          />
         ))}
       </Stack>
 
       <Box sx={{ mt: 'auto', flexShrink: 0 }}>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2 }} />
-        <NavRow item={{ label: 'Logout', icon: LogoutRoundedIcon, to: ROUTES.LOGIN, onClick: logout }} open={open} active={false} />
+        <NavRow
+          item={{ label: 'Logout', icon: LogoutRoundedIcon, to: ROUTES.LOGIN, onClick: logout }}
+          open={contentOpen}
+          active={false}
+          onNavigate={onNavigate}
+        />
       </Box>
-    </Box>
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <Box
+        component="nav"
+        sx={{
+          width: open ? SIDEBAR_WIDTH_OPEN : SIDEBAR_WIDTH_CLOSED,
+          flexShrink: 0,
+          bgcolor: colors.ctaBackground,
+          color: 'common.white',
+          height: '100vh',
+          position: 'sticky',
+          top: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          px: 1.5,
+          py: 2.5,
+          transition: theme.transitions.create('width', {
+            easing: theme.transitions.easing.sharp,
+            duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
+          }),
+          overflow: 'hidden',
+          overflowY: 'auto',
+        }}
+      >
+        {content}
+      </Box>
+    );
+  }
+
+  // Mobile/small tablet: a temporary Drawer overlay instead of a permanent
+  // flex sibling — it's rendered in a portal above the page (so the page
+  // never resizes to make room for it), pinned to the viewport with its own
+  // scroll, and paired with a backdrop the page stays visible (and, per
+  // `disableScrollLock`, scrollable) behind. `keepMounted` matches MUI's own
+  // guidance for mobile drawers (better open transition performance).
+  return (
+    <Drawer
+      variant="temporary"
+      anchor="left"
+      open={open}
+      onClose={onClose}
+      slotProps={{
+        root: { keepMounted: true, disableScrollLock: true },
+        backdrop: {
+          sx: {
+            bgcolor: 'rgba(20, 22, 31, 0.35)',
+            backdropFilter: 'blur(1.5px)',
+          },
+        },
+        paper: {
+          component: 'nav',
+          sx: {
+            width: SIDEBAR_WIDTH_OPEN,
+            boxSizing: 'border-box',
+            border: 'none',
+            bgcolor: colors.ctaBackground,
+            color: 'common.white',
+            display: 'flex',
+            flexDirection: 'column',
+            px: 1.5,
+            py: 2.5,
+            overflow: 'hidden',
+            overflowY: 'auto',
+          },
+        },
+      }}
+    >
+      {content}
+    </Drawer>
   );
 }
 

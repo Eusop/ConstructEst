@@ -110,7 +110,7 @@ function ProfileAvatarSection({ fullName, username, avatarUrl, onAvatarChange })
         Manage your account information
       </Typography>
 
-      <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'center', mt: 2.5 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'center', alignItems: 'center', mt: 2.5 }}>
         <Button
           onClick={() => inputRef.current?.click()}
           variant="contained"

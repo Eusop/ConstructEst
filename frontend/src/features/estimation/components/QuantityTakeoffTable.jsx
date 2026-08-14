@@ -124,7 +124,13 @@ function QuantityTakeoffTable({ storeys, onContinue }) {
           variant="contained"
           disableElevation
           endIcon={<ArrowForwardRoundedIcon />}
-          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark }, flexShrink: 0 }}
+          sx={{
+            bgcolor: colors.accentBlue,
+            '&:hover': { bgcolor: colors.accentBlueDark },
+            flexShrink: 0,
+            alignSelf: { xs: 'center', sm: 'auto' },
+            fontSize: { xs: '0.9rem', sm: '1.05rem' },
+          }}
         >
           Continue to Store Locator
         </Button>

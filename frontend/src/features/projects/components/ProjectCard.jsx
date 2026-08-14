@@ -43,31 +43,45 @@ function ProjectCard({ project, active, onSelect, onDeleteRequest }) {
         transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
       }}
     >
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
         <ProjectIcon color={project.iconColor} />
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>{project.projectName}</Typography>
+          <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>
+            {project.projectName}
+          </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>
             {project.storeys} {project.storeys === 1 ? 'storey' : 'storeys'} · {project.location}
           </Typography>
         </Box>
 
-        <StatusChip label={project.status} />
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            flexShrink: 0,
+            flexBasis: { xs: '100%', sm: 'auto' },
+            mt: { xs: 1, sm: 0 },
+          }}
+        >
+          <StatusChip label={project.status} />
 
-        <Tooltip title="Delete project">
-          <IconButton
-            size="small"
-            aria-label="Delete project"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDeleteRequest();
-            }}
-            sx={{ color: 'text.disabled', '&:hover': { color: colors.iconRedFg, bgcolor: colors.iconRedBg } }}
-          >
-            <DeleteOutlineRoundedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+          <Tooltip title="Delete project">
+            <IconButton
+              size="small"
+              aria-label="Delete project"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDeleteRequest();
+              }}
+              sx={{ color: 'text.disabled', '&:hover': { color: colors.iconRedFg, bgcolor: colors.iconRedBg } }}
+            >
+              <DeleteOutlineRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       </Stack>
     </Paper>
   );

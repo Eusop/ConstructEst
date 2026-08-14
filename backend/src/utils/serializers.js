@@ -11,6 +11,7 @@ export function toPublicUser(row) {
     prcLicense: row.prc_license,
     avatarUrl: row.avatar_url,
     accessRole: row.access_role,
+    createdAt: row.created_at,
   };
 }
 

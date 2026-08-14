@@ -19,16 +19,17 @@ function FilterPill({ label, count, selected, onClick }) {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 0.5,
-        px: 1.75,
-        py: 0.75,
+        px: { xs: 1, sm: 1.75 },
+        py: { xs: 0.5, sm: 0.75 },
         borderRadius: 999,
         border: '1px solid',
         borderColor: selected ? colors.accentBlue : 'grey.300',
         bgcolor: selected ? colors.accentBlue : 'common.white',
         color: selected ? 'common.white' : 'text.secondary',
-        fontSize: '0.82rem',
+        fontSize: { xs: '0.7rem', sm: '0.82rem' },
         fontWeight: 700,
         fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
         cursor: 'pointer',
         transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
         '&:hover': selected ? {} : { borderColor: colors.accentBlue, color: colors.accentBlue },
@@ -53,7 +54,7 @@ function FilterPill({ label, count, selected, onClick }) {
  */
 function NotificationFilters({ filter, onFilterChange, counts }) {
   return (
-    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+    <Stack direction="row" spacing={{ xs: 0.75, sm: 1 }} sx={{ flexWrap: { xs: 'nowrap', sm: 'wrap' }, rowGap: 1 }}>
       {FILTERS.map((item) => (
         <FilterPill
           key={item.key}

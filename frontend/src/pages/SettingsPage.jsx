@@ -87,7 +87,7 @@ function SettingsPage() {
     <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
       <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetDefaults} />
 
-      <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
         <Button
           onClick={handleCancel}
           disabled={isSaving}

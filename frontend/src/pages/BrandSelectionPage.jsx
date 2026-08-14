@@ -153,40 +153,93 @@ function BrandSelectionPage() {
       ) : (
         <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
           <ManualBrandTable choices={choices} onChoiceChange={handleManualChoiceChange} storeId={storeId} lineItems={lineItems} />
+
+          {/* Mobile only: the total and the Continue button as two separate,
+              centered cards — sm and up keep the single merged card below. */}
+          <Stack spacing={2} sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center' }}>
+            <Paper elevation={0} sx={{ borderRadius: 3, bgcolor: colors.iconBlueBg, p: 2, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: '0.78rem', color: colors.iconBlueFg, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                Estimated total
+              </Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
+                {formatPeso(grandTotal)}
+              </Typography>
+            </Paper>
+
+            <Button
+              onClick={handleContinue}
+              variant="contained"
+              disableElevation
+              disabled={isSaving}
+              endIcon={<ArrowForwardRoundedIcon />}
+              sx={{
+                bgcolor: colors.accentBlue,
+                '&:hover': { bgcolor: colors.accentBlueDark },
+                whiteSpace: 'nowrap',
+                fontSize: '0.9rem',
+              }}
+            >
+              Continue to Bill of Materials
+            </Button>
+          </Stack>
+
           <Paper
             elevation={0}
             sx={{
+              display: { xs: 'none', sm: 'block' },
               borderRadius: 3,
               bgcolor: colors.iconBlueBg,
               p: 2,
-              display: 'flex',
-              justifyContent: 'flex-end',
             }}
           >
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography sx={{ fontSize: '0.78rem', color: colors.iconBlueFg, fontWeight: 600 }}>
-                Estimated total
-              </Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary' }}>
-                {formatPeso(grandTotal)}
-              </Typography>
-            </Box>
+            <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography sx={{ fontSize: '0.78rem', color: colors.iconBlueFg, fontWeight: 600 }}>
+                  Estimated total
+                </Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary' }}>
+                  {formatPeso(grandTotal)}
+                </Typography>
+              </Box>
+
+              <Button
+                onClick={handleContinue}
+                variant="contained"
+                disableElevation
+                disabled={isSaving}
+                endIcon={<ArrowForwardRoundedIcon />}
+                sx={{
+                  bgcolor: colors.accentBlue,
+                  '&:hover': { bgcolor: colors.accentBlueDark },
+                  flexShrink: 0,
+                  fontSize: '1.05rem',
+                }}
+              >
+                Continue to Bill of Materials
+              </Button>
+            </Stack>
           </Paper>
         </Stack>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          onClick={handleContinue}
-          variant="contained"
-          disableElevation
-          disabled={isSaving}
-          endIcon={<ArrowForwardRoundedIcon />}
-          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
-        >
-          Continue to Bill of Materials
-        </Button>
-      </Box>
+      {mode === 'automatic' && (
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
+          <Button
+            onClick={handleContinue}
+            variant="contained"
+            disableElevation
+            disabled={isSaving}
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={{
+              bgcolor: colors.accentBlue,
+              '&:hover': { bgcolor: colors.accentBlueDark },
+              fontSize: { xs: '0.9rem', sm: '1.05rem' },
+            }}
+          >
+            Continue to Bill of Materials
+          </Button>
+        </Box>
+      )}
     </Stack>
   );
 }

@@ -18,7 +18,17 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { ProjectsProvider } from '../context/ProjectsContext';
 import { DashboardActivityProvider } from '../context/DashboardActivityContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
-import { ROUTES } from './paths';
+import RequireRole from './RequireRole';
+import AdminLayout from '../admin/layouts/AdminLayout';
+import AdminDashboardPage from '../admin/pages/AdminDashboardPage';
+import AdminUsersPage from '../admin/pages/AdminUsersPage';
+import AdminStoresPage from '../admin/pages/AdminStoresPage';
+import AdminMaterialsPage from '../admin/pages/AdminMaterialsPage';
+import AdminSettingsPage from '../admin/pages/AdminSettingsPage';
+import { AdminStoresProvider } from '../admin/context/AdminStoresContext';
+import { AdminActivityProvider } from '../admin/context/AdminActivityContext';
+import { AdminToastProvider } from '../admin/context/AdminToastContext';
+import { ROUTES, ADMIN_ROUTES } from './paths';
 
 function AppRoutes() {
   return (
@@ -57,6 +67,36 @@ function AppRoutes() {
         <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
         <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
         <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
+      </Route>
+
+      {/* Admin Module: entirely separate layout/nav from the User Module
+          above. Gated by RequireRole so a non-admin session can never render
+          these pages, and an admin session is kept out of the User Module's
+          layout route (see LoginForm's role-based redirect). NotificationsProvider
+          is mounted only so the reused ProfilePage's addNotification call has
+          a provider to talk to — the Admin Module has no notifications
+          page/bell of its own. */}
+      <Route
+        element={
+          <RequireRole role="admin" redirectTo={ROUTES.DASHBOARD}>
+            <AdminToastProvider>
+              <AdminActivityProvider>
+                <AdminStoresProvider>
+                  <NotificationsProvider>
+                    <AdminLayout />
+                  </NotificationsProvider>
+                </AdminStoresProvider>
+              </AdminActivityProvider>
+            </AdminToastProvider>
+          </RequireRole>
+        }
+      >
+        <Route path={ADMIN_ROUTES.DASHBOARD} element={<AdminDashboardPage />} />
+        <Route path={ADMIN_ROUTES.USERS} element={<AdminUsersPage />} />
+        <Route path={ADMIN_ROUTES.STORES} element={<AdminStoresPage />} />
+        <Route path={ADMIN_ROUTES.MATERIALS} element={<AdminMaterialsPage />} />
+        <Route path={ADMIN_ROUTES.SETTINGS} element={<AdminSettingsPage />} />
+        <Route path={ADMIN_ROUTES.PROFILE} element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />

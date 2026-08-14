@@ -60,15 +60,18 @@ const ACTIVE_PROJECT_SUBTITLES = {
  * instead of resetting on every route change. Child pages render into the
  * <Outlet /> below the header.
  *
- * The sidebar defaults open on desktop/tablet and collapsed on mobile, and
- * can be toggled from the header at any size — content reflows
- * automatically since the sidebar is a normal flex sibling.
+ * The sidebar defaults open on desktop and closed on mobile/tablet, and can
+ * be toggled from the header at any size. On desktop it's a normal flex
+ * sibling, so content reflows automatically as it widens; below the `md`
+ * breakpoint, Sidebar itself switches to a temporary overlay (see
+ * layouts/Sidebar.jsx) that never reserves layout space, so `onClose` below
+ * is only ever invoked there (backdrop click, Escape, or picking a nav item).
  */
 function DashboardLayout() {
   const theme = useTheme();
   const location = useLocation();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const [sidebarOpen, toggleSidebar] = useToggle(isDesktop);
+  const [sidebarOpen, toggleSidebar, setSidebarOpen] = useToggle(isDesktop);
   const { draft, activeProject } = useProjects();
 
   const draftBreadcrumbs = DRAFT_NAME_BREADCRUMBS[location.pathname]?.(draft.projectName);
@@ -87,7 +90,7 @@ function DashboardLayout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: colors.heroBackground }}>
-      <Sidebar open={sidebarOpen} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <DashboardHeader

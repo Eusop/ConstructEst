@@ -7,6 +7,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import BudgetBadge from '../features/projects/components/BudgetBadge';
 import BomTable from '../features/billOfMaterials/components/BomTable';
 import BomCostSummaryCard from '../features/billOfMaterials/components/BomCostSummaryCard';
+import IncompleteBomState from '../features/billOfMaterials/components/IncompleteBomState';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
@@ -17,6 +18,7 @@ import { STORES, loadStores } from '../features/storeLocator/data/storesMock';
 import { loadParsedProject } from '../features/projects/data/parsedProjectMock';
 import { apiRequest } from '../services/apiClient';
 import { generateBomPdf } from '../services/bomPdfService';
+import { ROUTES } from '../routes/paths';
 
 function formatPeso(value) {
   return `₱${Math.round(value).toLocaleString('en-PH')}`;
@@ -37,6 +39,8 @@ function BillOfMaterialsPage() {
   const [loadedForKey, setLoadedForKey] = useState(null);
 
   const storeId = activeProject?.selectedStoreId ?? null;
+  const materialEstimationDone = activeProject?.status !== 'Parsing' && activeProject?.status !== 'Failed';
+  const stepsComplete = Boolean(activeProject) && materialEstimationDone && Boolean(storeId);
   const loadKey = typeof activeProject?.id === 'number' && storeId ? `${activeProject.id}-${storeId}` : null;
   const ready = loadKey != null && loadedForKey === loadKey;
 
@@ -68,6 +72,11 @@ function BillOfMaterialsPage() {
 
   if (!activeProject) {
     return <NoActiveProjectState />;
+  }
+
+  if (!stepsComplete) {
+    const nextRoute = !materialEstimationDone ? ROUTES.MATERIAL_ESTIMATION : ROUTES.STORE_LOCATOR;
+    return <IncompleteBomState nextRoute={nextRoute} />;
   }
 
   if (!ready) {

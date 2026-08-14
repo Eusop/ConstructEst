@@ -45,7 +45,7 @@ function NotificationsPage() {
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={1.5} sx={{ flexShrink: 0 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
           <Button
             onClick={markAllAsRead}
             disabled={unreadCount === 0}

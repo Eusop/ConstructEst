@@ -15,3 +15,13 @@ export const ROUTES = {
   PROFILE: '/profile',
   NOTIFICATIONS: '/notifications',
 };
+
+/** Routes for the Admin Module — kept separate from ROUTES so admin/user navigation never cross. */
+export const ADMIN_ROUTES = {
+  DASHBOARD: '/admin/dashboard',
+  USERS: '/admin/users',
+  STORES: '/admin/stores',
+  MATERIALS: '/admin/materials',
+  SETTINGS: '/admin/settings',
+  PROFILE: '/admin/profile',
+};

@@ -40,10 +40,10 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
   return (
     <Box
       component="header"
-      sx={{ bgcolor: 'common.white', borderBottom: '1px solid', borderColor: 'divider', px: { xs: 2, md: 3 }, py: 1.5 }}
+      sx={{ bgcolor: 'common.white', borderBottom: '1px solid', borderColor: 'divider', px: { xs: 1.5, md: 3 }, py: 1.5 }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: { xs: 1, sm: 2 } }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 1, sm: 1.5 }, minWidth: 0, flex: 1 }}>
           <IconButton onClick={onToggleSidebar} aria-label="Toggle sidebar" size="small" sx={{ flexShrink: 0 }}>
             <MenuRoundedIcon />
           </IconButton>
@@ -92,20 +92,38 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             // Stack) so flexShrink:0 on title actually protects it — nesting
             // them in their own Stack let that inner Stack get squeezed
             // smaller than title's content by this row's own shrinking,
-            // clipping title instead of just hiding the subtitle.
+            // clipping title instead of just hiding the subtitle. Below the
+            // sm breakpoint there's not always room for the full title
+            // either (e.g. "Material Estimation" next to a subtitle on a
+            // narrow phone), so title gets its own ellipsis fallback there
+            // too — subtitle still shrinks first via its much larger
+            // flexShrink, title only gives up characters once subtitle is
+            // already down to nothing.
             <>
               <Typography
-                sx={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1, color: 'text.primary', flexShrink: 0, whiteSpace: 'nowrap' }}
+                sx={{
+                  fontWeight: 700,
+                  fontSize: { xs: '0.95rem', sm: '1.1rem' },
+                  lineHeight: 1,
+                  color: 'text.primary',
+                  flexShrink: 0,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 {title}
               </Typography>
               {subtitle && (
                 <Typography
                   sx={{
+                    display: { xs: 'none', sm: 'block' },
                     fontSize: '1.1rem',
                     lineHeight: 1,
                     color: 'text.secondary',
                     minWidth: 0,
+                    flexShrink: 20,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -118,7 +136,7 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
           )}
         </Stack>
 
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 2.5, flexShrink: 0 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 1, sm: 2.5 }, flexShrink: 0 }}>
           {headerBadge}
           <Button
             component={RouterLink}
@@ -126,7 +144,11 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             variant="contained"
             disableElevation
             startIcon={<AddRoundedIcon />}
-            sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+            sx={{
+              display: { xs: 'none', sm: 'inline-flex' },
+              bgcolor: colors.accentBlue,
+              '&:hover': { bgcolor: colors.accentBlueDark },
+            }}
           >
             New Project
           </Button>

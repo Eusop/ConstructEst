@@ -3,7 +3,7 @@ import { fetchCurrentUser, isLoggedIn, logout as logoutRequest } from '../servic
 
 const UserContext = createContext(null);
 
-const INITIAL_PROFILE = { id: null, userName: null, username: null, email: null, avatarUrl: null };
+const INITIAL_PROFILE = { id: null, userName: null, username: null, email: null, avatarUrl: null, accessRole: null };
 
 /**
  * The signed-in user's identity. `userName` is set once on successful
@@ -28,7 +28,14 @@ export function UserProvider({ children }) {
     if (!isLoggedIn()) return;
     fetchCurrentUser()
       .then((user) => {
-        setProfile({ id: user.id, userName: user.userName, username: user.username, email: user.email, avatarUrl: user.avatarUrl });
+        setProfile({
+          id: user.id,
+          userName: user.userName,
+          username: user.username,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          accessRole: user.accessRole,
+        });
         setIsAuthenticated(true);
       })
       .catch(() => {
@@ -38,8 +45,8 @@ export function UserProvider({ children }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const setCurrentUser = useCallback((name) => {
-    setProfile((prev) => ({ ...prev, userName: name }));
+  const setCurrentUser = useCallback((name, accessRole = 'user') => {
+    setProfile((prev) => ({ ...prev, userName: name, accessRole }));
     setIsAuthenticated(true);
   }, []);
 
@@ -63,9 +70,11 @@ export function UserProvider({ children }) {
     setIsAuthenticated(false);
   }, []);
 
+  const isAdmin = profile.accessRole === 'admin';
+
   const value = useMemo(
-    () => ({ ...profile, isAuthenticated, isLoading, setCurrentUser, updateProfile, logout }),
-    [profile, isAuthenticated, isLoading, setCurrentUser, updateProfile, logout],
+    () => ({ ...profile, isAdmin, isAuthenticated, isLoading, setCurrentUser, updateProfile, logout }),
+    [profile, isAdmin, isAuthenticated, isLoading, setCurrentUser, updateProfile, logout],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

@@ -14,7 +14,7 @@ import FormTextField from '../../../components/FormTextField';
 import PasswordField from '../../../components/PasswordField';
 import { loginRequest } from '../../../services/authService';
 import { useUser } from '../../../context/UserContext';
-import { ROUTES } from '../../../routes/paths';
+import { ROUTES, ADMIN_ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
 import { isRequired } from '../../../utils/validators';
 
@@ -27,26 +27,14 @@ function validate(form) {
   return errors;
 }
 
-// No real backend to look up an account's name from, so this makes a
-// reasonable display name out of whatever identifier was typed (email
-// local-part or User ID) — e.g. "m.reyes@email.com" or "m_reyes" -> "M Reyes".
-function deriveNameFromIdentifier(identifier) {
-  const localPart = identifier.includes('@') ? identifier.split('@')[0] : identifier;
-  return localPart
-    .split(/[._\s]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
 /**
  * Sign in form: "Email or User ID" + password fields, a "Keep me signed in"
  * preference, the primary Sign in action, and the "Create an account" prompt.
  *
- * Frontend-only for now — submitting validates, calls the placeholder auth
- * service (see services/authService.js), and mock-navigates to the Dashboard
- * as if sign-in succeeded. No real session is created, so wiring up a real
- * backend later won't require changing this component.
+ * Backed by the real backend (see services/authService.js) — the returned
+ * account's `accessRole` decides where sign-in lands: `admin` accounts go
+ * straight to the Admin Module's dashboard, everyone else to the regular
+ * Dashboard, so an admin login never ends up in the User Module.
  */
 function LoginForm() {
   const [form, setForm] = useState(INITIAL_FORM);
@@ -54,7 +42,7 @@ function LoginForm() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { setCurrentUser } = useUser();
+  const { setCurrentUser, updateProfile } = useUser();
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -71,9 +59,10 @@ function LoginForm() {
 
     setIsSubmitting(true);
     try {
-      await loginRequest({ ...form, keepSignedIn });
-      setCurrentUser(deriveNameFromIdentifier(form.identifier));
-      navigate(ROUTES.DASHBOARD);
+      const user = await loginRequest({ ...form, keepSignedIn });
+      setCurrentUser(user.userName, user.accessRole);
+      updateProfile({ id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl });
+      navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
     } finally {
       setIsSubmitting(false);
     }

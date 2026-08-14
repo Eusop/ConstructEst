@@ -152,7 +152,7 @@ function StoreLocatorPage() {
         </Stack>
       </Stack>
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
         <Tooltip title={selectedStoreId ? '' : 'Select a hardware store to continue'}>
           <span>
             <Button
@@ -170,7 +170,11 @@ function StoreLocatorPage() {
               disableElevation
               disabled={!selectedStoreId}
               endIcon={<ArrowForwardRoundedIcon />}
-              sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+              sx={{
+                bgcolor: colors.accentBlue,
+                '&:hover': { bgcolor: colors.accentBlueDark },
+                fontSize: { xs: '0.9rem', sm: '1.05rem' },
+              }}
             >
               Continue to Brand Selection
             </Button>

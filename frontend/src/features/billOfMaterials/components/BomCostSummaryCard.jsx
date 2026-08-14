@@ -61,7 +61,13 @@ function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceili
           variant="contained"
           disableElevation
           startIcon={<DownloadRoundedIcon />}
-          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark }, flexShrink: 0 }}
+          sx={{
+            bgcolor: colors.accentBlue,
+            '&:hover': { bgcolor: colors.accentBlueDark },
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+            fontSize: { xs: '0.9rem', sm: '1.05rem' },
+          }}
         >
           Download PDF report
         </Button>

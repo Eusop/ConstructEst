@@ -33,7 +33,14 @@ function ExtractedMeasurementsCard({ storeys }) {
       <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary', mb: 2 }}>
         Extracted measurements
       </Typography>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' }, rowGap: 2.5, columnGap: 2 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
+          rowGap: 2.5,
+          columnGap: 2,
+        }}
+      >
         {measurements.map((measurement) => (
           <MeasurementCell key={measurement.label} {...measurement} />
         ))}

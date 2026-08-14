@@ -38,7 +38,11 @@ function CalibrationFactorsCard({ factors, onFactorChange, onResetDefaults }) {
         flexDirection: 'column',
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, flexShrink: 0 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 1, sm: 0 }}
+        sx={{ alignItems: { xs: 'flex-start', sm: 'flex-start' }, justifyContent: 'space-between', gap: 2, flexShrink: 0 }}
+      >
         <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary' }}>Calibration factors</Typography>
         <Link
           component="button"

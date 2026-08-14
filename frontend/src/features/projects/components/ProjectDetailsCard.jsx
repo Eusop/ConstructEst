@@ -123,11 +123,11 @@ function ProjectDetailsCard({
           />
         </Box>
 
-        <Stack direction="row" spacing={1.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <Button
             onClick={onCancel}
             sx={{
-              flex: '0 0 auto',
+              flex: { xs: '1 1 auto', sm: '0 0 auto' },
               minWidth: 96,
               bgcolor: 'common.white',
               color: 'text.primary',
