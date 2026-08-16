@@ -19,6 +19,7 @@ export const MATERIAL_CATALOG = [
   { key: 'ridge', name: 'Ridge', unit: 'lengths', bulk: false },
   { key: 'flashing', name: 'Flashing', unit: 'pcs', bulk: false },
   { key: 'angleBar', name: 'Angle Bar', unit: 'lengths', bulk: false },
+  { key: 'gutter', name: 'Gutter', unit: 'pcs', bulk: false },
   { key: 'plywood', name: 'Plywood', unit: 'pcs', bulk: false },
   { key: 'lumber', name: 'Lumber', unit: 'bd.ft.', bulk: false },
   { key: 'steelProps', name: 'Steel Props', unit: 'pcs', bulk: false },

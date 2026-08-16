@@ -6,6 +6,7 @@ import {
   createStore, updateStore, deleteStore,
   getStoreCatalog, upsertStoreMaterialPrice, removeStoreMaterialPrice,
   getGlobalConstants, updateGlobalConstants,
+  getGlobalDesignOverrides, updateGlobalDesignOverrides,
 } from '../controllers/admin.controller.js';
 import { listStores } from '../controllers/stores.controller.js';
 
@@ -33,5 +34,8 @@ router.delete('/stores/:storeId/materials/:materialBrandId', removeStoreMaterial
 
 router.get('/estimation-constants', getGlobalConstants);
 router.put('/estimation-constants', updateGlobalConstants);
+
+router.get('/design-overrides', getGlobalDesignOverrides);
+router.put('/design-overrides', updateGlobalDesignOverrides);
 
 export default router;

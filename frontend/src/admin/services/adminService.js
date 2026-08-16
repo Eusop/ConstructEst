@@ -21,6 +21,10 @@ export const getGlobalConstants = () => apiRequest('/admin/estimation-constants'
 
 export const updateGlobalConstants = (body) => apiRequest('/admin/estimation-constants', { method: 'PUT', body });
 
+export const getGlobalDesignOverrides = () => apiRequest('/admin/design-overrides');
+
+export const updateGlobalDesignOverrides = (body) => apiRequest('/admin/design-overrides', { method: 'PUT', body });
+
 // --- Hardware stores ---------------------------------------------------
 
 export const listAdminStores = () => apiRequest('/admin/stores');

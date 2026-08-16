@@ -25,6 +25,7 @@ const MATERIAL_COLORS = {
   ridge: 'teal',
   flashing: 'teal',
   angleBar: 'teal',
+  gutter: 'teal',
   plywood: 'orange',
   lumber: 'orange',
   steelProps: 'blue',

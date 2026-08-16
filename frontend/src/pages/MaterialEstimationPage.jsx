@@ -159,17 +159,27 @@ function MaterialEstimationPage() {
 
         <Button
           onClick={handleRecalculate}
-          variant="contained"
+          variant={hasChanges || isRecalculating ? 'contained' : 'outlined'}
           disableElevation
           disabled={!hasChanges || isRecalculating}
           startIcon={isRecalculating ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : <RefreshRoundedIcon />}
-          sx={{
-            bgcolor: colors.accentBlue,
-            color: 'common.white',
-            '&:hover': { bgcolor: colors.accentBlueDark },
-            '&.Mui-disabled': { bgcolor: colors.accentBlue, color: 'rgba(255,255,255,0.7)' },
-            flexShrink: 0,
-          }}
+          sx={
+            hasChanges || isRecalculating
+              ? {
+                  bgcolor: colors.accentBlue,
+                  color: 'common.white',
+                  '&:hover': { bgcolor: colors.accentBlueDark },
+                  '&.Mui-disabled': { bgcolor: colors.accentBlue, color: 'common.white' },
+                  flexShrink: 0,
+                }
+              : {
+                  bgcolor: 'transparent',
+                  color: colors.accentBlue,
+                  borderColor: colors.accentBlue,
+                  '&.Mui-disabled': { color: colors.accentBlue, borderColor: colors.accentBlue, opacity: 0.5 },
+                  flexShrink: 0,
+                }
+          }
         >
           Recalculate
         </Button>
@@ -177,7 +187,12 @@ function MaterialEstimationPage() {
 
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ alignItems: 'stretch' }}>
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
-          <DesignParametersCard overrides={draftOverrides} onOverrideChange={updateOverride} onResetAll={handleResetOverrides} />
+          <DesignParametersCard
+            overrides={draftOverrides}
+            onOverrideChange={updateOverride}
+            onResetAll={handleResetOverrides}
+            storeys={activeProject.storeys}
+          />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
           <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />

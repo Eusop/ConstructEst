@@ -4,6 +4,13 @@ import Typography from '@mui/material/Typography';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import { colors } from '../../../theme/palette';
 
+// "+N%" (extra material bought on top of the bare formula) reads clearly
+// on its own — the raw 1.0x-1.3x multiplier the backend stores doesn't.
+function formatFactor(multiplier) {
+  const pct = Math.round((multiplier - 1) * 100);
+  return pct === 0 ? '0%' : `+${pct}%`;
+}
+
 /**
  * Info banner summarizing the calibration factors applied when computing
  * the quantity take-off currently on screen.
@@ -13,10 +20,10 @@ import { colors } from '../../../theme/palette';
  */
 function FactorsAppliedBanner({ factors }) {
   const items = [
-    { label: 'cement', value: String(factors.cement) },
-    { label: 'steel', value: String(factors.steel) },
-    { label: 'roofing', value: String(factors.roofing) },
-    { label: 'wastage', value: `${factors.wastage}%` },
+    { label: 'cement', value: formatFactor(factors.cement) },
+    { label: 'steel', value: formatFactor(factors.steel) },
+    { label: 'roofing', value: formatFactor(factors.roofing) },
+    { label: 'wastage', value: factors.wastage === 0 ? '0%' : `+${factors.wastage}%` },
   ];
 
   return (

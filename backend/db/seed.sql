@@ -19,7 +19,7 @@ VALUES ('System', 'Admin', 'admin', 'admin@constructest.local',
         '$2a$10$tsAJhcupRMJt1XVsmBIiQe1M4qMcXQ6JaBs6JUcnEQRJjdpWZcUqq', 'admin');
 
 -- ---------------------------------------------------------------------------
--- Material catalog: 13 brand-selectable materials x 3 brands, plus the 2
+-- Material catalog: 14 brand-selectable materials x 3 brands, plus the 2
 -- commodity aggregates (sand, gravel) priced flat with no brand choice —
 -- matches BASE_PRICING/MATERIAL_BRAND_OPTIONS in brandOptionsMock.js.
 -- ---------------------------------------------------------------------------
@@ -55,13 +55,17 @@ INSERT INTO material_brands (material_key, material_name, unit, brand, spec, bas
 ('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 6m', 450, 4, 'Roofing', 0),
 ('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 6m', 520, 5, 'Roofing', 0),
 
-('flashing', 'Flashing', 'm', 'MetroTile', 'Per meter', 150, 3, 'Roofing', 0),
-('flashing', 'Flashing', 'm', 'DN Steel', 'Per meter', 180, 4, 'Roofing', 0),
-('flashing', 'Flashing', 'm', 'Clark Steel', 'Per meter', 210, 5, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'MetroTile', 'GI flashing, 1.8m length', 270, 3, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'DN Steel', 'GI flashing, 1.8m length', 324, 4, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'Clark Steel', 'GI flashing, 1.8m length', 378, 5, 'Roofing', 0),
 
 ('angleBar', 'Angle Bar', 'lengths', 'Capitol Steel', '1/4"x1.5"x1.5", 6m', 560, 3, 'Roofing', 0),
 ('angleBar', 'Angle Bar', 'lengths', 'SteelAsia', '1/4"x1.5"x1.5", 6m', 620, 4, 'Roofing', 0),
 ('angleBar', 'Angle Bar', 'lengths', 'Pag-asa Steel', '1/4"x1.5"x1.5", 6m', 680, 5, 'Roofing', 0),
+
+('gutter', 'Gutter', 'pcs', 'MetroTile', 'GI gutter, 1.8m length', 320, 3, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'DN Steel', 'GI gutter, 1.8m length', 380, 4, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'Clark Steel', 'GI gutter, 1.8m length', 440, 5, 'Roofing', 0),
 
 ('plywood', 'Plywood', 'pcs', 'Generic Marine', '1/2" 4x8ft', 680, 3, 'Formwork', 0),
 ('plywood', 'Plywood', 'pcs', 'Federation', '1/2" 4x8ft', 780, 4, 'Formwork', 0),

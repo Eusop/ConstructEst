@@ -26,13 +26,17 @@ that review):
   - Roofing "purlin run length" (Table 16 calls it "length of the roof
     along the slope direction", not otherwise defined) is approximated
     as half the roof perimeter.
+  - Gutter (Table 16: roof eave length / 1.8m per pc) has no distinct
+    "eave length" available from a simple rectangular ROOF outline, so
+    it's approximated using the same roof perimeter flashing already uses.
 """
 import math
 
 WALL_HEIGHT_PER_STOREY_M = 3.0
 REBAR_UNIT_WEIGHT_KG_PER_M = 0.617  # 10mm dia, PNS/DPWH standard table
 
-PITCH_MULTIPLIER = math.sqrt(10 / 3)  # NSCP 2016 moderate slope, rise:run = 1:3
+# NSCP 2016 moderate slope, rise:run = 1:3 -> sqrt(rise^2 + run^2) / run = sqrt(10) / 3
+PITCH_MULTIPLIER = math.sqrt(10) / 3
 
 
 def ceil_int(value):
@@ -148,6 +152,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides):
         acc.add("ridge", ceil_int(roof_ridge_length_m / 1.8), "Ridge length / piece length")
         acc.add("flashing", ceil_int(roof_perimeter_m / 1.8), "Roof perimeter / piece length")
         acc.add("angleBar", ceil_int(roof_perimeter_m / 6.0), "Roof perimeter / piece length (approximation)")
+        acc.add("gutter", ceil_int(roof_perimeter_m / 1.8), "Roof eave length / piece length (approximated from roof perimeter)")
 
     # --- Table 17: Footing materials ----------------------------------------
     footing_w = overrides.get("footingWidth", 0.60)
@@ -195,7 +200,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides):
     # waste — CHB already carries its own 5% (Table 12); rebar/tie wire are
     # governed by the Steel Factor instead, so neither is touched again here.
     wastage_keys = {"cement", "sand", "gravel", "roofingSheets", "purlins", "ridge",
-                     "flashing", "angleBar", "plywood", "lumber", "steelProps", "scaffolding"}
+                     "flashing", "angleBar", "gutter", "plywood", "lumber", "steelProps", "scaffolding"}
     for key in wastage_keys:
         if key in acc.totals:
             acc.totals[key] *= wastage_multiplier
@@ -212,6 +217,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides):
         "ridge": ("Ridge", "lengths"),
         "flashing": ("Flashing", "pcs"),
         "angleBar": ("Angle Bar", "lengths"),
+        "gutter": ("Gutter", "pcs"),
         "plywood": ("Plywood", "pcs"),
         "lumber": ("Lumber", "bd.ft."),
         "steelProps": ("Steel Props", "pcs"),
@@ -220,7 +226,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides):
 
     materials = []
     for key, (name, unit) in material_meta.items():
-        if key in ("roofingSheets", "purlins", "ridge", "flashing", "angleBar") and not include_roofing:
+        if key in ("roofingSheets", "purlins", "ridge", "flashing", "angleBar", "gutter") and not include_roofing:
             continue
         raw_qty = acc.totals.get(key, 0.0)
         # Whole-unit materials are rounded up (Table 12-19 "rounded up");

@@ -28,16 +28,47 @@ function toApiShape(row) {
   return shape;
 }
 
-/** Every field defaults to null ("use the engine's built-in default") when
- * a project has never had overrides saved. */
-export async function getDesignOverrides(projectId) {
-  const [row] = await query('SELECT * FROM project_design_overrides WHERE project_id = ?', [projectId]);
-  return toApiShape(row);
+/** `projectId === null` reads the admin-managed global default row. */
+async function fetchRow(projectId) {
+  const rows = projectId == null
+    ? await query('SELECT * FROM project_design_overrides WHERE project_id IS NULL')
+    : await query('SELECT * FROM project_design_overrides WHERE project_id = ?', [projectId]);
+  return rows[0];
 }
 
-/** Upserts the full override set for a project — project_id is UNIQUE and
- * NOT NULL here (unlike estimation_constants' nullable global row), so a
- * plain ON DUPLICATE KEY UPDATE is safe. */
+/** Every field defaults to null ("use the engine's built-in default") when
+ * this project (or, for `projectId === null`, the admin) has never saved
+ * overrides. Used as-is by the project-level GET/PUT endpoints, which
+ * intentionally show only what's explicitly set for that project (see
+ * DesignParametersCard's "Auto" placeholder) — the global default is kept
+ * out of this so it doesn't look like a project-specific choice. */
+export async function getDesignOverrides(projectId) {
+  return toApiShape(await fetchRow(projectId));
+}
+
+/** Resolves what the engine should actually use for a project: each of the
+ * 13 fields independently falls back project -> admin global default ->
+ * (left null, letting formulas.py's own hardcoded default apply). Used
+ * only when actually running the engine (createProject/recomputeEstimation),
+ * never for display. */
+export async function getEffectiveDesignOverrides(projectId) {
+  const [projectRow, globalRow] = await Promise.all([fetchRow(projectId), fetchRow(null)]);
+  const project = toApiShape(projectRow);
+  const global = toApiShape(globalRow);
+  const effective = {};
+  for (const [apiKey] of FIELDS) {
+    effective[apiKey] = project[apiKey] ?? global[apiKey] ?? null;
+  }
+  return effective;
+}
+
+/** Upserts the full override set for a project, or (projectId === null) the
+ * admin's global default row. Project rows use a plain ON DUPLICATE KEY
+ * UPDATE (project_id is a real, unique, non-null value there); the global
+ * row can't — MySQL's unique indexes treat every NULL as distinct, so
+ * ON DUPLICATE KEY UPDATE would never match an existing project_id IS NULL
+ * row — so that path upserts explicitly instead (same gotcha as
+ * admin.controller.js's updateGlobalConstants). */
 export async function saveDesignOverrides(projectId, overrides) {
   const columns = FIELDS.map(([, dbColumn]) => dbColumn);
   const values = FIELDS.map(([apiKey]) => {
@@ -45,9 +76,23 @@ export async function saveDesignOverrides(projectId, overrides) {
     return value === undefined || value === null || value === '' ? null : Number(value);
   });
 
+  if (projectId == null) {
+    const existing = await fetchRow(null);
+    if (existing) {
+      const setClause = columns.map((col) => `${col} = ?`).join(', ');
+      await query(`UPDATE project_design_overrides SET ${setClause} WHERE id = ?`, [...values, existing.id]);
+    } else {
+      const placeholders = columns.map(() => '?').join(', ');
+      await query(
+        `INSERT INTO project_design_overrides (project_id, ${columns.join(', ')}) VALUES (NULL, ${placeholders})`,
+        values,
+      );
+    }
+    return getDesignOverrides(null);
+  }
+
   const placeholders = columns.map(() => '?').join(', ');
   const updateClause = columns.map((col) => `${col} = VALUES(${col})`).join(', ');
-
   await query(
     `INSERT INTO project_design_overrides (project_id, ${columns.join(', ')})
      VALUES (?, ${placeholders})
@@ -58,8 +103,9 @@ export async function saveDesignOverrides(projectId, overrides) {
   return getDesignOverrides(projectId);
 }
 
-/** Strips null fields so the Python engine only sees keys the user actually
- * set — everything else falls through to formulas.py's own defaults. */
+/** Strips null fields so the Python engine only sees keys that resolved to
+ * a real value — everything else falls through to formulas.py's own
+ * hardcoded defaults. */
 export function toEngineOverrides(apiShapeOverrides) {
   const engineOverrides = {};
   for (const [apiKey] of FIELDS) {

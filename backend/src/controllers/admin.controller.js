@@ -4,6 +4,7 @@ import { toPublicUser } from '../utils/serializers.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
+import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
 
 // --- Users -------------------------------------------------------------
 
@@ -202,6 +203,16 @@ export const removeStoreMaterialPrice = asyncHandler(async (req, res) => {
 
 export const getGlobalConstants = asyncHandler(async (req, res) => {
   res.json({ constants: await getEffectiveConstants(null) });
+});
+
+// --- Global design-parameter defaults --------------------------------------
+
+export const getGlobalDesignOverrides = asyncHandler(async (req, res) => {
+  res.json({ overrides: await getDesignOverrides(null) });
+});
+
+export const updateGlobalDesignOverrides = asyncHandler(async (req, res) => {
+  res.json({ overrides: await saveDesignOverrides(null, req.body) });
 });
 
 export const updateGlobalConstants = asyncHandler(async (req, res) => {

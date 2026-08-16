@@ -9,6 +9,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
+import { getEngineDefaults, getEngineDefaultsBothVariants } from '../data/engineDefaultParameters';
 import { colors } from '../../../theme/palette';
 
 // Every field mirrors an `overrides.get("<key>", default)` call in
@@ -53,6 +54,23 @@ const GROUPS = [
   },
 ];
 
+// columnCount (comes from the DXF's own detected count) and beamLength
+// (derived from wall run length) have no fixed number to show — every
+// other field's placeholder is the real value the engine will fall back
+// to, computed for `storeys` when known (a project), or shown as both
+// the 1-storey/2-storey variants when it isn't (the admin's global page).
+function fieldPlaceholder(fieldKey, storeys) {
+  if (storeys != null) {
+    const value = getEngineDefaults(storeys)[fieldKey];
+    return value != null ? String(value) : 'Auto';
+  }
+  const { oneStorey, twoStorey } = getEngineDefaultsBothVariants();
+  const a = oneStorey[fieldKey];
+  const b = twoStorey[fieldKey];
+  if (a == null && b == null) return 'Auto';
+  return a === b ? String(a) : `${a} / ${b}`;
+}
+
 /**
  * "Design parameters" card: the structural dimensions the paper's own
  * Section 4.3.3.2 says a 2D DXF can't derive (column/beam/footing sizes,
@@ -64,8 +82,13 @@ const GROUPS = [
  * @param {Record<string, number|null>} props.overrides Current draft values, keyed by field.key.
  * @param {(key: string, value: number|null) => void} props.onOverrideChange
  * @param {() => void} props.onResetAll Clears every field back to "use engine default".
+ * @param {number|null} [props.storeys] The active project's storeys, used to show the
+ *   exact engine default as each field's placeholder — the paper defines column and
+ *   footing defaults separately for 1-storey vs 2-storey buildings. Omit (or pass null)
+ *   on pages with no specific project in context (e.g. admin global defaults), where
+ *   both variants are shown instead.
  */
-function DesignParametersCard({ overrides, onOverrideChange, onResetAll }) {
+function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null }) {
   const handleFieldChange = (key, rawValue) => {
     if (rawValue === '') {
       onOverrideChange(key, null);
@@ -105,7 +128,8 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll }) {
         </Link>
       </Stack>
       <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2, flexShrink: 0 }}>
-        Dimensions a 2D floor plan can't determine on its own — leave a field blank to use the engine's built-in default.
+        Dimensions a 2D floor plan can't determine on its own — the grayed-out number in
+        each field is the engine's own default; leave it blank to use that value as-is.
       </Typography>
 
       <Stack spacing={1}>
@@ -142,8 +166,9 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll }) {
                     size="small"
                     value={overrides[field.key] ?? ''}
                     onChange={(event) => handleFieldChange(field.key, event.target.value)}
-                    placeholder="Auto"
+                    placeholder={fieldPlaceholder(field.key, storeys)}
                     slotProps={{
+                      inputLabel: { shrink: true },
                       input: { endAdornment: <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{field.unit}</Typography> },
                       htmlInput: { step: field.step, min: 0 },
                     }}

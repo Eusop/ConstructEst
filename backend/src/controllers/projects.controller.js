@@ -5,7 +5,7 @@ import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { runDxfEngine } from '../services/engine.service.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
-import { getDesignOverrides, saveDesignOverrides, toEngineOverrides } from '../services/designOverrides.service.js';
+import { getDesignOverrides, getEffectiveDesignOverrides, saveDesignOverrides, toEngineOverrides } from '../services/designOverrides.service.js';
 import { logActivity } from '../services/activity.service.js';
 import { getStoreOptimization, getBrandCatalog, saveBrandSelection, computeBom } from '../services/optimization.service.js';
 
@@ -101,6 +101,7 @@ export const createProject = asyncHandler(async (req, res) => {
   const projectId = insertResult.insertId;
 
   const constants = await getEffectiveConstants(null);
+  const overrides = await getEffectiveDesignOverrides(projectId);
 
   let engineResult;
   let parseError = null;
@@ -110,7 +111,7 @@ export const createProject = asyncHandler(async (req, res) => {
       storeys,
       includeRoofing,
       constants,
-      overrides: {},
+      overrides: toEngineOverrides(overrides),
     });
   } catch (err) {
     parseError = err.message || 'DXF parsing failed.';
@@ -187,7 +188,7 @@ export const recomputeEstimation = asyncHandler(async (req, res) => {
 
   const [constants, overrides] = await Promise.all([
     getEffectiveConstants(project.id),
-    getDesignOverrides(project.id),
+    getEffectiveDesignOverrides(project.id),
   ]);
 
   let engineResult;

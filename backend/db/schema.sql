@@ -164,7 +164,7 @@ CREATE TABLE estimation_constants (
 -- ---------------------------------------------------------------------------
 CREATE TABLE project_design_overrides (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  project_id INT UNSIGNED NOT NULL,
+  project_id INT UNSIGNED NULL, -- NULL = admin-managed global default row
   column_width DECIMAL(6, 3) NULL,
   column_depth DECIMAL(6, 3) NULL,
   column_height DECIMAL(6, 3) NULL,
