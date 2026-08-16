@@ -14,9 +14,11 @@ Node/Express API + a Python rule-based DXF engine, backing the `frontend/` React
    mysql -u root -p < db/schema.sql
    mysql -u root -p < db/seed.sql
    ```
-   `schema.sql` creates the `constructest` database and all tables. `seed.sql` populates it with an admin account, the 15-material brand catalog (3 brands each for the 13 brand-selectable materials, flat pricing for the 2 commodities), 4 Tarlac City stores with per-store pricing, and the global default calibration constants.
+   `schema.sql` creates the `constructest` database and all tables. `seed.sql` populates it with an admin account, the 16-material brand catalog (3 brands each for the 14 brand-selectable materials, flat pricing for the 2 commodities — sand and gravel), 4 Tarlac City stores with per-store pricing, and the global default calibration constants.
 
-   Seeded admin login: **user ID `admin`, password `ChangeMe123!`**. There's no admin UI yet (see Known limitations) — use these credentials directly against the `/api/admin/*` endpoints, and change the password via `PUT /api/users/me/password` once logged in.
+   Seeded admin login: **user ID `admin`, password `ChangeMe123!`** — change the password via `PUT /api/users/me/password` once logged in.
+
+   `schema.sql`/`seed.sql` alone are enough for a fresh install. If you're upgrading a database that was already seeded before a schema change, run the relevant files in `db/migrations/` in order instead (`npm run migrate -- db/migrations/00N_*.sql`) — each one documents what it does and why at the top of the file.
 
 2. **Node dependencies.**
    ```
@@ -62,13 +64,13 @@ All routes except `/api/health`, `/api/auth/register`, `/api/auth/login` require
 
 - **Auth**: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
 - **Users**: `PUT /users/me`, `PUT /users/me/password`
-- **Projects**: `GET/POST /projects`, `GET/DELETE /projects/:id`
-- **Estimation**: `GET/PUT/DELETE /projects/:id/constants` (project-level calibration override)
+- **Projects**: `GET/POST /projects`, `GET/DELETE /projects/:id`, `POST /projects/:id/recompute` (re-runs the engine against the already-uploaded DXF with current constants/overrides)
+- **Estimation**: `GET/PUT/DELETE /projects/:id/constants` (project-level calibration override), `GET/PUT /projects/:id/design-overrides` (project-level structural dimension overrides — column/beam/footing size, floor-to-floor height, etc.)
 - **Store/brand optimization**: `GET /projects/:id/stores` (Table 20 cost optimization), `GET /projects/:id/brand-catalog?storeId=`, `POST /projects/:id/brand-selection`, `GET /projects/:id/bom?storeId=`
 - **Stores**: `GET /stores`
 - **Notifications**: `GET /notifications`, `PATCH /notifications/:id/read`
 - **Dashboard**: `GET /dashboard/summary`
-- **Admin**: `/admin/users`, `/admin/materials`, `/admin/stores` (+ `/admin/stores/:storeId/materials/:materialBrandId` for per-store pricing), `/admin/estimation-constants` (global defaults)
+- **Admin**: `/admin/users`, `/admin/materials`, `/admin/stores` (+ `/admin/stores/:id/catalog` for a store's full priced/unpriced brand list, `/admin/stores/:storeId/materials/:materialBrandId` for per-store pricing), `/admin/estimation-constants` and `/admin/design-overrides` (global defaults every new project falls back to)
 
 `POST /projects` is `multipart/form-data`: `projectName`, `location`, `budgetCeiling`, `storeys`, `includeRoofing`, `dxfFile`. It runs the whole DXF-upload → engine-parse → store pipeline synchronously and returns `{ project, estimation, parseError }` in one response.
 
@@ -76,7 +78,6 @@ All routes except `/api/health`, `/api/auth/register`, `/api/auth/login` require
 
 Documented in detail in code comments at the relevant spot; the significant ones:
 
-- **No admin UI.** The frontend has no user-management/material-pricing/store screens (the capstone paper's Figures 14–16 were never built in this frontend). Admin actions currently require calling the API directly.
 - **Engine assumptions not in the paper's tables.** A few formulas needed a documented default where the source paper's Table 12–19 excerpt didn't specify one (footing plan dimensions, main rebar diameter, beam run length approximated from wall run, angle bar quantity). Every one is flagged with a comment in `engine/formulas.py` — none of this has had the licensed-engineer validation the paper itself calls for, and should get it before being trusted for a real estimate.
 - **Single DXF upload per project**, even for 2-storey buildings — the paper describes uploading a separate ground-floor and second-floor DXF; this implementation instead scales the single uploaded footprint by storeys. Two-file upload would need a small frontend + API change if the ground/second floors differ significantly.
 - **No live distance/geolocation.** The frontend computes store distances via straight-line (haversine) distance from a fixed Tarlac City reference point, not the user's real location — wiring in the Google Maps Distance Matrix API would need a `VITE_GOOGLE_MAPS_API_KEY` and a small frontend change.

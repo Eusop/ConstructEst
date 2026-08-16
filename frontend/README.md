@@ -1,16 +1,54 @@
-# React + Vite
+# ConstructEst frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite + MUI single-page app, backing onto the `backend/` API.
 
-Currently, two official plugins are available:
+## First-time setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. **Backend running first.** See `../backend/README.md` — this app expects it at `VITE_API_URL` (default `http://localhost:4000/api`).
+2. **Dependencies.**
+   ```
+   npm install
+   ```
+3. **Environment.** Copy `.env.example` to `.env`. `VITE_GOOGLE_MAPS_API_KEY` is optional — the Store Locator map degrades gracefully without one (shows a "Map unavailable" placeholder instead of failing).
 
-## React Compiler
+## Running
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+npm run dev       # http://localhost:5173
+npm run build      # production build
+npm run lint       # eslint
+```
 
-## Expanding the ESLint configuration
+## Two modules, two logins
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The same seeded admin account (`admin` / `ChangeMe123!`) works for both — the app routes by the logged-in user's `accessRole`.
+
+**User module** (`/dashboard`, `/projects/...`): upload a DXF, review the parsed quantity take-off, tune calibration factors and structural design parameters, compare stores, pick brands, download the BOM.
+
+**Admin module** (`/admin/...`): user management, hardware stores (with a Google Maps view), materials & brands catalog (global brand definitions + per-store pricing/availability), and the global calibration/design-parameter defaults every new project falls back to.
+
+## Project layout
+
+```
+src/
+  admin/           Admin module — its own layout, pages, contexts, and services (adminService.js)
+  components/      Shared UI (BrandMark, GoogleMapView, form fields, error boundary)
+  context/         User module state: UserContext (auth), ProjectsContext (active project + drafts),
+                    NotificationsContext, DashboardActivityContext
+  features/        One folder per domain area (projects, estimation, brandSelection, storeLocator,
+                    billOfMaterials, settings, notifications, dashboard, auth) — each holding its
+                    own components and a data/ module. Several data/ modules are a "live cache"
+                    pattern: a mutable array/object populated from a real API response so existing
+                    leaf components can read it synchronously without every one of them becoming
+                    API-aware individually.
+  layouts/         DashboardLayout + Sidebar (user module chrome)
+  pages/           One file per route, composing feature components
+  routes/          AppRoutes.jsx (react-router routes), paths.js (ROUTES/ADMIN_ROUTES), RequireRole
+  services/        apiClient.js (fetch wrapper: base URL, auth header, error shape), authService.js
+  theme/           MUI theme + palette
+```
+
+## Known limitations
+
+- **No route guard on the User module.** Reaching an authenticated page without a valid session surfaces as a generic failure on whatever action is attempted (e.g. a DXF upload fails with a raw "Missing or invalid Authorization header" message rather than redirecting to `/login`). The Admin module and the standalone learning-guide project both use a `RequireAuth`-style guard; this app doesn't yet.
+- **Google Maps store distances are straight-line**, computed from a fixed Tarlac City reference point, not the user's real location or actual driving distance.
