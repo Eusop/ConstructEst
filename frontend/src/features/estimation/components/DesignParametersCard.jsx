@@ -1,0 +1,161 @@
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import Link from '@mui/material/Link';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
+import { colors } from '../../../theme/palette';
+
+// Every field mirrors an `overrides.get("<key>", default)` call in
+// engine/formulas.py — leaving a field blank sends `null`, which the
+// backend drops before handing overrides to the engine, so it falls back
+// to that same built-in default. Nothing here is required.
+const GROUPS = [
+  {
+    key: 'columnsAndBeams',
+    label: 'Columns & Beams',
+    fields: [
+      { key: 'columnWidth', label: 'Column width', unit: 'm', step: 0.01 },
+      { key: 'columnDepth', label: 'Column depth', unit: 'm', step: 0.01 },
+      { key: 'columnHeight', label: 'Column height', unit: 'm', step: 0.1 },
+      { key: 'columnCount', label: 'Column count', unit: 'pcs', step: 1 },
+      { key: 'beamWidth', label: 'Beam width', unit: 'm', step: 0.01 },
+      { key: 'beamDepth', label: 'Beam depth', unit: 'm', step: 0.01 },
+      { key: 'beamLength', label: 'Beam total length', unit: 'm', step: 0.5 },
+    ],
+  },
+  {
+    key: 'footings',
+    label: 'Footings',
+    fields: [
+      { key: 'footingWidth', label: 'Footing width', unit: 'm', step: 0.01 },
+      { key: 'footingLength', label: 'Footing length', unit: 'm', step: 0.01 },
+      { key: 'footingDepth', label: 'Footing depth', unit: 'm', step: 0.1 },
+    ],
+  },
+  {
+    key: 'floorAndStairs',
+    label: 'Floor & Stairs',
+    fields: [
+      { key: 'floorToFloorHeight', label: 'Floor-to-floor height', unit: 'm', step: 0.1 },
+      { key: 'stairWidth', label: 'Stair width', unit: 'm', step: 0.05 },
+    ],
+  },
+  {
+    key: 'building',
+    label: 'Building',
+    fields: [{ key: 'buildingHeight', label: 'Building height (scaffolding)', unit: 'm', step: 0.1 }],
+  },
+];
+
+/**
+ * "Design parameters" card: the structural dimensions the paper's own
+ * Section 4.3.3.2 says a 2D DXF can't derive (column/beam/footing sizes,
+ * floor-to-floor height, building elevation) — editable overrides grouped
+ * by structural element, each optional. Mirrors CalibrationFactorsCard's
+ * shape so the two sit naturally side by side.
+ *
+ * @param {object} props
+ * @param {Record<string, number|null>} props.overrides Current draft values, keyed by field.key.
+ * @param {(key: string, value: number|null) => void} props.onOverrideChange
+ * @param {() => void} props.onResetAll Clears every field back to "use engine default".
+ */
+function DesignParametersCard({ overrides, onOverrideChange, onResetAll }) {
+  const handleFieldChange = (key, rawValue) => {
+    if (rawValue === '') {
+      onOverrideChange(key, null);
+      return;
+    }
+    const parsed = Number(rawValue);
+    onOverrideChange(key, Number.isFinite(parsed) ? parsed : null);
+  };
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        borderRadius: 3,
+        bgcolor: 'common.white',
+        boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
+        p: { xs: 2.5, md: 4 },
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 1, sm: 0 }}
+        sx={{ alignItems: { xs: 'flex-start', sm: 'flex-start' }, justifyContent: 'space-between', gap: 2, flexShrink: 0 }}
+      >
+        <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary' }}>Design parameters</Typography>
+        <Link
+          component="button"
+          type="button"
+          onClick={onResetAll}
+          underline="none"
+          sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.82rem', fontWeight: 600, color: colors.accentBlue, flexShrink: 0 }}
+        >
+          <RestartAltRoundedIcon sx={{ fontSize: 16 }} />
+          Reset to engine defaults
+        </Link>
+      </Stack>
+      <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2, flexShrink: 0 }}>
+        Dimensions a 2D floor plan can't determine on its own — leave a field blank to use the engine's built-in default.
+      </Typography>
+
+      <Stack spacing={1}>
+        {GROUPS.map((group, index) => (
+          <Accordion
+            key={group.key}
+            defaultExpanded={index === 0}
+            disableGutters
+            elevation={0}
+            sx={{
+              border: '1px solid',
+              borderColor: 'grey.200',
+              borderRadius: '12px !important',
+              '&:before': { display: 'none' },
+              overflow: 'hidden',
+            }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+              <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', color: 'text.primary' }}>{group.label}</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                  gap: 2,
+                }}
+              >
+                {group.fields.map((field) => (
+                  <TextField
+                    key={field.key}
+                    label={field.label}
+                    type="number"
+                    size="small"
+                    value={overrides[field.key] ?? ''}
+                    onChange={(event) => handleFieldChange(field.key, event.target.value)}
+                    placeholder="Auto"
+                    slotProps={{
+                      input: { endAdornment: <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{field.unit}</Typography> },
+                      htmlInput: { step: field.step, min: 0 },
+                    }}
+                  />
+                ))}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
+
+export default DesignParametersCard;

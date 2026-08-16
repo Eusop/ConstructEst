@@ -81,7 +81,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides):
     window_area_m2 = geometry["window_area_m2"]
     floor_area_m2 = geometry["floor_area_m2"]
     floor_perimeter_m = geometry["floor_perimeter_m"]
-    column_count = geometry["column_count"] or overrides.get("fallbackColumnCount", 4)
+    if overrides.get("columnCount") is not None:
+        column_count = overrides["columnCount"]
+    else:
+        column_count = geometry["column_count"] or overrides.get("fallbackColumnCount", 4)
     roof_perimeter_m = geometry["roof_perimeter_m"]
     roof_ridge_length_m = geometry["roof_ridge_length_m"]
 
@@ -131,7 +134,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides):
     # --- Table 15: Beam materials (beam run length approximated from wall run) ---
     beam_w = overrides.get("beamWidth", 0.20)
     beam_d = overrides.get("beamDepth", 0.30)
-    beam_length_total = wall_length_m * storeys
+    beam_length_total = overrides.get("beamLength", wall_length_m * storeys)
     beam_volume = beam_w * beam_d * beam_length_total
     acc.add_concrete_mix(beam_volume, cement_factor, "Beam volume (wall-run approximation)")
 

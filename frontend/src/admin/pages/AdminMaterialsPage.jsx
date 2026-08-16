@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Collapse from '@mui/material/Collapse';
@@ -102,45 +103,72 @@ function AdminMaterialsPage() {
     );
   }
 
+  if (activeStore.materialKeys === null) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, minHeight: 240 }}>
+        <CircularProgress size={28} />
+      </Box>
+    );
+  }
+
   const toggleExpand = (key) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handleAddMaterials = (keys) => {
-    addMaterialsToStore(activeStore.id, keys);
-    const names = keys.map((key) => getMaterialDefinition(key)?.name).join(', ');
-    logActivity({ message: `Materials added to ${activeStore.name} — ${names}`, icon: CategoryRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
-    showToast('Materials added to store');
+  const handleAddMaterials = async (keys) => {
     setAddMaterialsOpen(false);
-  };
-
-  const handleRemoveMaterial = (key) => {
-    removeMaterialFromStore(activeStore.id, key);
-    logActivity({ message: `Material removed from ${activeStore.name} — ${getMaterialDefinition(key)?.name}`, icon: DeleteOutlineRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg });
-    showToast('Material removed from store', 'warning');
-  };
-
-  const handleSaveBrand = (form) => {
-    const { materialKey, brand } = brandDialog;
-    if (brand) {
-      updateBrand(activeStore.id, materialKey, brand.id, form);
-      showToast('Brand saved');
-    } else {
-      addBrand(activeStore.id, materialKey, form);
-      logActivity({ message: `Brand added — ${form.name} (${getMaterialDefinition(materialKey)?.name}) · ${formatPeso(form.price)}`, icon: AddRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg });
-      showToast('Brand saved');
+    try {
+      await addMaterialsToStore(activeStore.id, keys);
+      const names = keys.map((key) => getMaterialDefinition(key)?.name).join(', ');
+      logActivity({ message: `Materials added to ${activeStore.name} — ${names}`, icon: CategoryRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
+      showToast('Materials added to store');
+    } catch {
+      showToast('Could not add materials — try again', 'warning');
     }
+  };
+
+  const handleRemoveMaterial = async (key) => {
+    try {
+      await removeMaterialFromStore(activeStore.id, key);
+      logActivity({ message: `Material removed from ${activeStore.name} — ${getMaterialDefinition(key)?.name}`, icon: DeleteOutlineRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg });
+      showToast('Material removed from store', 'warning');
+    } catch {
+      showToast('Could not remove material — try again', 'warning');
+    }
+  };
+
+  const handleSaveBrand = async (form) => {
+    const { materialKey, brand } = brandDialog;
     setBrandDialog({ open: false, materialKey: null, brand: null });
+    try {
+      if (brand) {
+        await updateBrand(activeStore.id, materialKey, brand.id, form);
+      } else {
+        await addBrand(activeStore.id, materialKey, form);
+        logActivity({ message: `Brand added — ${form.name} (${getMaterialDefinition(materialKey)?.name}) · ${formatPeso(form.price)}`, icon: AddRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg });
+      }
+      showToast('Brand saved');
+    } catch {
+      showToast('Could not save brand — try again', 'warning');
+    }
   };
 
-  const handleDeleteBrand = (materialKey, brandId) => {
-    removeBrand(activeStore.id, materialKey, brandId);
-    showToast('Brand deleted', 'warning');
+  const handleDeleteBrand = async (materialKey, brandId) => {
+    try {
+      await removeBrand(activeStore.id, materialKey, brandId);
+      showToast('Brand deleted', 'warning');
+    } catch {
+      showToast('Could not delete brand — try again', 'warning');
+    }
   };
 
-  const handleSaveBulk = (form) => {
-    updateBulkMaterial(activeStore.id, bulkDialog.materialKey, form);
-    logActivity({ message: `${getMaterialDefinition(bulkDialog.materialKey)?.name} updated at ${activeStore.name} — ${formatPeso(form.price)}`, icon: EditRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
-    showToast('Material updated');
+  const handleSaveBulk = async (form) => {
     setBulkDialog({ open: false, materialKey: null });
+    try {
+      await updateBulkMaterial(activeStore.id, bulkDialog.materialKey, form);
+      logActivity({ message: `${getMaterialDefinition(bulkDialog.materialKey)?.name} updated at ${activeStore.name} — ${formatPeso(form.price)}`, icon: EditRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
+      showToast('Material updated');
+    } catch {
+      showToast('Could not update material — try again', 'warning');
+    }
   };
 
   const stockedMaterials = activeStore.materialKeys.map((key) => getMaterialDefinition(key)).filter(Boolean);

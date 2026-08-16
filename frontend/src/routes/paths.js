@@ -11,7 +11,6 @@ export const ROUTES = {
   STORE_LOCATOR: '/projects/store-locator',
   BRAND_SELECTION: '/projects/brand-selection',
   BILL_OF_MATERIALS: '/projects/bill-of-materials',
-  SETTINGS: '/settings',
   PROFILE: '/profile',
   NOTIFICATIONS: '/notifications',
 };

@@ -11,7 +11,6 @@ import MaterialEstimationPage from '../pages/MaterialEstimationPage';
 import StoreLocatorPage from '../pages/StoreLocatorPage';
 import BrandSelectionPage from '../pages/BrandSelectionPage';
 import BillOfMaterialsPage from '../pages/BillOfMaterialsPage';
-import SettingsPage from '../pages/SettingsPage';
 import ProfilePage from '../pages/ProfilePage';
 import NotificationsPage from '../pages/NotificationsPage';
 import DashboardLayout from '../layouts/DashboardLayout';
@@ -64,7 +63,6 @@ function AppRoutes() {
         <Route path={ROUTES.STORE_LOCATOR} element={<StoreLocatorPage />} />
         <Route path={ROUTES.BRAND_SELECTION} element={<BrandSelectionPage />} />
         <Route path={ROUTES.BILL_OF_MATERIALS} element={<BillOfMaterialsPage />} />
-        <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
         <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
         <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
       </Route>

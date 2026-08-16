@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "hash-password": "node src/scripts/hashPassword.js"
+    "hash-password": "node src/scripts/hashPassword.js",
+    "migrate": "node src/scripts/runMigration.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

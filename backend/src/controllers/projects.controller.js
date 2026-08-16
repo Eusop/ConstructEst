@@ -5,6 +5,7 @@ import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { runDxfEngine } from '../services/engine.service.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
+import { getDesignOverrides, saveDesignOverrides, toEngineOverrides } from '../services/designOverrides.service.js';
 import { logActivity } from '../services/activity.service.js';
 import { getStoreOptimization, getBrandCatalog, saveBrandSelection, computeBom } from '../services/optimization.service.js';
 
@@ -121,8 +122,23 @@ export const createProject = asyncHandler(async (req, res) => {
     return res.status(201).json({ project: toPublicProject(project), estimation: null, parseError });
   }
 
-  const estimatedCost = await estimateTotalCost(engineResult.materials);
+  await persistEstimation(projectId, engineResult);
+  await query('UPDATE projects SET status = ? WHERE id = ?', ['parsed', projectId]);
+  await logActivity(req.user.id, projectId, 'project_created', `Created project "${projectName}" and computed its estimate.`);
 
+  const project = await loadProjectOr404(projectId);
+  const estimation = await loadCurrentEstimation(projectId);
+  res.status(201).json({ project: toPublicProject(project), estimation, parseError: null });
+});
+
+/** Marks any prior estimation as no longer current, then inserts a fresh
+ * estimation_results + estimation_line_items run — used by both initial
+ * project creation and the Recalculate action (design-overrides / constants
+ * changes never overwrite a past run, matching FR-9/FR-17). */
+async function persistEstimation(projectId, engineResult) {
+  await query('UPDATE estimation_results SET is_current = 0 WHERE project_id = ? AND is_current = 1', [projectId]);
+
+  const estimatedCost = await estimateTotalCost(engineResult.materials);
   const estResult = await query(
     `INSERT INTO estimation_results (project_id, total_wall_length, floor_area, roof_area, rooms_detected, estimated_cost)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -144,12 +160,56 @@ export const createProject = asyncHandler(async (req, res) => {
     );
   }
 
-  await query('UPDATE projects SET status = ? WHERE id = ?', ['parsed', projectId]);
-  await logActivity(req.user.id, projectId, 'project_created', `Created project "${projectName}" and computed its estimate.`);
+  return estResult.insertId;
+}
 
-  const project = await loadProjectOr404(projectId);
-  const estimation = await loadCurrentEstimation(projectId);
-  res.status(201).json({ project: toPublicProject(project), estimation, parseError: null });
+export const getProjectDesignOverrides = asyncHandler(async (req, res) => {
+  const project = await loadProjectOr404(req.params.id);
+  assertAccess(project, req.user);
+  const overrides = await getDesignOverrides(project.id);
+  res.json({ overrides });
+});
+
+export const putProjectDesignOverrides = asyncHandler(async (req, res) => {
+  const project = await loadProjectOr404(req.params.id);
+  assertAccess(project, req.user);
+  const overrides = await saveDesignOverrides(project.id, req.body);
+  res.json({ overrides });
+});
+
+/** Re-runs the DXF engine against the project's already-uploaded file with
+ * its current calibration constants + design overrides — used after the
+ * user tweaks either on the Material Estimation page, without re-uploading. */
+export const recomputeEstimation = asyncHandler(async (req, res) => {
+  const project = await loadProjectOr404(req.params.id);
+  assertAccess(project, req.user);
+  if (!project.dxf_file_path) throw new HttpError(400, 'This project has no DXF file to recompute from.');
+
+  const [constants, overrides] = await Promise.all([
+    getEffectiveConstants(project.id),
+    getDesignOverrides(project.id),
+  ]);
+
+  let engineResult;
+  try {
+    engineResult = await runDxfEngine({
+      dxfPath: project.dxf_file_path,
+      storeys: project.storeys,
+      includeRoofing: Boolean(project.include_roofing),
+      constants,
+      overrides: toEngineOverrides(overrides),
+    });
+  } catch (err) {
+    throw new HttpError(422, err.message || 'Recompute failed.');
+  }
+
+  await persistEstimation(project.id, engineResult);
+  await query('UPDATE projects SET status = ? WHERE id = ?', ['parsed', project.id]);
+  await logActivity(req.user.id, project.id, 'estimation_recomputed', `Recomputed estimate for "${project.project_name}".`);
+
+  const updatedProject = await loadProjectOr404(project.id);
+  const estimation = await loadCurrentEstimation(project.id);
+  res.json({ project: toPublicProject(updatedProject), estimation });
 });
 
 /** Rough project-level cost using each material's cheapest brand — the real

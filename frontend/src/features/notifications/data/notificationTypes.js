@@ -66,6 +66,6 @@ export const NOTIFICATION_ACTIONS = {
   brand_selection_completed: { label: 'View Brand Selection', route: ROUTES.BRAND_SELECTION },
   bom_generated: { label: 'View Bill of Materials', route: ROUTES.BILL_OF_MATERIALS },
   pdf_downloaded: { label: 'View Bill of Materials', route: ROUTES.BILL_OF_MATERIALS },
-  calibration_updated: { label: 'View Calibration', route: ROUTES.SETTINGS },
+  calibration_updated: { label: 'View Estimation', route: ROUTES.MATERIAL_ESTIMATION },
   profile_updated: { label: 'View Profile', route: ROUTES.PROFILE },
 };

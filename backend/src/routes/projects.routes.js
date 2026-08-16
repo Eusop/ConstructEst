@@ -13,6 +13,9 @@ import {
   getProjectConstants,
   putProjectConstants,
   resetProjectConstants,
+  getProjectDesignOverrides,
+  putProjectDesignOverrides,
+  recomputeEstimation,
 } from '../controllers/projects.controller.js';
 
 const router = Router();
@@ -32,5 +35,9 @@ router.get('/:id/bom', getProjectBom);
 router.get('/:id/constants', getProjectConstants);
 router.put('/:id/constants', putProjectConstants);
 router.delete('/:id/constants', resetProjectConstants);
+
+router.get('/:id/design-overrides', getProjectDesignOverrides);
+router.put('/:id/design-overrides', putProjectDesignOverrides);
+router.post('/:id/recompute', recomputeEstimation);
 
 export default router;

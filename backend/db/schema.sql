@@ -158,6 +158,32 @@ CREATE TABLE estimation_constants (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------
+-- Per-project structural design parameter overrides — see
+-- db/migrations/001_project_design_overrides.sql for the full rationale.
+-- Every column NULL means "use the engine's built-in default".
+-- ---------------------------------------------------------------------------
+CREATE TABLE project_design_overrides (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id INT UNSIGNED NOT NULL,
+  column_width DECIMAL(6, 3) NULL,
+  column_depth DECIMAL(6, 3) NULL,
+  column_height DECIMAL(6, 3) NULL,
+  column_count SMALLINT UNSIGNED NULL,
+  beam_width DECIMAL(6, 3) NULL,
+  beam_depth DECIMAL(6, 3) NULL,
+  beam_length DECIMAL(10, 2) NULL,
+  footing_width DECIMAL(6, 3) NULL,
+  footing_length DECIMAL(6, 3) NULL,
+  footing_depth DECIMAL(6, 3) NULL,
+  floor_to_floor_height DECIMAL(6, 3) NULL,
+  stair_width DECIMAL(6, 3) NULL,
+  building_height DECIMAL(6, 3) NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_design_overrides_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_design_overrides_project (project_id)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
 -- Notifications + dashboard activity feed.
 -- ---------------------------------------------------------------------------
 CREATE TABLE notifications (

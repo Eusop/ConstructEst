@@ -49,9 +49,10 @@ function buildMaterials(storeys) {
  *
  * @param {object} props
  * @param {number} props.storeys Used to label the CHB basis (e.g. "(2 flr)").
+ * @param {{cement: number, steel: number, roofing: number, wastage: number}} props.factors
  * @param {() => void} props.onContinue Called when "Continue to Store Locator" is clicked.
  */
-function QuantityTakeoffTable({ storeys, onContinue }) {
+function QuantityTakeoffTable({ storeys, factors, onContinue }) {
   const materials = buildMaterials(storeys);
 
   return (
@@ -117,7 +118,7 @@ function QuantityTakeoffTable({ storeys, onContinue }) {
         spacing={2}
         sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, p: { xs: 2.5, md: 3 } }}
       >
-        <FactorsAppliedBanner />
+        <FactorsAppliedBanner factors={factors} />
 
         <Button
           onClick={onContinue}

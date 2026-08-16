@@ -27,6 +27,7 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
   const navigate = useNavigate();
   if (!store) return null;
 
+  const materialKeys = store.materialKeys ?? [];
   const brandCount = Object.values(store.materialData).reduce((sum, data) => sum + (data.brands ? data.brands.length : data.price != null ? 1 : 0), 0);
 
   const handleManage = () => {
@@ -59,7 +60,9 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
         <Stack spacing={0} divider={<Box sx={{ borderBottom: '1px solid', borderColor: 'divider' }} />}>
           <Stack direction="row" sx={{ justifyContent: 'space-between', py: 1.5 }}>
             <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>Materials stocked</Typography>
-            <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>{store.materialKeys.length} of {MATERIAL_CATALOG.length}</Typography>
+            <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
+              {store.materialKeys === null ? '…' : `${materialKeys.length} of ${MATERIAL_CATALOG.length}`}
+            </Typography>
           </Stack>
           <Stack direction="row" sx={{ justifyContent: 'space-between', py: 1.5 }}>
             <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>Brands / prices configured</Typography>
@@ -71,13 +74,13 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
           </Stack>
         </Stack>
 
-        {store.materialKeys.length > 0 && (
+        {materialKeys.length > 0 && (
           <Box sx={{ mt: 1 }}>
             <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'text.secondary', mb: 1 }}>
               Inventory snapshot
             </Typography>
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-              {store.materialKeys.map((key) => {
+              {materialKeys.map((key) => {
                 const material = MATERIAL_CATALOG.find((item) => item.key === key);
                 return (
                   <Chip

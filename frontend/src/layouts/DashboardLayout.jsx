@@ -17,7 +17,6 @@ import { ROUTES } from '../routes/paths';
 const PAGE_HEADERS = {
   [ROUTES.DASHBOARD]: { title: 'Dashboard' },
   [ROUTES.PROJECTS]: { title: 'Projects' },
-  [ROUTES.SETTINGS]: { title: 'Calibration' },
   [ROUTES.PROFILE]: { title: 'Profile' },
   [ROUTES.NOTIFICATIONS]: { title: 'Notifications' },
   [ROUTES.NEW_PROJECT]: {

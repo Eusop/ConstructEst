@@ -135,6 +135,49 @@ export const deleteStore = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
+/** The full global material_brands catalog, left-joined against this
+ * store's own store_material_prices rows — `storePrice`/`inStock` are null
+ * for a brand this store hasn't priced yet, which is how the frontend
+ * (AdminStoresContext) tells "available to add" apart from "already
+ * stocked". Grouped by material_key so the admin UI can render one section
+ * per material. */
+export const getStoreCatalog = asyncHandler(async (req, res) => {
+  const rows = await query(
+    `SELECT mb.id AS material_brand_id, mb.material_key, mb.material_name, mb.unit, mb.brand, mb.spec,
+            mb.base_price, mb.quality, mb.category, mb.is_commodity,
+            smp.price AS store_price, smp.in_stock AS store_in_stock
+     FROM material_brands mb
+     LEFT JOIN store_material_prices smp ON smp.material_brand_id = mb.id AND smp.store_id = ?
+     ORDER BY mb.material_key, mb.brand`,
+    [req.params.id],
+  );
+
+  const byKey = new Map();
+  for (const row of rows) {
+    if (!byKey.has(row.material_key)) {
+      byKey.set(row.material_key, {
+        materialKey: row.material_key,
+        materialName: row.material_name,
+        unit: row.unit,
+        isCommodity: Boolean(row.is_commodity),
+        brands: [],
+      });
+    }
+    byKey.get(row.material_key).brands.push({
+      materialBrandId: row.material_brand_id,
+      brand: row.brand,
+      spec: row.spec,
+      basePrice: Number(row.base_price),
+      quality: row.quality == null ? null : Number(row.quality),
+      category: row.category,
+      storePrice: row.store_price == null ? null : Number(row.store_price),
+      inStock: row.store_in_stock == null ? null : Boolean(row.store_in_stock),
+    });
+  }
+
+  res.json({ catalog: [...byKey.values()] });
+});
+
 export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { storeId, materialBrandId } = req.params;
   const { price, inStock = true } = req.body;

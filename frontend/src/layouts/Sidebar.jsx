@@ -19,7 +19,6 @@ import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import BrandMark from '../components/BrandMark';
@@ -49,7 +48,6 @@ const WORKSPACE_ITEMS = [
 const UTILITY_ITEMS = [
   { label: 'Notifications', icon: NotificationsRoundedIcon, to: ROUTES.NOTIFICATIONS },
   { label: 'Profile', icon: PersonRoundedIcon, to: ROUTES.PROFILE },
-  { label: 'Calibration', icon: TuneRoundedIcon, to: ROUTES.SETTINGS },
   { label: 'Help', icon: HelpOutlineRoundedIcon, href: '#' },
 ];
 

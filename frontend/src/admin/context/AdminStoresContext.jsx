@@ -1,151 +1,185 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getMaterialDefinition } from '../data/materialCatalog';
+import {
+  listAdminStores, createAdminStore, deleteAdminStore, getStoreCatalog,
+  createAdminMaterial, updateAdminMaterial, setStoreMaterialPrice, removeStoreMaterialPrice,
+} from '../services/adminService';
 
 const AdminStoresContext = createContext(null);
 
-function makeId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+// Reshapes the backend's `getStoreCatalog` response (every global brand,
+// left-joined against this store's own price/availability — see
+// admin.controller.js's getStoreCatalog) into the `materialKeys`/
+// `materialData` shape AdminStoresPage/AdminMaterialsPage's components
+// already read: only brands this store has actually priced (`storePrice`
+// != null) show up, exactly like the old session-local mock did.
+function projectCatalog(catalogGroups) {
+  const materialKeys = [];
+  const materialData = {};
+  let stockedCount = 0;
+
+  for (const group of catalogGroups) {
+    const stockedBrands = group.brands.filter((brand) => brand.storePrice != null);
+    if (stockedBrands.length === 0) continue;
+
+    materialKeys.push(group.materialKey);
+    if (group.isCommodity) {
+      const [brand] = stockedBrands;
+      materialData[group.materialKey] = { price: brand.storePrice, available: brand.inStock, materialBrandId: brand.materialBrandId };
+      stockedCount += 1;
+    } else {
+      materialData[group.materialKey] = {
+        brands: stockedBrands.map((brand) => ({
+          id: brand.materialBrandId,
+          name: brand.brand,
+          unit: group.unit,
+          price: brand.storePrice,
+          available: brand.inStock,
+          stars: brand.quality ?? 4,
+        })),
+      };
+      stockedCount += stockedBrands.length;
+    }
+  }
+
+  return { materialKeys, materialData, stockedCount };
 }
 
 /**
  * Admin-managed hardware stores and their store-specific material/brand
  * catalog: Store -> Material -> Brand -> Price -> Availability (see
- * AdminStoresPage / AdminMaterialsPage). Starts empty — no seeded stores —
- * and lives only in this session's memory rather than the backend's real
- * `stores`/`material_brands` tables, which the existing User Module's Store
- * Locator and Brand Selection pages already read from and must keep
- * working unchanged. Same frontend-only-for-now pattern already used by
- * ProjectsContext/NotificationsContext on the User side.
+ * AdminStoresPage / AdminMaterialsPage). Backed by the real `stores` /
+ * `material_brands` / `store_material_prices` tables — the same catalog the
+ * User Module's Store Locator and Brand Selection pages already read from,
+ * so a brand added or re-priced here is immediately visible there too.
+ *
+ * A brand's identity (name, unit, quality/"stars") lives in the global
+ * `material_brands` row; its price and in-stock status at a given store
+ * live in a separate `store_material_prices` row — "Add Brand" creates
+ * both at once, "Remove" only ever deletes the store's price row (the
+ * brand definition itself stays, in case another store still prices it).
+ *
+ * Each store's material catalog is fetched lazily (only once it becomes
+ * the active store) — `materialKeys: null` marks "not fetched yet",
+ * distinct from `[]` ("fetched, nothing stocked").
  */
 export function AdminStoresProvider({ children }) {
   const [stores, setStores] = useState([]);
-  const [activeStoreId, setActiveStoreId] = useState(null);
+  const [activeStoreId, setActiveStoreIdState] = useState(null);
 
-  const addStore = useCallback(({ name, address, lat, lng }) => {
-    const store = { id: makeId(), name, address, lat, lng, materialKeys: [], materialData: {} };
-    setStores((prev) => [...prev, store]);
-    setActiveStoreId(store.id);
-    return store;
+  useEffect(() => {
+    listAdminStores()
+      .then(({ stores: rows }) => setStores(rows.map((row) => ({ ...row, materialKeys: null, materialData: {} }))))
+      .catch(() => {});
   }, []);
 
-  const updateStore = useCallback((storeId, updates) => {
-    setStores((prev) => prev.map((store) => (store.id === storeId ? { ...store, ...updates } : store)));
+  const patchStore = useCallback((storeId, patch) => {
+    setStores((prev) => prev.map((store) => (store.id === storeId ? { ...store, ...patch } : store)));
+  }, []);
+
+  const loadStoreCatalog = useCallback(async (storeId) => {
+    const { catalog } = await getStoreCatalog(storeId);
+    const { materialKeys, materialData, stockedCount } = projectCatalog(catalog);
+    patchStore(storeId, {
+      materialKeys,
+      materialData,
+      stockedBrandCount: stockedCount,
+      stockedMaterialKeyCount: materialKeys.length,
+      _catalog: catalog,
+    });
+  }, [patchStore]);
+
+  const setActiveStoreId = useCallback((storeId) => {
+    setActiveStoreIdState(storeId);
+    if (storeId != null) loadStoreCatalog(storeId).catch(() => {});
+  }, [loadStoreCatalog]);
+
+  // For UI that needs to read a store's materialKeys/materialData without
+  // making it the active store (e.g. StoreDetailsDialog, opened from either
+  // the map or the list) — a no-op if that store's catalog is already
+  // loaded, so it's safe to call on every render of that dialog.
+  const ensureStoreCatalogLoaded = useCallback((storeId) => {
+    const store = stores.find((s) => s.id === storeId);
+    if (store && store.materialKeys === null) loadStoreCatalog(storeId).catch(() => {});
+  }, [stores, loadStoreCatalog]);
+
+  const addStore = useCallback(async ({ name, address, lat, lng }) => {
+    const { store } = await createAdminStore({ name, address, lat, lng });
+    const newStore = { ...store, materialKeys: [], materialData: {}, stockedBrandCount: 0, stockedMaterialKeyCount: 0 };
+    setStores((prev) => [...prev, newStore]);
+    setActiveStoreIdState(store.id);
+    return newStore;
   }, []);
 
   const removeStore = useCallback((storeId) => {
     setStores((prev) => prev.filter((store) => store.id !== storeId));
-    setActiveStoreId((prev) => (prev === storeId ? null : prev));
+    setActiveStoreIdState((prev) => (prev === storeId ? null : prev));
+    deleteAdminStore(storeId).catch(() => {});
   }, []);
 
-  const addMaterialsToStore = useCallback((storeId, materialKeys) => {
-    setStores((prev) =>
-      prev.map((store) => {
-        if (store.id !== storeId) return store;
-        const newKeys = materialKeys.filter((key) => !store.materialKeys.includes(key));
-        const materialData = { ...store.materialData };
-        newKeys.forEach((key) => {
-          const definition = getMaterialDefinition(key);
-          materialData[key] = definition?.bulk ? { price: null, available: true } : { brands: [] };
-        });
-        return { ...store, materialKeys: [...store.materialKeys, ...newKeys], materialData };
-      }),
-    );
-  }, []);
+  const findCatalogGroup = useCallback(
+    (storeId, materialKey) => stores.find((s) => s.id === storeId)?._catalog?.find((g) => g.materialKey === materialKey),
+    [stores],
+  );
 
-  const removeMaterialFromStore = useCallback((storeId, materialKey) => {
-    setStores((prev) =>
-      prev.map((store) => {
-        if (store.id !== storeId) return store;
-        const materialData = { ...store.materialData };
-        delete materialData[materialKey];
-        return { ...store, materialKeys: store.materialKeys.filter((key) => key !== materialKey), materialData };
-      }),
-    );
-  }, []);
+  const addMaterialsToStore = useCallback(async (storeId, materialKeys) => {
+    for (const key of materialKeys) {
+      const group = findCatalogGroup(storeId, key);
+      if (!group) continue;
+      const unstocked = group.brands.filter((brand) => brand.storePrice == null);
+      await Promise.all(
+        unstocked.map((brand) => setStoreMaterialPrice(storeId, brand.materialBrandId, { price: brand.basePrice, inStock: true })),
+      );
+    }
+    await loadStoreCatalog(storeId);
+  }, [findCatalogGroup, loadStoreCatalog]);
 
-  const updateBulkMaterial = useCallback((storeId, materialKey, updates) => {
-    setStores((prev) =>
-      prev.map((store) => {
-        if (store.id !== storeId) return store;
-        return {
-          ...store,
-          materialData: {
-            ...store.materialData,
-            [materialKey]: { ...store.materialData[materialKey], ...updates },
-          },
-        };
-      }),
-    );
-  }, []);
+  const removeMaterialFromStore = useCallback(async (storeId, materialKey) => {
+    const group = findCatalogGroup(storeId, materialKey);
+    const stocked = group?.brands.filter((brand) => brand.storePrice != null) ?? [];
+    await Promise.all(stocked.map((brand) => removeStoreMaterialPrice(storeId, brand.materialBrandId)));
+    await loadStoreCatalog(storeId);
+  }, [findCatalogGroup, loadStoreCatalog]);
 
-  const addBrand = useCallback((storeId, materialKey, brand) => {
-    const newBrand = { id: makeId(), ...brand };
-    setStores((prev) =>
-      prev.map((store) => {
-        if (store.id !== storeId) return store;
-        const current = store.materialData[materialKey] ?? { brands: [] };
-        return {
-          ...store,
-          materialData: {
-            ...store.materialData,
-            [materialKey]: { ...current, brands: [...current.brands, newBrand] },
-          },
-        };
-      }),
-    );
-    return newBrand;
-  }, []);
+  const updateBulkMaterial = useCallback(async (storeId, materialKey, updates) => {
+    const store = stores.find((s) => s.id === storeId);
+    const materialBrandId = store?.materialData[materialKey]?.materialBrandId;
+    if (!materialBrandId) return;
+    await setStoreMaterialPrice(storeId, materialBrandId, { price: updates.price, inStock: updates.available });
+    await loadStoreCatalog(storeId);
+  }, [stores, loadStoreCatalog]);
 
-  const updateBrand = useCallback((storeId, materialKey, brandId, updates) => {
-    setStores((prev) =>
-      prev.map((store) => {
-        if (store.id !== storeId) return store;
-        const current = store.materialData[materialKey];
-        if (!current) return store;
-        return {
-          ...store,
-          materialData: {
-            ...store.materialData,
-            [materialKey]: {
-              ...current,
-              brands: current.brands.map((brand) => (brand.id === brandId ? { ...brand, ...updates } : brand)),
-            },
-          },
-        };
-      }),
-    );
-  }, []);
+  const addBrand = useCallback(async (storeId, materialKey, brand) => {
+    const definition = getMaterialDefinition(materialKey);
+    const { material } = await createAdminMaterial({
+      materialKey,
+      materialName: definition?.name ?? materialKey,
+      unit: brand.unit ?? definition?.unit ?? '',
+      brand: brand.name,
+      basePrice: brand.price,
+      quality: brand.stars,
+      isCommodity: false,
+    });
+    await setStoreMaterialPrice(storeId, material.id, { price: brand.price, inStock: brand.available });
+    await loadStoreCatalog(storeId);
+    return { id: material.id, ...brand };
+  }, [loadStoreCatalog]);
 
-  const removeBrand = useCallback((storeId, materialKey, brandId) => {
-    setStores((prev) =>
-      prev.map((store) => {
-        if (store.id !== storeId) return store;
-        const current = store.materialData[materialKey];
-        if (!current) return store;
-        return {
-          ...store,
-          materialData: {
-            ...store.materialData,
-            [materialKey]: { ...current, brands: current.brands.filter((brand) => brand.id !== brandId) },
-          },
-        };
-      }),
-    );
-  }, []);
+  const updateBrand = useCallback(async (storeId, materialKey, brandId, updates) => {
+    await updateAdminMaterial(brandId, { brand: updates.name, unit: updates.unit, quality: updates.stars });
+    await setStoreMaterialPrice(storeId, brandId, { price: updates.price, inStock: updates.available });
+    await loadStoreCatalog(storeId);
+  }, [loadStoreCatalog]);
+
+  const removeBrand = useCallback(async (storeId, materialKey, brandId) => {
+    await removeStoreMaterialPrice(storeId, brandId);
+    await loadStoreCatalog(storeId);
+  }, [loadStoreCatalog]);
 
   const activeStore = useMemo(() => stores.find((store) => store.id === activeStoreId) ?? null, [stores, activeStoreId]);
 
   const totalBrandsConfigured = useMemo(
-    () =>
-      stores.reduce((sum, store) => {
-        return (
-          sum +
-          Object.values(store.materialData).reduce((inner, data) => {
-            if (data.brands) return inner + data.brands.length;
-            return inner + (data.price != null ? 1 : 0);
-          }, 0)
-        );
-      }, 0),
+    () => stores.reduce((sum, store) => sum + (store.stockedBrandCount ?? 0), 0),
     [stores],
   );
 
@@ -156,8 +190,8 @@ export function AdminStoresProvider({ children }) {
       activeStore,
       totalBrandsConfigured,
       setActiveStoreId,
+      ensureStoreCatalogLoaded,
       addStore,
-      updateStore,
       removeStore,
       addMaterialsToStore,
       removeMaterialFromStore,
@@ -171,8 +205,9 @@ export function AdminStoresProvider({ children }) {
       activeStoreId,
       activeStore,
       totalBrandsConfigured,
+      setActiveStoreId,
+      ensureStoreCatalogLoaded,
       addStore,
-      updateStore,
       removeStore,
       addMaterialsToStore,
       removeMaterialFromStore,

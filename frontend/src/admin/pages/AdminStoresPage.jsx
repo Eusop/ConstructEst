@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Stack from '@mui/material/Stack';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
@@ -30,13 +30,17 @@ const DEFAULT_CENTER = { lat: 15.4802, lng: 120.5979 };
  * Brands for that store.
  */
 function AdminStoresPage() {
-  const { stores, activeStoreId, addStore, removeStore, setActiveStoreId } = useAdminStores();
+  const { stores, activeStoreId, addStore, removeStore, setActiveStoreId, ensureStoreCatalogLoaded } = useAdminStores();
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
   const [addOpen, setAddOpen] = useState(false);
   const [detailsStoreId, setDetailsStoreId] = useState(null);
 
   const detailsStore = stores.find((store) => store.id === detailsStoreId) ?? null;
+
+  useEffect(() => {
+    if (detailsStoreId != null) ensureStoreCatalogLoaded(detailsStoreId);
+  }, [detailsStoreId, ensureStoreCatalogLoaded]);
 
   const markers = useMemo(
     () =>
@@ -52,11 +56,15 @@ function AdminStoresPage() {
 
   const mapCenter = detailsStore ? { lat: detailsStore.lat, lng: detailsStore.lng } : stores[0] ? { lat: stores[0].lat, lng: stores[0].lng } : DEFAULT_CENTER;
 
-  const handleAddStore = (form) => {
-    const store = addStore(form);
-    logActivity({ message: `Hardware store added — ${store.name}`, icon: StorefrontRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg });
-    showToast('Store added to system');
-    setAddOpen(false);
+  const handleAddStore = async (form) => {
+    try {
+      const store = await addStore(form);
+      logActivity({ message: `Hardware store added — ${store.name}`, icon: StorefrontRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg });
+      showToast('Store added to system');
+      setAddOpen(false);
+    } catch {
+      showToast('Could not add store — try again', 'warning');
+    }
   };
 
   const handleRemove = (storeId) => {
@@ -140,7 +148,7 @@ function AdminStoresPage() {
                           <Typography noWrap sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>{store.address}</Typography>
                         </Stack>
                         <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.25 }}>
-                          {store.materialKeys.length} material{store.materialKeys.length === 1 ? '' : 's'} stocked
+                          {store.stockedMaterialKeyCount} material{store.stockedMaterialKeyCount === 1 ? '' : 's'} stocked
                         </Typography>
                       </Box>
                       <ArrowForwardRoundedIcon sx={{ fontSize: 18, color: 'text.disabled', flexShrink: 0 }} />
