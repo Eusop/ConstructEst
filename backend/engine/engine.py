@@ -59,6 +59,19 @@ def main():
         }))
         sys.exit(1)
 
+    # Without this, a mismatched wall layer name (e.g. "A-WALL") silently
+    # computes wall_length_m as 0 — CHB, wall cement/sand, and wall rebar
+    # all quietly drop out while every other material still looks normal,
+    # so the take-off renders as if it succeeded. Fail loudly instead,
+    # same as the FLOOR check above.
+    if geometry["wall_length_m"] <= 0:
+        print(json.dumps({
+            "error": "No wall entities found on a WALL layer. Check that the "
+                     "DXF uses the expected layer name (WALL, or an alias like "
+                     "WALLS) for wall lines/polylines.",
+        }))
+        sys.exit(1)
+
     result = compute_materials(geometry, storeys, include_roofing, constants, overrides)
     print(json.dumps(result))
 
