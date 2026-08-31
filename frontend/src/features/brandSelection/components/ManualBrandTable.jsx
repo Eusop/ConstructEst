@@ -16,7 +16,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
-import { BRAND_MATERIAL_SHORT_LABELS, getStoreBrandOptions } from '../data/brandOptionsMock';
+import { BRAND_MATERIAL_SHORT_LABELS, getStoreBrandOptions, getAvailableMaterialKeys } from '../data/brandOptionsMock';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
 import { colors } from '../../../theme/palette';
 
@@ -136,7 +136,11 @@ function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, est
  *   it always matches what Bill of Materials will show for the same choice.
  */
 function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems }) {
-  const categoryGroups = groupMaterialsByCategory(Object.keys(BRAND_MATERIAL_SHORT_LABELS).map((key) => ({ key })));
+  // Only materials this project's estimation actually needs (and this
+  // store's catalog has options for) — not the app-wide static list, which
+  // still includes e.g. roofing even for a project that's toggled it off.
+  const availableMaterialKeys = getAvailableMaterialKeys(storeId);
+  const categoryGroups = groupMaterialsByCategory(availableMaterialKeys.map((key) => ({ key })));
 
   return (
     <Paper
@@ -208,7 +212,7 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems }) {
           </TableHead>
 
           <TableBody>
-            {Object.keys(BRAND_MATERIAL_SHORT_LABELS).map((materialKey) => {
+            {availableMaterialKeys.map((materialKey) => {
               const options = getStoreBrandOptions(storeId, materialKey);
               const selectedOption = options.find((option) => option.id === choices[materialKey]) ?? options[0];
               const selectedLabel = `${selectedOption.brand} · ${selectedOption.spec}`;

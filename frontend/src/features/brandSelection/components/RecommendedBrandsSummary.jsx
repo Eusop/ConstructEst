@@ -7,7 +7,7 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
-import { BRAND_MATERIAL_SHORT_LABELS, OPTIMIZATION_TIERS, getStoreBrandOptions } from '../data/brandOptionsMock';
+import { BRAND_MATERIAL_SHORT_LABELS, OPTIMIZATION_TIERS, getStoreBrandOptions, getAvailableMaterialKeys } from '../data/brandOptionsMock';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 
@@ -15,11 +15,20 @@ function formatPeso(value) {
   return `₱${Math.round(value).toLocaleString('en-PH')}`;
 }
 
+// Only materials this project's estimation actually needs (see
+// getAvailableMaterialKeys) — not the app-wide static list, which still
+// includes e.g. roofing even for a project that's toggled it off. Falls
+// back to the store's cheapest option for a key the tier hasn't set a
+// choice for yet, then drops anything that still can't resolve (defensive
+// — shouldn't happen since availableMaterialKeys already means options
+// exist) rather than rendering with an undefined option.
 function resolveMaterials(choices, storeId) {
-  return Object.keys(BRAND_MATERIAL_SHORT_LABELS).map((materialKey) => ({
-    materialKey,
-    option: getStoreBrandOptions(storeId, materialKey).find((item) => item.id === choices[materialKey]),
-  }));
+  return getAvailableMaterialKeys(storeId)
+    .map((materialKey) => {
+      const options = getStoreBrandOptions(storeId, materialKey);
+      return { materialKey, option: options.find((item) => item.id === choices[materialKey]) ?? options[0] };
+    })
+    .filter(({ option }) => option);
 }
 
 /**
