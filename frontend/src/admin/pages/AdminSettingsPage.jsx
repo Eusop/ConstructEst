@@ -7,6 +7,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import CalibrationFactorsCard from '../../features/settings/components/CalibrationFactorsCard';
 import DesignParametersCard from '../../features/estimation/components/DesignParametersCard';
+import MobileTabSwitcher from '../../components/MobileTabSwitcher';
 import { SYSTEM_DEFAULT_FACTORS } from '../../features/settings/data/calibrationDefaults';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
@@ -99,19 +100,17 @@ function AdminSettingsPage() {
   return (
     <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
       <Box>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>Estimation Settings</Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Estimation Settings</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
           Default calibration factors and design parameters applied to every new project unless it sets its own override.
         </Typography>
       </Box>
 
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ alignItems: 'stretch' }}>
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
+        <MobileTabSwitcher labels={['Design', 'Calibration']}>
           <DesignParametersCard overrides={draftOverrides} onOverrideChange={updateOverride} onResetAll={handleResetOverrides} />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
           <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />
-        </Box>
+        </MobileTabSwitcher>
       </Stack>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'flex-end' }}>

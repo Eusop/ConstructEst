@@ -42,8 +42,8 @@ function ProjectsPage() {
           sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}
         >
           <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>All projects</Typography>
-            <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>Select a project to make it active.</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>All projects</Typography>
+            <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Select a project to make it active.</Typography>
           </Box>
 
           <Button

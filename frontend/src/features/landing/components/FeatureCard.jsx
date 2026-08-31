@@ -20,7 +20,7 @@ function FeatureCard({ icon: Icon, iconBg, iconFg, title, description, bordered 
     <Paper
       elevation={0}
       sx={{
-        p: 3,
+        p: { xs: 2.25, md: 3 },
         borderRadius: 3,
         border: bordered ? '1px solid' : 'none',
         borderColor: 'grey.200',
@@ -30,21 +30,21 @@ function FeatureCard({ icon: Icon, iconBg, iconFg, title, description, bordered 
     >
       <Box
         sx={{
-          width: 40,
-          height: 40,
+          width: { xs: 36, md: 40 },
+          height: { xs: 36, md: 40 },
           borderRadius: 2,
           bgcolor: iconBg,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          mb: 2,
+          mb: { xs: 1.5, md: 2 },
         }}
       >
-        <Icon sx={{ color: iconFg, fontSize: 22 }} />
+        <Icon sx={{ color: iconFg, fontSize: { xs: 19, md: 22 } }} />
       </Box>
 
-      <Typography sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>{title}</Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>{description}</Typography>
+      <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: { xs: '0.92rem', md: '1rem' }, mb: 0.5 }}>{title}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.82rem', md: '0.9rem' } }}>{description}</Typography>
     </Paper>
   );
 }

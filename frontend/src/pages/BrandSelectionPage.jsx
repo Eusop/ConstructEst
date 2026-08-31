@@ -133,11 +133,17 @@ function BrandSelectionPage() {
   };
 
   return (
-    <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+    // Mobile: no longer stretches to fill the viewport (`flex:1`) — with
+    // Optimization tier cards/accordions now closed by default, that forced
+    // stretch left a large empty gap between the short collapsed content
+    // and the "Continue" button/card below it, instead of the content
+    // simply ending where it naturally does. sm+ keeps the original
+    // flex:1 behavior unchanged.
+    <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
         <Box>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>Brand selection</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Brand selection</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
             Choose brands for {activeProject.projectName}'s shoppable materials.
           </Typography>
         </Box>
@@ -146,27 +152,36 @@ function BrandSelectionPage() {
       </Stack>
 
       {mode === 'automatic' ? (
-        <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+        <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
           <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} />
           <RecommendedBrandsSummary tierKey={tier} grandTotal={grandTotal} storeId={storeId} />
         </Stack>
       ) : (
-        <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+        <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
           <ManualBrandTable choices={choices} onChoiceChange={handleManualChoiceChange} storeId={storeId} lineItems={lineItems} />
 
-          {/* Mobile only: the total and the Continue button as two separate,
-              centered cards — sm and up keep the single merged card below. */}
-          <Stack spacing={2} sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center' }}>
-            <Paper elevation={0} sx={{ borderRadius: 3, bgcolor: colors.iconBlueBg, p: 2, textAlign: 'center' }}>
-              <Typography sx={{ fontSize: '0.78rem', color: colors.iconBlueFg, fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {/* Mobile only: a real white card (shadow, no fill-color-on-fill-
+              color blending) with the total called out in its own accent
+              box, then a full-width button — vs. before, where the card's
+              own background was nearly the same light blue as the page
+              behind it, so it read as plain floating text with no card
+              boundary at all rather than an actual card. sm+ keeps the
+              single merged card below (side-by-side layout), unchanged. */}
+          <Paper
+            elevation={0}
+            sx={{ display: { xs: 'block', sm: 'none' }, borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: 2 }}
+          >
+            <Box sx={{ textAlign: 'center', bgcolor: colors.iconBlueBg, borderRadius: 2, py: 1.5, px: 2, mb: 1.5 }}>
+              <Typography sx={{ fontSize: '0.72rem', color: colors.iconBlueFg, fontWeight: 700, letterSpacing: 0.3, textTransform: 'uppercase' }}>
                 Estimated total
               </Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.6rem', color: 'text.primary', mt: 0.25 }}>
                 {formatPeso(grandTotal)}
               </Typography>
-            </Paper>
+            </Box>
 
             <Button
+              fullWidth
               onClick={handleContinue}
               variant="contained"
               disableElevation
@@ -175,13 +190,12 @@ function BrandSelectionPage() {
               sx={{
                 bgcolor: colors.accentBlue,
                 '&:hover': { bgcolor: colors.accentBlueDark },
-                whiteSpace: 'nowrap',
                 fontSize: '0.9rem',
               }}
             >
               Continue to Bill of Materials
             </Button>
-          </Stack>
+          </Paper>
 
           <Paper
             elevation={0}

@@ -34,13 +34,13 @@ function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceili
   const deltaColor = withinBudget ? colors.iconGreenFg : colors.iconRedFg;
 
   return (
-    <Box sx={{ borderRadius: 3, bgcolor: colors.ctaBackground, p: { xs: 2.5, md: 3 } }}>
-      <Stack spacing={1.25}>
+    <Box sx={{ borderRadius: 3, bgcolor: colors.ctaBackground, p: { xs: 1.75, md: 3 } }}>
+      <Stack spacing={{ xs: 1, md: 1.25 }}>
         <SummaryRow label="Subtotal" value={subtotalLabel} />
         <SummaryRow label="Optimization saving" value={savingLabel} valueColor={colors.iconGreenFg} />
       </Stack>
 
-      <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
+      <Divider sx={{ my: { xs: 1.5, md: 2 }, borderColor: 'rgba(255,255,255,0.1)' }} />
 
       <Stack
         direction={{ xs: 'column', sm: 'row' }}

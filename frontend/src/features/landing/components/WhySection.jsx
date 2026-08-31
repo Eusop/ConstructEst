@@ -36,12 +36,12 @@ const REASONS = [
  */
 function WhySection() {
   return (
-    <Box sx={{ bgcolor: 'common.white', py: { xs: 7, md: 10 } }}>
+    <Box sx={{ bgcolor: 'common.white', py: { xs: 5, md: 10 } }}>
       <Container maxWidth="lg">
-        <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: '1.6rem', md: '1.9rem' }, color: 'text.primary', textAlign: 'center', mb: 1.5 }}>
+        <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: '1.5rem', md: '1.9rem' }, color: 'text.primary', textAlign: 'center', mb: 1.5 }}>
           Why ConstructEst
         </Typography>
-        <Typography sx={{ color: 'text.secondary', textAlign: 'center', mb: 6 }}>
+        <Typography sx={{ color: 'text.secondary', textAlign: 'center', fontSize: { xs: '0.88rem', md: '1rem' }, mb: { xs: 3.5, md: 6 } }}>
           Faster, more consistent estimates for residential builds.
         </Typography>
 
@@ -49,7 +49,7 @@ function WhySection() {
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(3, minmax(0, 1fr))' },
-            gap: 3,
+            gap: { xs: 2, md: 3 },
           }}
         >
           {REASONS.map((reason) => (

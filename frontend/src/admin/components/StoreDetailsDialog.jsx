@@ -16,6 +16,7 @@ import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { MATERIAL_CATALOG } from '../data/materialCatalog';
 import { ADMIN_ROUTES } from '../../routes/paths';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 /**
@@ -25,6 +26,7 @@ import { colors } from '../../theme/palette';
  */
 function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   if (!store) return null;
 
   const materialKeys = store.materialKeys ?? [];
@@ -36,7 +38,7 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth fullScreen={isMobile}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pr: 6 }}>
         <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: colors.iconOrangeBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <StorefrontRoundedIcon sx={{ color: colors.iconOrangeFg }} />
@@ -79,19 +81,48 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
             <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'text.secondary', mb: 1 }}>
               Inventory snapshot
             </Typography>
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            {/* Mobile: was a plain flex-wrap row, which greedily packs tags
+                left-to-right based on each label's own width — with labels
+                this uneven in length (four characters up to almost thirty),
+                that reads as a random, ragged arrangement rather than a
+                deliberate layout. A fixed 2-column grid instead gives every
+                tag in a row the same width (so rows line up cleanly both
+                horizontally and vertically); the one genuinely long label
+                ("CHB (Concrete Hollow Blocks)") spans both columns so it
+                still fits on one line instead of being squeezed. sm+ keeps
+                the original flex-wrap row untouched. */}
+            <Box
+              sx={{
+                display: { xs: 'grid', sm: 'flex' },
+                gridTemplateColumns: { xs: 'repeat(2, 1fr)' },
+                flexWrap: { sm: 'wrap' },
+                gap: 1,
+              }}
+            >
               {materialKeys.map((key) => {
                 const material = MATERIAL_CATALOG.find((item) => item.key === key);
+                const label = material?.name ?? key;
+                const isLong = label.length > 15;
                 return (
                   <Chip
                     key={key}
-                    label={material?.name ?? key}
+                    label={label}
                     size="small"
-                    sx={{ bgcolor: colors.iconGreenBg, color: colors.iconGreenFg, fontWeight: 600 }}
+                    sx={{
+                      bgcolor: colors.iconGreenBg,
+                      color: colors.iconGreenFg,
+                      fontWeight: 600,
+                      width: { xs: '100%', sm: 'auto' },
+                      gridColumn: { xs: isLong ? '1 / -1' : 'auto' },
+                      '& .MuiChip-label': {
+                        width: { xs: '100%', sm: 'auto' },
+                        textAlign: { xs: 'center', sm: 'left' },
+                      },
+                    }}
                   />
                 );
               })}
-            </Stack>
+            </Box>
           </Box>
         )}
       </DialogContent>

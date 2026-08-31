@@ -180,11 +180,25 @@ export const putProjectDesignOverrides = asyncHandler(async (req, res) => {
 
 /** Re-runs the DXF engine against the project's already-uploaded file with
  * its current calibration constants + design overrides — used after the
- * user tweaks either on the Material Estimation page, without re-uploading. */
+ * user tweaks either on the Material Estimation page, without re-uploading.
+ *
+ * Also accepts an optional `includeRoofing` override in the body — lets the
+ * user flip Roofing on/off after seeing the parsed take-off (e.g. a real
+ * DXF with no ROOF layer at all), rather than that only ever being settable
+ * at upload time. When present it's persisted back onto the project so the
+ * next recompute, store comparison, and PDF BOM all stay consistent with it. */
 export const recomputeEstimation = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
   if (!project.dxf_file_path) throw new HttpError(400, 'This project has no DXF file to recompute from.');
+
+  const includeRoofing = req.body.includeRoofing === undefined
+    ? Boolean(project.include_roofing)
+    : parseBoolean(req.body.includeRoofing);
+
+  if (includeRoofing !== Boolean(project.include_roofing)) {
+    await query('UPDATE projects SET include_roofing = ? WHERE id = ?', [includeRoofing ? 1 : 0, project.id]);
+  }
 
   const [constants, overrides] = await Promise.all([
     getEffectiveConstants(project.id),
@@ -196,7 +210,7 @@ export const recomputeEstimation = asyncHandler(async (req, res) => {
     engineResult = await runDxfEngine({
       dxfPath: project.dxf_file_path,
       storeys: project.storeys,
-      includeRoofing: Boolean(project.include_roofing),
+      includeRoofing,
       constants,
       overrides: toEngineOverrides(overrides),
     });

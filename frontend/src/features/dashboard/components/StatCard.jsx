@@ -25,7 +25,7 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo }) {
       sx={{
         position: 'relative',
         borderRadius: 3,
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
       }}
@@ -51,8 +51,8 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo }) {
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
         <Box
           sx={{
-            width: 44,
-            height: 44,
+            width: { xs: 38, sm: 44 },
+            height: { xs: 38, sm: 44 },
             flexShrink: 0,
             borderRadius: 2,
             bgcolor: iconBg,
@@ -61,13 +61,13 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo }) {
             justifyContent: 'center',
           }}
         >
-          <Icon sx={{ color: iconFg, fontSize: 22 }} />
+          <Icon sx={{ color: iconFg, fontSize: { xs: 19, sm: 22 } }} />
         </Box>
         <Box sx={{ minWidth: 0, pr: viewAllTo ? 6.5 : 0 }}>
-          <Typography noWrap sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 0.25 }}>
+          <Typography noWrap sx={{ color: 'text.secondary', fontSize: { xs: '0.78rem', sm: '0.85rem' }, mb: 0.25 }}>
             {label}
           </Typography>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.5rem', color: 'text.primary' }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.3rem', sm: '1.5rem' }, color: 'text.primary' }}>
             {value}
           </Typography>
         </Box>

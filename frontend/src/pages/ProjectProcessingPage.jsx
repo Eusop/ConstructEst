@@ -132,7 +132,7 @@ function ProjectProcessingPage() {
       addNotification({
         type: 'dxf_parsed',
         title: 'Parsing completed',
-        description: `${activeProject?.projectName ?? 'Your project'} — floor plan parsed successfully.`,
+        description: `${activeProject?.projectName ?? 'Your project'}: floor plan parsed successfully.`,
       });
       addNotification({
         type: 'estimation_completed',
@@ -152,12 +152,21 @@ function ProjectProcessingPage() {
 
   return (
     <Box>
-      <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
-        Processing your project
-      </Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem', mb: 2.5 }}>
-        We&apos;re reading your floor plan and preparing the estimate. This usually takes under a minute.
-      </Typography>
+      {/* Mobile: dropped — the header above already reads "Processing" (see
+          DashboardLayout's mobile title for this route), and the ring +
+          headline in the card just below repeats the same "what's
+          happening" info, so this was redundant height with nothing else
+          to balance against. Desktop keeps it: there the header is a full
+          "Projects > name > Processing" breadcrumb instead, so this is the
+          only place that names the page in plain language. */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
+          Processing your project
+        </Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem', mb: 2.5 }}>
+          We&apos;re reading your floor plan and preparing the estimate. This usually takes under a minute.
+        </Typography>
+      </Box>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
         <Box sx={{ flex: { md: 2 }, width: '100%' }}>

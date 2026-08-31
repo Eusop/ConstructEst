@@ -37,7 +37,15 @@ function AdminLayout() {
 
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <AdminHeader onToggleSidebar={toggleSidebar} title={title} />
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', p: { xs: 2, md: 3 } }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            p: { xs: 2, md: 3 },
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

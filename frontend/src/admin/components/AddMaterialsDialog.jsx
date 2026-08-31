@@ -10,6 +10,7 @@ import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import { MATERIAL_CATALOG } from '../data/materialCatalog';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 /**
@@ -19,6 +20,7 @@ import { colors } from '../../theme/palette';
  * priced directly (requirement 13).
  */
 function AddMaterialsDialog({ open, alreadyStocked, onClose, onSubmit }) {
+  const isMobile = useIsMobile();
   const [selected, setSelected] = useState([]);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ function AddMaterialsDialog({ open, alreadyStocked, onClose, onSubmit }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth fullScreen={isMobile}>
       <DialogTitle sx={{ fontWeight: 700 }}>Add materials to store</DialogTitle>
       <DialogContent>
         <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>Select which materials this store stocks.</Typography>

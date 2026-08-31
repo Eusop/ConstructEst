@@ -145,7 +145,7 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             disableElevation
             startIcon={<AddRoundedIcon />}
             sx={{
-              display: { xs: 'none', sm: 'inline-flex' },
+              display: { xs: 'none', md: 'inline-flex' },
               bgcolor: colors.accentBlue,
               '&:hover': { bgcolor: colors.accentBlueDark },
             }}
@@ -153,7 +153,14 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             New Project
           </Button>
 
-          <IconButton component={RouterLink} to={ROUTES.NOTIFICATIONS} aria-label="Notifications" size="small">
+          {/* Desktop (`md`+): icon-only bell + colored avatar, as before. */}
+          <IconButton
+            component={RouterLink}
+            to={ROUTES.NOTIFICATIONS}
+            aria-label="Notifications"
+            size="small"
+            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+          >
             <Badge
               badgeContent={unreadCount}
               max={99}
@@ -168,6 +175,7 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             aria-label="Go to your profile"
             src={avatarUrl ?? undefined}
             sx={{
+              display: { xs: 'none', md: 'flex' },
               bgcolor: colors.accentBlue,
               width: 36,
               height: 36,
@@ -180,6 +188,47 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
           >
             {getInitials(userName)}
           </Avatar>
+
+          {/* Mobile/tablet (below `md`): moved up from the old bottom tab
+              bar — icon-only (no label), centered on the row like the
+              hamburger/title beside them. */}
+          <Stack
+            direction="row"
+            spacing={1.75}
+            sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', flexShrink: 0 }}
+          >
+            <Box
+              component={RouterLink}
+              to={ROUTES.NOTIFICATIONS}
+              aria-label="Notifications"
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary', textDecoration: 'none' }}
+            >
+              <Badge
+                badgeContent={unreadCount}
+                max={99}
+                sx={{ '& .MuiBadge-badge': { bgcolor: colors.orange, color: 'common.white', fontSize: 9, minWidth: 15, height: 15 } }}
+              >
+                <NotificationsRoundedIcon sx={{ fontSize: 22 }} />
+              </Badge>
+            </Box>
+
+            <Box
+              component={RouterLink}
+              to={ROUTES.PROFILE}
+              aria-label="Profile"
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+            >
+              {/* Same colored-avatar treatment as the desktop header's
+                  Profile icon (see the `md`+ Avatar above) — just sized
+                  down to fit this compact spot. */}
+              <Avatar
+                src={avatarUrl ?? undefined}
+                sx={{ width: 30, height: 30, bgcolor: colors.accentBlue, fontSize: '0.72rem', fontWeight: 700 }}
+              >
+                {getInitials(userName)}
+              </Avatar>
+            </Box>
+          </Stack>
         </Stack>
       </Stack>
     </Box>

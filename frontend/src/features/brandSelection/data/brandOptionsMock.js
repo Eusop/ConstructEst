@@ -104,6 +104,18 @@ export function getStoreBrandOptions(storeId, materialKey) {
   return MATERIAL_BRAND_OPTIONS[materialKey] ?? [];
 }
 
+/**
+ * Which brand-selectable materials the current project's catalog actually
+ * has options for at this store — i.e. materials the project's estimation
+ * needs at all (excludes e.g. roofing when a project has it toggled off,
+ * since those never appear in the catalog GET returns in the first place).
+ * Callers should render/resolve against this instead of the full static
+ * BRAND_SELECTABLE_MATERIAL_KEYS list, which does not shrink per project.
+ */
+export function getAvailableMaterialKeys(storeId) {
+  return BRAND_SELECTABLE_MATERIAL_KEYS.filter((key) => getStoreBrandOptions(storeId, key).length > 0);
+}
+
 export function getStoreBrandCatalog(storeId) {
   return Object.fromEntries(
     BRAND_SELECTABLE_MATERIAL_KEYS.map((materialKey) => [materialKey, getStoreBrandOptions(storeId, materialKey)]),

@@ -12,6 +12,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormTextField from '../../components/FormTextField';
 import PasswordField from '../../components/PasswordField';
 import { isRequired, isValidEmail, minLength } from '../../utils/validators';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 const EMPTY_FORM = { firstName: '', lastName: '', userId: '', email: '', password: '', accessRole: 'user' };
@@ -48,6 +49,7 @@ function validate(form, isEdit) {
  * @param {(form: object) => Promise<void>} props.onSubmit
  */
 function UserFormDialog({ open, user, onClose, onSubmit }) {
+  const isMobile = useIsMobile();
   const isEdit = Boolean(user);
   const [form, setForm] = useState(() => buildForm(user));
   const [errors, setErrors] = useState({});
@@ -80,7 +82,7 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth fullScreen={isMobile}>
       <DialogTitle sx={{ fontWeight: 700 }}>{isEdit ? 'Edit User' : 'Add User'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2.25} sx={{ pt: 0.5 }}>

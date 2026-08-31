@@ -5,11 +5,16 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Tooltip from '@mui/material/Tooltip';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import QuantityTakeoffTable from '../features/estimation/components/QuantityTakeoffTable';
 import DesignParametersCard from '../features/estimation/components/DesignParametersCard';
 import CalibrationFactorsCard from '../features/settings/components/CalibrationFactorsCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
+import MobileTabSwitcher from '../components/MobileTabSwitcher';
 import { useProjects } from '../context/ProjectsContext';
 import { useNotifications } from '../context/NotificationsContext';
 import { apiRequest } from '../services/apiClient';
@@ -56,6 +61,8 @@ function MaterialEstimationPage() {
   const [draftFactors, setDraftFactors] = useState(null);
   const [savedOverrides, setSavedOverrides] = useState(null);
   const [draftOverrides, setDraftOverrides] = useState(null);
+  const [savedIncludeRoofing, setSavedIncludeRoofing] = useState(null);
+  const [draftIncludeRoofing, setDraftIncludeRoofing] = useState(null);
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   useEffect(() => {
@@ -68,6 +75,8 @@ function MaterialEstimationPage() {
 
       loadParsedProject(estimation);
       loadQuantityTakeoff(estimation.materials);
+      setSavedIncludeRoofing(activeProject.includeRoofing);
+      setDraftIncludeRoofing(activeProject.includeRoofing);
 
       try {
         const [{ constants }, { overrides }] = await Promise.all([
@@ -95,7 +104,7 @@ function MaterialEstimationPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeProject?.id, activeProject?.estimation, refreshActiveProjectEstimation]);
+  }, [activeProject?.id, activeProject?.estimation, activeProject?.includeRoofing, refreshActiveProjectEstimation]);
 
   if (!activeProject) {
     return <NoActiveProjectState />;
@@ -116,7 +125,8 @@ function MaterialEstimationPage() {
 
   const hasChanges =
     JSON.stringify(draftFactors) !== JSON.stringify(savedFactors) ||
-    JSON.stringify(draftOverrides) !== JSON.stringify(savedOverrides);
+    JSON.stringify(draftOverrides) !== JSON.stringify(savedOverrides) ||
+    draftIncludeRoofing !== savedIncludeRoofing;
 
   const handleRecalculate = async () => {
     setIsRecalculating(true);
@@ -131,8 +141,13 @@ function MaterialEstimationPage() {
       setSavedOverrides(overrides);
       setDraftOverrides(overrides);
 
-      const { estimation } = await apiRequest(`/projects/${activeProject.id}/recompute`, { method: 'POST' });
-      updateActiveProject({ estimation });
+      const { project, estimation } = await apiRequest(`/projects/${activeProject.id}/recompute`, {
+        method: 'POST',
+        body: { includeRoofing: draftIncludeRoofing },
+      });
+      updateActiveProject({ estimation, includeRoofing: project.includeRoofing });
+      setSavedIncludeRoofing(project.includeRoofing);
+      setDraftIncludeRoofing(project.includeRoofing);
       loadParsedProject(estimation);
       loadQuantityTakeoff(estimation.materials);
 
@@ -147,56 +162,81 @@ function MaterialEstimationPage() {
   };
 
   return (
-    <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+    // Mobile: no longer forced to stretch and fill the viewport (`flex:1`)
+    // — with the quantity take-off's material groups now closed by default,
+    // that forced stretch left a large empty gap below the short collapsed
+    // content instead of the page simply ending at its natural height.
+    // sm+ keeps the original flex:1 behavior unchanged.
+    <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
         <Box>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>Quantity take-off</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Quantity take-off</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
             From {PARSED_MEASUREMENTS.floorArea} floor area · {PARSED_MEASUREMENTS.totalWallLength} walls ·{' '}
             {PARSED_MEASUREMENTS.roofArea} roof
           </Typography>
         </Box>
 
-        <Button
-          onClick={handleRecalculate}
-          variant={hasChanges || isRecalculating ? 'contained' : 'outlined'}
-          disableElevation
-          disabled={!hasChanges || isRecalculating}
-          startIcon={isRecalculating ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : <RefreshRoundedIcon />}
-          sx={
-            hasChanges || isRecalculating
-              ? {
-                  bgcolor: colors.accentBlue,
-                  color: 'common.white',
-                  '&:hover': { bgcolor: colors.accentBlueDark },
-                  '&.Mui-disabled': { bgcolor: colors.accentBlue, color: 'common.white' },
-                  flexShrink: 0,
-                }
-              : {
-                  bgcolor: 'transparent',
-                  color: colors.accentBlue,
-                  borderColor: colors.accentBlue,
-                  '&.Mui-disabled': { color: colors.accentBlue, borderColor: colors.accentBlue, opacity: 0.5 },
-                  flexShrink: 0,
-                }
-          }
-        >
-          Recalculate
-        </Button>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          <Tooltip title="Turn off if this floor plan doesn't have a ROOF layer drawn — some real files intentionally leave the roof out. Excludes roofing sheets, purlins, ridge, flashing, angle bar, and gutter from the take-off, cost, and BOM.">
+            <FormControlLabel
+              sx={{ mr: 0 }}
+              control={
+                <Switch
+                  size="small"
+                  checked={Boolean(draftIncludeRoofing)}
+                  onChange={(e) => setDraftIncludeRoofing(e.target.checked)}
+                  sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: colors.accentBlue }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: colors.accentBlue } }}
+                />
+              }
+              label={
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                  <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.primary' }}>Include roofing</Typography>
+                  <InfoOutlinedIcon sx={{ fontSize: 15, color: 'text.disabled' }} />
+                </Stack>
+              }
+            />
+          </Tooltip>
+
+          <Button
+            onClick={handleRecalculate}
+            variant={hasChanges || isRecalculating ? 'contained' : 'outlined'}
+            disableElevation
+            disabled={!hasChanges || isRecalculating}
+            startIcon={isRecalculating ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : <RefreshRoundedIcon />}
+            sx={
+              hasChanges || isRecalculating
+                ? {
+                    bgcolor: colors.accentBlue,
+                    color: 'common.white',
+                    '&:hover': { bgcolor: colors.accentBlueDark },
+                    '&.Mui-disabled': { bgcolor: colors.accentBlue, color: 'common.white' },
+                    flexShrink: 0,
+                  }
+                : {
+                    bgcolor: 'transparent',
+                    color: colors.accentBlue,
+                    borderColor: colors.accentBlue,
+                    '&.Mui-disabled': { color: colors.accentBlue, borderColor: colors.accentBlue, opacity: 0.5 },
+                    flexShrink: 0,
+                  }
+            }
+          >
+            Recalculate
+          </Button>
+        </Stack>
       </Stack>
 
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ alignItems: 'stretch' }}>
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
+        <MobileTabSwitcher labels={['Design', 'Calibration']}>
           <DesignParametersCard
             overrides={draftOverrides}
             onOverrideChange={updateOverride}
             onResetAll={handleResetOverrides}
             storeys={activeProject.storeys}
           />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
           <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />
-        </Box>
+        </MobileTabSwitcher>
       </Stack>
 
       <QuantityTakeoffTable storeys={activeProject.storeys} factors={savedFactors} onContinue={() => navigate(ROUTES.STORE_LOCATOR)} />

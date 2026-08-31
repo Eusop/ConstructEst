@@ -56,11 +56,11 @@ function ProfileAvatarSection({ fullName, username, avatarUrl, onAvatarChange })
   };
 
   return (
-    <Box sx={{ p: { xs: 3, md: 4 }, textAlign: 'center' }}>
+    <Box sx={{ p: { xs: 2.5, md: 4 }, textAlign: 'center' }}>
       <Box sx={{ position: 'relative', display: 'inline-flex' }}>
         <Avatar
           src={avatarUrl ?? undefined}
-          sx={{ width: 96, height: 96, bgcolor: colors.accentBlue, fontSize: '2rem', fontWeight: 700 }}
+          sx={{ width: { xs: 76, sm: 96 }, height: { xs: 76, sm: 96 }, bgcolor: colors.accentBlue, fontSize: { xs: '1.6rem', sm: '2rem' }, fontWeight: 700 }}
         >
           {getInitials(fullName)}
         </Avatar>
@@ -103,9 +103,9 @@ function ProfileAvatarSection({ fullName, username, avatarUrl, onAvatarChange })
       </Box>
 
       {fullName && (
-        <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary', mt: 2 }}>{fullName}</Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.2rem' }, color: 'text.primary', mt: 2 }}>{fullName}</Typography>
       )}
-      {username && <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>@{username}</Typography>}
+      {username && <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.82rem', sm: '0.9rem' } }}>@{username}</Typography>}
       <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mt: 0.5 }}>
         Manage your account information
       </Typography>

@@ -41,19 +41,33 @@ const theme = createTheme({
           '& fieldset': { borderColor: colors.inputBorder },
           '&:hover fieldset': { borderColor: colors.inputBorderHover },
         },
-        input: {
+        // A single non-responsive value here was previously desktop-sized
+        // for every input in the app, including on phones — this keeps
+        // desktop (`md`+) exactly as it was and only shrinks the touch
+        // target's padding below it, matching MuiButton's split below.
+        input: ({ theme }) => ({
           padding: '14px 14px',
-        },
+          [theme.breakpoints.down('md')]: { padding: '12px 14px' },
+        }),
       },
     },
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: {
+        // Desktop values (`fontSize: 1.05rem`, `paddingBlock: 12`) are
+        // unchanged from before — only the `down('md')` block is new, so
+        // every button in the app gets a touch-appropriate size on mobile
+        // without each call site having to hand-patch its own `sx` override.
+        root: ({ theme }) => ({
           borderRadius: 8,
           paddingBlock: 12,
           fontSize: '1.05rem',
-        },
+          [theme.breakpoints.down('md')]: {
+            fontSize: '0.95rem',
+            paddingBlock: 10,
+            minHeight: 44,
+          },
+        }),
       },
     },
   },

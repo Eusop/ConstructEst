@@ -25,12 +25,12 @@ function WelcomeBanner() {
 
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
+      <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>
         {getGreeting()}
         {userName ? `, ${userName}` : ''}
       </Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-        Your estimation overview — {getFormattedDate()}
+      <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+        Your estimation overview: {getFormattedDate()}
       </Typography>
     </Box>
   );

@@ -59,18 +59,18 @@ function AdminStoresPage() {
   const handleAddStore = async (form) => {
     try {
       const store = await addStore(form);
-      logActivity({ message: `Hardware store added — ${store.name}`, icon: StorefrontRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg });
+      logActivity({ message: `Hardware store added: ${store.name}`, icon: StorefrontRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg });
       showToast('Store added to system');
       setAddOpen(false);
     } catch {
-      showToast('Could not add store — try again', 'warning');
+      showToast('Could not add store. Try again.', 'warning');
     }
   };
 
   const handleRemove = (storeId) => {
     const store = stores.find((item) => item.id === storeId);
     removeStore(storeId);
-    logActivity({ message: `Hardware store removed — ${store?.name ?? ''}`, icon: StorefrontRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg });
+    logActivity({ message: `Hardware store removed: ${store?.name ?? ''}`, icon: StorefrontRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg });
     showToast('Store removed', 'warning');
     setDetailsStoreId(null);
   };
@@ -79,8 +79,8 @@ function AdminStoresPage() {
     <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ alignItems: { sm: 'flex-end' }, justifyContent: 'space-between', gap: 1.5 }}>
         <Box>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>Hardware Stores</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Hardware Stores</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
             Find stores using Google Maps, add them to the system, then manage their materials and brands.
           </Typography>
         </Box>
@@ -96,7 +96,7 @@ function AdminStoresPage() {
       </Stack>
 
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
-        <Box sx={{ flex: { lg: 3 }, width: '100%', minHeight: 360 }}>
+        <Box sx={{ flex: { lg: 3 }, width: '100%', minHeight: { xs: 240, lg: 360 } }}>
           <Paper elevation={0} sx={{ borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: 1.5, height: '100%' }}>
             <GoogleMapView center={mapCenter} zoom={13} markers={markers} onMarkerClick={setDetailsStoreId} height="100%" />
           </Paper>

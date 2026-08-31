@@ -101,8 +101,8 @@ function AdminDashboardPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <Box sx={{ mb: 2.5 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>{getGreeting()}, Admin</Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>System overview — {getFormattedDate()}</Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>{getGreeting()}, Admin</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>System overview: {getFormattedDate()}</Typography>
       </Box>
 
       <Box

@@ -40,7 +40,7 @@ export function generateBomPdf({ projectName, projectInfo, lineItems, grandTotal
 
   doc.setFontSize(20);
   doc.setTextColor(20, 20, 20);
-  doc.text(`${projectName} — Bill of Materials`, marginX, 78);
+  doc.text(`${projectName}: Bill of Materials`, marginX, 78);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);

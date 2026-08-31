@@ -19,8 +19,8 @@ function Footer() {
       <Container maxWidth="lg">
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
-          spacing={3}
-          sx={{ alignItems: 'center', justifyContent: 'space-between', py: 3 }}
+          spacing={{ xs: 2, sm: 3 }}
+          sx={{ alignItems: 'center', justifyContent: 'space-between', py: { xs: 3, sm: 3 } }}
         >
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
@@ -28,7 +28,7 @@ function Footer() {
             sx={{ alignItems: 'center', textAlign: { xs: 'center', sm: 'left' } }}
           >
             <BrandMark height={32} variant="dark" />
-            <Typography sx={{ color: 'grey.500', fontSize: '0.9rem' }}>
+            <Typography sx={{ color: 'grey.500', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
               Rule-based structural material cost estimation &amp; optimization
             </Typography>
           </Stack>
@@ -42,6 +42,7 @@ function Footer() {
             sx={{
               bgcolor: 'common.white',
               color: 'text.primary',
+              width: { xs: '100%', sm: 'auto' },
               '&:hover': { bgcolor: 'grey.100' },
             }}
           >

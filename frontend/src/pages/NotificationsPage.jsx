@@ -39,23 +39,42 @@ function NotificationsPage() {
     <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'flex-start' }, justifyContent: 'space-between' }}>
         <Box>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>Notifications</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Notifications</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
             {unreadCount > 0 ? `You have ${unreadCount} unread update${unreadCount === 1 ? '' : 's'}.` : "You're all caught up."}
           </Typography>
         </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
+        {/* Mobile: two full-width bordered white boxes stacked on top of
+            each other read as an oddly heavy, disconnected block sitting
+            below the title — same actions instead render as a pair of
+            compact, lightweight tinted pills (mirroring the filter pills
+            just below them), sized to their content and lined up in a row.
+            "Mark all as read" keeps the app's accent blue (the safe,
+            frequent action) while "Clear all" stays in the red tone it
+            already used, so the destructive action still reads as
+            secondary. sm+ is byte-for-byte the original bordered buttons. */}
+        <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }} sx={{ flexShrink: 0, flexWrap: 'wrap' }}>
           <Button
             onClick={markAllAsRead}
             disabled={unreadCount === 0}
-            startIcon={<DoneAllRoundedIcon />}
+            startIcon={<DoneAllRoundedIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
             sx={{
-              bgcolor: 'common.white',
-              color: 'text.primary',
-              border: '1px solid',
+              bgcolor: { xs: colors.iconBlueBg, sm: 'common.white' },
+              color: { xs: colors.iconBlueFg, sm: 'text.primary' },
+              border: { xs: 'none', sm: '1px solid' },
               borderColor: 'grey.300',
-              '&:hover': { bgcolor: 'grey.50', borderColor: 'grey.300' },
+              borderRadius: { xs: 999, sm: 1 },
+              px: { xs: 1.5, sm: 2 },
+              py: { xs: 0.5, sm: 0.75 },
+              minWidth: 0,
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              fontWeight: { xs: 700, sm: 500 },
+              '&:hover': { bgcolor: { xs: colors.iconBlueBg, sm: 'grey.50' }, borderColor: 'grey.300' },
+              '&.Mui-disabled': {
+                bgcolor: { xs: 'grey.100', sm: undefined },
+                color: { xs: 'grey.400', sm: undefined },
+              },
             }}
           >
             Mark all as read
@@ -63,13 +82,23 @@ function NotificationsPage() {
           <Button
             onClick={clearAll}
             disabled={notifications.length === 0}
-            startIcon={<DeleteOutlineRoundedIcon />}
+            startIcon={<DeleteOutlineRoundedIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
             sx={{
-              bgcolor: 'common.white',
+              bgcolor: { xs: colors.iconRedBg, sm: 'common.white' },
               color: colors.iconRedFg,
-              border: '1px solid',
+              border: { xs: 'none', sm: '1px solid' },
               borderColor: 'grey.300',
-              '&:hover': { bgcolor: colors.iconRedBg, borderColor: colors.iconRedFg },
+              borderRadius: { xs: 999, sm: 1 },
+              px: { xs: 1.5, sm: 2 },
+              py: { xs: 0.5, sm: 0.75 },
+              minWidth: 0,
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              fontWeight: { xs: 700, sm: 500 },
+              '&:hover': { bgcolor: colors.iconRedBg, borderColor: { xs: 'transparent', sm: colors.iconRedFg } },
+              '&.Mui-disabled': {
+                bgcolor: { xs: 'grey.100', sm: undefined },
+                color: { xs: 'grey.400', sm: undefined },
+              },
             }}
           >
             Clear all

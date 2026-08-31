@@ -60,11 +60,11 @@ function NewProjectPage() {
     setTouched({ projectName: true, location: true, budgetCeiling: true });
     if (!canSubmit) return;
     incrementTotalProjects();
-    logActivity({ type: 'project_created', message: `New project "${draft.projectName}" created` });
+    logActivity({ type: 'project_created', message: `New project ${draft.projectName} created` });
     addNotification({
       type: 'project_created',
       title: 'Project created',
-      description: `"${draft.projectName}" was created and is ready for a floor plan.`,
+      description: `${draft.projectName} was created and is ready for a floor plan.`,
     });
     createProjectFromDraft();
     navigate(ROUTES.PROJECT_PROCESSING);
