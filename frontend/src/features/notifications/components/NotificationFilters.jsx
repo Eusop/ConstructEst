@@ -54,7 +54,20 @@ function FilterPill({ label, count, selected, onClick }) {
  */
 function NotificationFilters({ filter, onFilterChange, counts }) {
   return (
-    <Stack direction="row" spacing={{ xs: 0.75, sm: 1 }} sx={{ flexWrap: { xs: 'nowrap', sm: 'wrap' }, rowGap: 1 }}>
+    <Stack
+      direction="row"
+      spacing={{ xs: 0.75, sm: 1 }}
+      sx={{
+        flexWrap: { xs: 'nowrap', sm: 'wrap' },
+        rowGap: 1,
+        overflowX: { xs: 'auto', sm: 'visible' },
+        pb: { xs: 0.5, sm: 0 },
+        mx: { xs: -2, sm: 0 },
+        px: { xs: 2, sm: 0 },
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
+      }}
+    >
       {FILTERS.map((item) => (
         <FilterPill
           key={item.key}

@@ -47,18 +47,18 @@ function NotificationCard({ notification, onRead }) {
         borderRadius: 3,
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         borderLeft: '3px solid',
         borderLeftColor: isUnread ? colors.accentBlue : 'transparent',
         cursor: isUnread ? 'pointer' : 'default',
         transition: 'border-color 0.15s ease',
       }}
     >
-      <Stack direction="row" spacing={1.75} sx={{ alignItems: 'flex-start' }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
         <Box
           sx={{
-            width: 40,
-            height: 40,
+            width: { xs: 34, sm: 40 },
+            height: { xs: 34, sm: 40 },
             flexShrink: 0,
             borderRadius: 2,
             bgcolor: iconBg,
@@ -67,15 +67,35 @@ function NotificationCard({ notification, onRead }) {
             justifyContent: 'center',
           }}
         >
-          <Icon sx={{ color: iconFg, fontSize: 20 }} />
+          <Icon sx={{ color: iconFg, fontSize: { xs: 17, sm: 20 } }} />
         </Box>
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-            <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.92rem' }}>{notification.title}</Typography>
+            <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: { xs: '0.85rem', sm: '0.92rem' } }}>{notification.title}</Typography>
             {isUnread && <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: colors.accentBlue, flexShrink: 0 }} />}
           </Stack>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mt: 0.25 }}>{notification.description}</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.78rem', sm: '0.85rem' }, mt: 0.25 }}>{notification.description}</Typography>
+
+          <Stack direction="row" sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+            {action ? (
+              <Link
+                component={RouterLink}
+                to={action.route}
+                onClick={() => onRead(notification.id)}
+                underline="hover"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, fontSize: '0.75rem', fontWeight: 700, color: colors.accentBlue }}
+              >
+                {action.label}
+                <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
+              </Link>
+            ) : (
+              <span />
+            )}
+            <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              {formatNotificationTimestamp(notification.timestamp)}
+            </Typography>
+          </Stack>
 
           {action && (
             <Link
@@ -84,7 +104,7 @@ function NotificationCard({ notification, onRead }) {
               onClick={() => onRead(notification.id)}
               underline="hover"
               sx={{
-                display: 'inline-flex',
+                display: { xs: 'none', sm: 'inline-flex' },
                 alignItems: 'center',
                 gap: 0.4,
                 mt: 0.75,
@@ -99,7 +119,7 @@ function NotificationCard({ notification, onRead }) {
           )}
         </Box>
 
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+        <Typography sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.secondary', fontSize: '0.78rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
           {formatNotificationTimestamp(notification.timestamp)}
         </Typography>
       </Stack>

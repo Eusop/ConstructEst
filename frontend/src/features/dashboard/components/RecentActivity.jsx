@@ -24,7 +24,7 @@ function RecentActivity({ activities }) {
         p: 3,
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        height: { xs: 200, md: 240 },
+        height: { xs: 230, md: 240 },
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -55,11 +55,11 @@ function RecentActivity({ activities }) {
           {activities.map((activity) => {
             const Icon = activity.icon;
             return (
-              <Stack key={activity.id} direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1.5 }}>
+              <Stack key={activity.id} direction="row" spacing={1.25} sx={{ alignItems: 'center', py: { xs: 1.1, sm: 1.5 } }}>
                 <Box
                   sx={{
-                    width: 32,
-                    height: 32,
+                    width: { xs: 28, sm: 32 },
+                    height: { xs: 28, sm: 32 },
                     flexShrink: 0,
                     borderRadius: 1.5,
                     bgcolor: activity.iconBg,
@@ -68,10 +68,29 @@ function RecentActivity({ activities }) {
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon sx={{ color: activity.iconFg, fontSize: 18 }} />
+                  <Icon sx={{ color: activity.iconFg, fontSize: { xs: 15, sm: 18 } }} />
                 </Box>
-                <Typography sx={{ color: 'text.primary', flex: 1 }}>{activity.message}</Typography>
-                <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', flexShrink: 0 }}>
+
+                {/* Below `sm`: message gets the full row width and the
+                    timestamp moves to its own smaller line underneath —
+                    previously both shared one row at the default 1rem body
+                    text size with no wrap accommodation, so a normal-length
+                    message wrapped 3-4 lines and only one activity fit in
+                    the card at all. `sm`+ keeps the original single-row
+                    layout untouched. */}
+                <Box sx={{ display: { xs: 'block', sm: 'none' }, flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ color: 'text.primary', fontSize: '0.82rem', lineHeight: 1.35 }}>
+                    {activity.message}
+                  </Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem', mt: 0.25 }}>
+                    {activity.timestamp}
+                  </Typography>
+                </Box>
+
+                <Typography sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.primary', flex: 1 }}>
+                  {activity.message}
+                </Typography>
+                <Typography sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.secondary', fontSize: '0.8rem', flexShrink: 0 }}>
                   {activity.timestamp}
                 </Typography>
               </Stack>

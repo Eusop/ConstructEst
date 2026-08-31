@@ -3,9 +3,11 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import LayersRoundedIcon from '@mui/icons-material/LayersRounded';
 import DXFPreview from '../../../components/DXFPreview';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 
-const PREVIEW_HEIGHT = 320;
+const PREVIEW_HEIGHT_DESKTOP = 320;
+const PREVIEW_HEIGHT_MOBILE = 200;
 
 /**
  * "Floor plan preview" section: the same rendered DXF preview shown on the
@@ -24,6 +26,9 @@ const PREVIEW_HEIGHT = 320;
  * @param {{minX: number, minY: number, maxX: number, maxY: number}} [props.bounds]
  */
 function FloorPlanPreviewCard({ projectName, shapes, bounds }) {
+  const isMobile = useIsMobile();
+  const previewHeight = isMobile ? PREVIEW_HEIGHT_MOBILE : PREVIEW_HEIGHT_DESKTOP;
+
   return (
     <Box>
       <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary', mb: 2 }}>
@@ -32,9 +37,9 @@ function FloorPlanPreviewCard({ projectName, shapes, bounds }) {
 
       <Box sx={{ bgcolor: colors.heroBackground, border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
         {bounds ? (
-          <DXFPreview shapes={shapes} bounds={bounds} height={PREVIEW_HEIGHT} />
+          <DXFPreview shapes={shapes} bounds={bounds} height={previewHeight} />
         ) : (
-          <Box sx={{ height: PREVIEW_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Box sx={{ height: previewHeight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>No floor plan available.</Typography>
           </Box>
         )}

@@ -34,7 +34,7 @@ function AdminHeader({ onToggleSidebar, title = 'Dashboard' }) {
           <Typography
             sx={{
               fontWeight: 700,
-              fontSize: '1.1rem',
+              fontSize: { xs: '0.95rem', sm: '1.1rem' },
               lineHeight: 1,
               color: 'text.primary',
               flexShrink: { xs: 1, sm: 0 },

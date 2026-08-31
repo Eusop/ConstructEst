@@ -19,16 +19,25 @@ const PAGE_HEADERS = {
   [ROUTES.PROJECTS]: { title: 'Projects' },
   [ROUTES.PROFILE]: { title: 'Profile' },
   [ROUTES.NOTIFICATIONS]: { title: 'Notifications' },
-  [ROUTES.NEW_PROJECT]: {
-    breadcrumbs: [
-      { label: 'Projects', to: ROUTES.PROJECTS },
-      { label: 'New project' },
-    ],
-  },
 };
 
+// New Project's header differs by size instead of being a fixed entry in
+// PAGE_HEADERS above: desktop has the room for the full "Projects > New
+// project" breadcrumb, but mobile/tablet don't — combined with the header's
+// own Notifications/Profile icons there (see DashboardHeader), the trail
+// crowded out "New Project" entirely. Below `md`, it's just the plain title,
+// same treatment (and font size) as every other page's header.
+const NEW_PROJECT_BREADCRUMBS = [
+  { label: 'Projects', to: ROUTES.PROJECTS },
+  { label: 'New project' },
+];
+
 // Routes whose middle breadcrumb is the New project draft's name, resolved
-// at render time instead of statically in PAGE_HEADERS above.
+// at render time instead of statically in PAGE_HEADERS above. Desktop only
+// (see MOBILE_DRAFT_TITLES below) — same reasoning as NEW_PROJECT_BREADCRUMBS:
+// a 2-3 level trail with a real (possibly long) project name in it, next to
+// the header's own Notifications/Profile icons, has no room to breathe on a
+// phone.
 const DRAFT_NAME_BREADCRUMBS = {
   [ROUTES.PROJECT_PROCESSING]: (projectName) => [
     { label: 'Projects', to: ROUTES.PROJECTS },
@@ -39,6 +48,16 @@ const DRAFT_NAME_BREADCRUMBS = {
     { label: 'Projects', to: ROUTES.PROJECTS },
     { label: projectName },
   ],
+};
+
+// Mobile/tablet counterpart to DRAFT_NAME_BREADCRUMBS: a short, static
+// title naming the *screen* (matching every other page's header) instead of
+// the breadcrumb trail — the project itself is already front and center in
+// each page's own body (ProjectSummaryCard / the floor plan preview), so the
+// header doesn't need to repeat it too.
+const MOBILE_DRAFT_TITLES = {
+  [ROUTES.PROJECT_PROCESSING]: 'Processing',
+  [ROUTES.PROJECT_RESULTS]: 'Results',
 };
 
 // Routes whose header is a static title plus the *active project's* name as
@@ -73,10 +92,20 @@ function DashboardLayout() {
   const [sidebarOpen, toggleSidebar, setSidebarOpen] = useToggle(isDesktop);
   const { draft, activeProject } = useProjects();
 
+  const newProjectHeader =
+    location.pathname === ROUTES.NEW_PROJECT
+      ? isDesktop
+        ? { breadcrumbs: NEW_PROJECT_BREADCRUMBS }
+        : { title: 'New Project' }
+      : null;
   const draftBreadcrumbs = DRAFT_NAME_BREADCRUMBS[location.pathname]?.(draft.projectName);
+  const draftMobileHeader =
+    draftBreadcrumbs && !isDesktop ? { title: MOBILE_DRAFT_TITLES[location.pathname] } : null;
   const activeSubtitleHeader = ACTIVE_PROJECT_SUBTITLES[location.pathname]?.(activeProject?.projectName);
   const header =
+    newProjectHeader ??
     PAGE_HEADERS[location.pathname] ??
+    draftMobileHeader ??
     (draftBreadcrumbs ? { breadcrumbs: draftBreadcrumbs } : null) ??
     activeSubtitleHeader ??
     PAGE_HEADERS[ROUTES.DASHBOARD];
@@ -99,7 +128,15 @@ function DashboardLayout() {
           breadcrumbs={header.breadcrumbs}
           headerBadge={headerBadge}
         />
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', p: { xs: 2, md: 3 } }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            p: { xs: 2, md: 3 },
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

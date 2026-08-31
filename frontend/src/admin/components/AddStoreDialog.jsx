@@ -10,6 +10,7 @@ import Button from '@mui/material/Button';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import FormTextField from '../../components/FormTextField';
 import { isRequired } from '../../utils/validators';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 const EMPTY_FORM = { name: '', address: '', lat: '', lng: '' };
@@ -32,6 +33,7 @@ function validate(form) {
  * this is the functional fallback until one is added.
  */
 function AddStoreDialog({ open, defaultCenter, onClose, onSubmit }) {
+  const isMobile = useIsMobile();
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
 
@@ -62,7 +64,7 @@ function AddStoreDialog({ open, defaultCenter, onClose, onSubmit }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth fullScreen={isMobile}>
       <DialogTitle sx={{ fontWeight: 700 }}>Add hardware store</DialogTitle>
       <DialogContent>
         <Stack spacing={2.25} sx={{ pt: 0.5 }}>

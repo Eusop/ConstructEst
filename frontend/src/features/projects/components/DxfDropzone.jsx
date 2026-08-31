@@ -6,6 +6,7 @@ import Link from '@mui/material/Link';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded';
 import InsertDriveFileRoundedIcon from '@mui/icons-material/InsertDriveFileRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -32,7 +33,7 @@ function ValidationBadge({ status, message }) {
     return (
       <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', alignSelf: 'flex-start' }}>
         <CircularProgress size={14} sx={{ color: colors.accentBlue }} />
-        <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>Validating file…</Typography>
+        <Typography sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' }, color: 'text.secondary' }}>Validating file…</Typography>
       </Stack>
     );
   }
@@ -48,10 +49,10 @@ function ValidationBadge({ status, message }) {
     <Stack
       direction="row"
       spacing={0.5}
-      sx={{ alignItems: 'center', alignSelf: 'flex-start', bgcolor: bg, color: fg, borderRadius: 999, px: 1.25, py: 0.4 }}
+      sx={{ alignItems: 'center', alignSelf: 'flex-start', bgcolor: bg, color: fg, borderRadius: 999, px: { xs: 1, sm: 1.25 }, py: { xs: 0.3, sm: 0.4 } }}
     >
-      <Icon sx={{ fontSize: 16, flexShrink: 0 }} />
-      <Typography sx={{ fontSize: '0.78rem', fontWeight: 700 }}>{message}</Typography>
+      <Icon sx={{ fontSize: { xs: 14, sm: 16 }, flexShrink: 0 }} />
+      <Typography sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' }, fontWeight: 700 }}>{message}</Typography>
     </Stack>
   );
 }
@@ -76,6 +77,11 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
   const theme = useTheme();
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  // Phone-only (below `sm` = 600px) — tablet and up keep the exact original
+  // fixed footprint untouched.
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
+  const dropzoneHeight = isPhone ? 150 : DROPZONE_HEIGHT;
+  const previewCanvasHeight = isPhone ? 122 : PREVIEW_CANVAS_HEIGHT;
 
   const handleFiles = async (fileList) => {
     const picked = fileList?.[0];
@@ -121,7 +127,7 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
       <Box
         role="button"
         tabIndex={0}
-        aria-label={showPreview ? 'Floor plan preview — click or drop a file to replace it' : 'Upload floor plan DXF'}
+        aria-label={showPreview ? 'Floor plan preview. Click or drop a file to replace it' : 'Upload floor plan DXF'}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') inputRef.current?.click();
@@ -138,7 +144,7 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
         }}
         sx={{
           position: 'relative',
-          height: DROPZONE_HEIGHT,
+          height: dropzoneHeight,
           boxSizing: 'border-box',
           overflow: 'hidden',
           border: '1.5px dashed',
@@ -161,7 +167,7 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            px: 2,
+            px: { xs: 1.5, sm: 2 },
             opacity: showPreview ? 0 : 1,
             visibility: showPreview ? 'hidden' : 'visible',
             pointerEvents: showPreview ? 'none' : 'auto',
@@ -170,23 +176,23 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
         >
           <Box
             sx={{
-              width: 48,
-              height: 48,
+              width: { xs: 40, sm: 48 },
+              height: { xs: 40, sm: 48 },
               borderRadius: '50%',
               bgcolor: colors.iconBlueBg,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              mb: 1.5,
+              mb: { xs: 1, sm: 1.5 },
             }}
           >
-            <UploadFileRoundedIcon sx={{ color: colors.iconBlueFg, fontSize: 22 }} />
+            <UploadFileRoundedIcon sx={{ color: colors.iconBlueFg, fontSize: { xs: 19, sm: 22 } }} />
           </Box>
 
-          <Typography sx={{ fontSize: '0.9rem', color: 'text.primary' }}>
+          <Typography sx={{ fontSize: { xs: '0.82rem', sm: '0.9rem' }, color: 'text.primary' }}>
             Drag your .dxf file here, or <Link component="span" sx={{ fontWeight: 700 }}>browse</Link>
           </Typography>
-          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: 0.5 }}>
+          <Typography sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' }, color: 'text.secondary', mt: 0.5 }}>
             One plan per project · standard layers (WALLS, FLOOR_AREA, ROOF)
           </Typography>
         </Box>
@@ -199,7 +205,7 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            p: 1.5,
+            p: { xs: 1, sm: 1.5 },
             boxSizing: 'border-box',
             opacity: showPreview ? 1 : 0,
             visibility: showPreview ? 'visible' : 'hidden',
@@ -208,30 +214,45 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
           }}
         >
           {showPreview && (
-            <DXFPreview shapes={fileValidation.shapes} bounds={fileValidation.bounds} height={PREVIEW_CANVAS_HEIGHT} />
+            <DXFPreview shapes={fileValidation.shapes} bounds={fileValidation.bounds} height={previewCanvasHeight} />
           )}
         </Box>
       </Box>
 
       {file && (
-        <Stack spacing={1} sx={{ mt: 1.5 }}>
+        <Stack spacing={1} sx={{ mt: { xs: 1.25, sm: 1.5 } }}>
           <Stack
             direction="row"
             sx={{
               alignItems: 'center',
-              gap: 1.5,
-              px: 1.5,
-              py: 1,
+              gap: { xs: 1, sm: 1.5 },
+              px: { xs: 1.25, sm: 1.5 },
+              py: { xs: 0.75, sm: 1 },
               border: '1px solid',
               borderColor: 'divider',
               borderRadius: 2,
             }}
           >
-            <InsertDriveFileRoundedIcon sx={{ color: colors.iconGreenFg, fontSize: 20 }} />
-            <Typography sx={{ fontSize: '0.85rem', color: 'text.primary', flex: 1 }}>
+            <InsertDriveFileRoundedIcon sx={{ color: colors.iconGreenFg, fontSize: { xs: 18, sm: 20 }, flexShrink: 0 }} />
+            {/* `minWidth: 0` is what actually lets this flex item shrink
+                below its text's natural width — without it, a long file
+                name just pushes past the card's border on narrow phones
+                instead of truncating. Tablet/desktop (`sm`+) keep the
+                original untruncated, non-shrinking behavior exactly. */}
+            <Typography
+              sx={{
+                fontSize: { xs: '0.78rem', sm: '0.85rem' },
+                color: 'text.primary',
+                flex: 1,
+                minWidth: { xs: 0, sm: 'auto' },
+                overflow: { xs: 'hidden', sm: 'visible' },
+                textOverflow: { xs: 'ellipsis', sm: 'clip' },
+                whiteSpace: { xs: 'nowrap', sm: 'normal' },
+              }}
+            >
               {file.name} · {file.sizeLabel}
             </Typography>
-            <IconButton size="small" onClick={handleRemove} aria-label="Remove file">
+            <IconButton size="small" onClick={handleRemove} aria-label="Remove file" sx={{ flexShrink: 0 }}>
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           </Stack>

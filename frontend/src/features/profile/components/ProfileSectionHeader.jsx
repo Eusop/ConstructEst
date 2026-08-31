@@ -32,8 +32,8 @@ function ProfileSectionHeader({ icon: Icon, iconBg, iconFg, title, subtitle }) {
         <Icon sx={{ color: iconFg, fontSize: 20 }} />
       </Box>
       <Box>
-        <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary' }}>{title}</Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{subtitle}</Typography>
+        <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary' }}>{title}</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.78rem', sm: '0.85rem' } }}>{subtitle}</Typography>
       </Box>
     </Stack>
   );

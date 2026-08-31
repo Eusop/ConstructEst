@@ -15,6 +15,7 @@ import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import FormTextField from '../../components/FormTextField';
 import { isRequired } from '../../utils/validators';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 function buildForm(brand, unit) {
@@ -35,6 +36,7 @@ function validate(form) {
  * (requirement 13: bulk commodities have no brand selection).
  */
 function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit }) {
+  const isMobile = useIsMobile();
   const isEdit = Boolean(brand);
   const [form, setForm] = useState(() => buildForm(brand, unit));
   const [errors, setErrors] = useState({});
@@ -61,7 +63,7 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
   };
 
   return (
-    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} disableScrollLock maxWidth="sm" fullWidth fullScreen={isMobile}>
       <DialogTitle sx={{ fontWeight: 700 }}>
         {isEdit ? 'Edit Brand' : 'Add Brand'}
         <Typography sx={{ fontWeight: 400, fontSize: '0.85rem', color: 'text.secondary', mt: 0.25 }}>for {materialName}</Typography>
@@ -123,7 +125,11 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
                   onClick={() => setForm((prev) => ({ ...prev, stars: n }))}
                   sx={{ cursor: 'pointer', display: 'flex', color: n <= form.stars ? '#f5a623' : 'grey.300' }}
                 >
-                  {n <= form.stars ? <StarRoundedIcon fontSize="large" /> : <StarBorderRoundedIcon fontSize="large" />}
+                  {n <= form.stars ? (
+                    <StarRoundedIcon sx={{ fontSize: { xs: 28, sm: 35 } }} />
+                  ) : (
+                    <StarBorderRoundedIcon sx={{ fontSize: { xs: 28, sm: 35 } }} />
+                  )}
                 </Box>
               ))}
             </Stack>

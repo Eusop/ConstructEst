@@ -22,28 +22,45 @@ const STEPS = [
  */
 function HowItWorksSection() {
   return (
-    <Box id="how-it-works" sx={{ bgcolor: colors.heroBackground, py: { xs: 7, md: 10 } }}>
+    <Box id="how-it-works" sx={{ bgcolor: colors.heroBackground, py: { xs: 5, md: 10 } }}>
       <Container maxWidth="lg">
-        <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: '1.6rem', md: '1.9rem' }, color: 'text.primary', textAlign: 'center', mb: 6 }}>
+        <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: '1.5rem', md: '1.9rem' }, color: 'text.primary', textAlign: 'center', mb: { xs: 4, md: 6 } }}>
           How it works
         </Typography>
 
         <Stack
           direction={{ xs: 'column', md: 'row' }}
-          spacing={{ xs: 4, md: 5 }}
-          sx={{ alignItems: { xs: 'stretch', md: 'flex-start' } }}
+          spacing={{ xs: 2.5, md: 5 }}
+          sx={{ alignItems: { xs: 'stretch', md: 'flex-start' }, position: 'relative' }}
         >
+          {/* Mobile only: a connecting line down the icon column turns the
+              stacked rows into a real step-by-step flow instead of five
+              unrelated list items — desktop's side-by-side row already
+              reads as a sequence on its own and doesn't need one. */}
+          <Box
+            sx={{
+              display: { xs: 'block', md: 'none' },
+              position: 'absolute',
+              left: 23,
+              top: 24,
+              bottom: 24,
+              width: 2,
+              bgcolor: 'divider',
+              zIndex: 0,
+            }}
+          />
+
           {STEPS.map((step) => (
             <Stack
               key={step.title}
               direction={{ xs: 'row', md: 'column' }}
               spacing={{ xs: 2, md: 0 }}
-              sx={{ alignItems: 'center', flex: 1 }}
+              sx={{ alignItems: 'center', flex: 1, position: 'relative', zIndex: 1 }}
             >
               <Box
                 sx={{
-                  width: 56,
-                  height: 56,
+                  width: { xs: 48, md: 56 },
+                  height: { xs: 48, md: 56 },
                   flexShrink: 0,
                   borderRadius: '50%',
                   bgcolor: step.color,
@@ -52,12 +69,12 @@ function HowItWorksSection() {
                   justifyContent: 'center',
                 }}
               >
-                <step.icon sx={{ color: 'common.white', fontSize: 26 }} />
+                <step.icon sx={{ color: 'common.white', fontSize: { xs: 22, md: 26 } }} />
               </Box>
 
               <Box sx={{ textAlign: { xs: 'left', md: 'center' }, mt: { xs: 0, md: 2 } }}>
-                <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>{step.title}</Typography>
-                <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{step.subtitle}</Typography>
+                <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: { xs: '0.92rem', md: '1rem' } }}>{step.title}</Typography>
+                <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.78rem', md: '0.85rem' } }}>{step.subtitle}</Typography>
               </Box>
             </Stack>
           ))}

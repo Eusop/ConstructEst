@@ -125,13 +125,18 @@ function BillOfMaterialsPage() {
   };
 
   return (
-    <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
+    // Mobile: no longer forced to stretch and fill the viewport (`flex:1`)
+    // — with the material category groups now closed by default, that
+    // forced stretch left a large empty gap below the short collapsed
+    // content instead of the page simply ending at its natural height.
+    // sm+ keeps the original flex:1 behavior unchanged.
+    <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
         <Box>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
-            {activeProject.projectName} — Bill of Materials
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>
+            {activeProject.projectName}: Bill of Materials
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>{summaryTags.join(' · ')}</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>{summaryTags.join(' · ')}</Typography>
         </Box>
 
         <BudgetBadge withinBudget={withinBudget} />
@@ -143,12 +148,12 @@ function BillOfMaterialsPage() {
           borderRadius: 3,
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-          p: { xs: 2.5, md: 4 },
+          p: { xs: 1.5, md: 4 },
           flex: 1,
           minHeight: 0,
         }}
       >
-        <Stack spacing={3}>
+        <Stack spacing={{ xs: 2, md: 3 }}>
           <BomTable items={lineItems} />
 
           <BomCostSummaryCard

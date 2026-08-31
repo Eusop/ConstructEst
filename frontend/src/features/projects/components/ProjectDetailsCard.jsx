@@ -8,7 +8,7 @@ import FormTextField from '../../../components/FormTextField';
 import DxfDropzone from './DxfDropzone';
 import { colors } from '../../../theme/palette';
 
-const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 };
+const FIELD_LABEL_SX = { fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.85rem' }, color: 'text.primary', mb: { xs: 0.5, sm: 0.75 } };
 
 // Strips everything but digits as the user types, then reformats with
 // thousands separators — keeps the stored value a clean numeric string
@@ -59,14 +59,14 @@ function ProjectDetailsCard({
   return (
     <Paper
       elevation={0}
-      sx={{ borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: { xs: 2.5, md: 3.5 } }}
+      sx={{ borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: { xs: 1.75, sm: 2, md: 3.5 } }}
     >
-      <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: 'text.primary' }}>Project details</Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 3 }}>
+      <Typography sx={{ fontWeight: 700, fontSize: { xs: '1rem', sm: '1.1rem' }, color: 'text.primary' }}>Project details</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.78rem', sm: '0.85rem' }, mb: { xs: 2, sm: 3 } }}>
         Residential estimate from a 2D AutoCAD DXF.
       </Typography>
 
-      <Stack spacing={2.5}>
+      <Stack spacing={{ xs: 1.75, sm: 2.5 }}>
         <Box>
           <Typography sx={FIELD_LABEL_SX}>Project name</Typography>
           <FormTextField
@@ -81,7 +81,7 @@ function ProjectDetailsCard({
           />
         </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.75, sm: 2.5 }}>
           <Box sx={{ flex: 1 }}>
             <Typography sx={FIELD_LABEL_SX}>Location</Typography>
             <FormTextField
@@ -123,7 +123,7 @@ function ProjectDetailsCard({
           />
         </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 1.5 }}>
           <Button
             onClick={onCancel}
             sx={{

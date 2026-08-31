@@ -45,7 +45,7 @@ function SignUpBrandPanel() {
 
         <Typography sx={{ color: 'grey.400', fontSize: '0.95rem', lineHeight: 1.6, mb: 4 }}>
           Upload plans, build estimates, optimize costs, compare stores, and
-          share results — all from a single account.
+          share results, all from a single account.
         </Typography>
 
         <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2, p: 2.5 }}>

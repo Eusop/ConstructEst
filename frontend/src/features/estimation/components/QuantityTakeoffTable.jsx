@@ -9,10 +9,15 @@ import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import FactorsAppliedBanner from './FactorsAppliedBanner';
 import { colors } from '../../../theme/palette';
 import { QUANTITY_TAKEOFF_MATERIALS } from '../data/quantityTakeoffMaterials';
+import { groupMaterialsByCategory } from '../../../data/materialCategories';
 
 const COLUMNS = ['MATERIAL', 'BASIS', 'QUANTITY', 'UNIT', 'UNIT COST', 'TOTAL COST'];
 
@@ -26,6 +31,41 @@ const DOT_COLORS = {
 
 function formatPeso(value) {
   return `₱${Math.round(value).toLocaleString('en-PH')}`;
+}
+
+function StatCell({ label, value }) {
+  return (
+    <Box>
+      <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>{label}</Typography>
+      <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>{value}</Typography>
+    </Box>
+  );
+}
+
+function MaterialMobileCard({ material }) {
+  return (
+    <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', p: 1.75 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
+          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOT_COLORS[material.color], flexShrink: 0 }} />
+          <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.92rem' }}>{material.name}</Typography>
+        </Stack>
+        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>
+          {formatPeso(material.totalCost)}
+        </Typography>
+      </Stack>
+
+      <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', mt: 0.5, mb: 1.25 }}>{material.basis}</Typography>
+
+      <Divider sx={{ mb: 1.25 }} />
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+        <StatCell label="Quantity" value={material.quantityLabel} />
+        <StatCell label="Unit" value={material.unit} />
+        <StatCell label="Unit cost" value={formatPeso(material.unitCost)} />
+      </Box>
+    </Paper>
+  );
 }
 
 // CHB is the one row whose basis text calls out the storeys count (the way
@@ -54,6 +94,7 @@ function buildMaterials(storeys) {
  */
 function QuantityTakeoffTable({ storeys, factors, onContinue }) {
   const materials = buildMaterials(storeys);
+  const categoryGroups = groupMaterialsByCategory(materials);
 
   return (
     <Paper
@@ -65,10 +106,37 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
         overflow: 'hidden',
         flex: 1,
         minWidth: 0,
-        minHeight: 420,
+        minHeight: { xs: 0, md: 420 },
       }}
     >
-      <Box sx={{ overflowX: 'auto' }}>
+      <Stack spacing={1.25} sx={{ display: { xs: 'flex', md: 'none' }, p: { xs: 1.5, sm: 2.5 } }}>
+        {categoryGroups.map((group) => (
+          <Accordion
+            key={group.label}
+            // Every group starts closed on mobile — the user taps whichever
+            // category they want to look at instead of the first one
+            // opening automatically.
+            disableGutters
+            elevation={0}
+            sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: 'text.primary' }}>
+                {group.label} <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.78rem' }}>({group.items.length})</Typography>
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ pt: 0 }}>
+              <Stack spacing={1.25}>
+                {group.items.map((material) => (
+                  <MaterialMobileCard key={material.key} material={material} />
+                ))}
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </Stack>
+
+      <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
         <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>

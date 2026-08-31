@@ -60,20 +60,20 @@ const FEATURES = [
  */
 function FeaturesSection() {
   return (
-    <Box id="features" sx={{ bgcolor: 'common.white', py: { xs: 7, md: 10 } }}>
+    <Box id="features" sx={{ bgcolor: 'common.white', py: { xs: 5, md: 10 } }}>
       <Container maxWidth="lg">
-        <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: '1.6rem', md: '1.9rem' }, color: 'text.primary', textAlign: 'center', mb: 1.5 }}>
+        <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: '1.5rem', md: '1.9rem' }, color: 'text.primary', textAlign: 'center', mb: 1.5 }}>
           Everything from plan to procurement
         </Typography>
-        <Typography sx={{ color: 'text.secondary', textAlign: 'center', mb: 6 }}>
-          Materials-only estimation for residential builds — no labor, permits, or taxes.
+        <Typography sx={{ color: 'text.secondary', textAlign: 'center', fontSize: { xs: '0.88rem', md: '1rem' }, mb: { xs: 3.5, md: 6 } }}>
+          Materials-only estimation for residential builds: no labor, permits, or taxes.
         </Typography>
 
         <Box
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
-            gap: 3,
+            gap: { xs: 2, md: 3 },
           }}
         >
           {FEATURES.map((feature) => (

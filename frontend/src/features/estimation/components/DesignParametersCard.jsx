@@ -10,6 +10,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import { getEngineDefaults, getEngineDefaultsBothVariants } from '../data/engineDefaultParameters';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 
 // Every field mirrors an `overrides.get("<key>", default)` call in
@@ -89,6 +90,7 @@ function fieldPlaceholder(fieldKey, storeys) {
  *   both variants are shown instead.
  */
 function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null }) {
+  const isMobile = useIsMobile();
   const handleFieldChange = (key, rawValue) => {
     if (rawValue === '') {
       onOverrideChange(key, null);
@@ -105,7 +107,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         borderRadius: 3,
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        p: { xs: 2.5, md: 4 },
+        p: { xs: 2, md: 4 },
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -115,7 +117,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         spacing={{ xs: 1, sm: 0 }}
         sx={{ alignItems: { xs: 'flex-start', sm: 'flex-start' }, justifyContent: 'space-between', gap: 2, flexShrink: 0 }}
       >
-        <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary' }}>Design parameters</Typography>
+        <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary' }}>Design parameters</Typography>
         <Link
           component="button"
           type="button"
@@ -128,7 +130,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         </Link>
       </Stack>
       <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2, flexShrink: 0 }}>
-        Dimensions a 2D floor plan can't determine on its own — the grayed-out number in
+        Dimensions a 2D floor plan can't determine on its own: the grayed-out number in
         each field is the engine's own default; leave it blank to use that value as-is.
       </Typography>
 
@@ -136,7 +138,9 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         {GROUPS.map((group, index) => (
           <Accordion
             key={group.key}
-            defaultExpanded={index === 0}
+            // Mobile: every group starts closed — desktop keeps the first
+            // group open by default, unchanged.
+            defaultExpanded={!isMobile && index === 0}
             disableGutters
             elevation={0}
             sx={{

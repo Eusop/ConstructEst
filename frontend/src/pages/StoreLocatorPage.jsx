@@ -101,8 +101,8 @@ function StoreLocatorPage() {
   return (
     <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
       <Box>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>Compare hardware stores</Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Compare hardware stores</Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
           Total BOM cost and distance for canvassed stores near {activeProject.location}.
         </Typography>
         {loadError && (
@@ -124,7 +124,7 @@ function StoreLocatorPage() {
               boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
               p: 1.5,
               flex: 1,
-              minHeight: 420,
+              minHeight: { xs: 260, md: 420 },
             }}
           >
             <GoogleMapView

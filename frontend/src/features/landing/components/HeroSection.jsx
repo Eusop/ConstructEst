@@ -15,7 +15,7 @@ import { ROUTES } from '../../../routes/paths';
 const STATS = [
   { value: '1–2', label: 'storey homes' },
   { value: '8', label: 'material types' },
-  { value: <PesoIcon sx={{ fontSize: '1.5rem' }} />, label: 'budget-aware' },
+  { value: <PesoIcon sx={{ fontSize: { xs: '1.3rem', md: '1.5rem' } }} />, label: 'budget-aware' },
 ];
 
 /**
@@ -24,9 +24,9 @@ const STATS = [
  */
 function HeroSection() {
   return (
-    <Box sx={{ bgcolor: colors.heroBackground, py: { xs: 6, md: 9 } }}>
+    <Box sx={{ bgcolor: colors.heroBackground, py: { xs: 5, md: 9 } }}>
       <Container maxWidth="lg">
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 5, md: 8 }} alignItems="center">
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 4, md: 8 }} alignItems="center">
           <Box sx={{ flex: 1, textAlign: { xs: 'center', md: 'left' } }}>
             <Box
               sx={{
@@ -35,12 +35,12 @@ function HeroSection() {
                 gap: 0.75,
                 bgcolor: colors.badgeBackground,
                 color: colors.orange,
-                fontSize: '0.8rem',
+                fontSize: { xs: '0.75rem', md: '0.8rem' },
                 fontWeight: 700,
                 borderRadius: 999,
                 px: 2,
                 py: 0.75,
-                mb: 3,
+                mb: { xs: 2.5, md: 3 },
               }}
             >
               <HomeRoundedIcon sx={{ fontSize: 16 }} />
@@ -53,22 +53,29 @@ function HeroSection() {
                 fontWeight: 800,
                 color: 'text.primary',
                 lineHeight: 1.2,
-                fontSize: { xs: '2rem', sm: '2.4rem', md: '2.6rem' },
-                mb: 2.5,
+                fontSize: { xs: '1.9rem', sm: '2.4rem', md: '2.6rem' },
+                mb: { xs: 2, md: 2.5 },
               }}
             >
-              Estimate materials straight
-              <br />
-              from your floor plan.
+              {/* Mobile: the manual break below fought with the narrower
+                  width's own natural wrapping, forcing the headline onto
+                  three cramped lines instead of two balanced ones — letting
+                  it wrap on its own reads better at phone width. sm+ keeps
+                  the original two-line break exactly as before. Explicit
+                  string literals (not bare JSX text) so the space between
+                  the two halves survives regardless of which layout renders. */}
+              {'Estimate materials straight '}
+              <Box component="br" sx={{ display: { xs: 'none', sm: 'block' } }} />
+              {'from your floor plan.'}
             </Typography>
 
             <Typography
               variant="body1"
-              sx={{ color: 'text.secondary', maxWidth: 520, mx: { xs: 'auto', md: 0 }, mb: 4 }}
+              sx={{ color: 'text.secondary', maxWidth: 520, mx: { xs: 'auto', md: 0 }, mb: { xs: 3, md: 4 } }}
             >
               ConstructEst is a rule-based structural material cost estimation and
               optimization system. It reads your 2D AutoCAD DXF and applies validated
-              engineering formulas to produce an itemized Bill of Materials — then
+              engineering formulas to produce an itemized Bill of Materials, then
               optimizes brand choices to your budget and compares the nearest hardware
               stores by price and distance.
             </Typography>
@@ -77,7 +84,7 @@ function HeroSection() {
               direction={{ xs: 'column', sm: 'row' }}
               spacing={2}
               justifyContent={{ xs: 'center', md: 'flex-start' }}
-              sx={{ mb: 5 }}
+              sx={{ mb: { xs: 3.5, md: 5 } }}
             >
               <Button
                 component={RouterLink}
@@ -110,15 +117,15 @@ function HeroSection() {
 
             <Stack
               direction="row"
-              spacing={4}
+              spacing={{ xs: 3, md: 4 }}
               justifyContent={{ xs: 'center', md: 'flex-start' }}
             >
               {STATS.map((stat) => (
                 <Box key={stat.label}>
-                  <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.2rem', md: '1.4rem' }, color: 'text.primary' }}>
                     {stat.value}
                   </Typography>
-                  <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                  <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.75rem', md: '0.85rem' } }}>
                     {stat.label}
                   </Typography>
                 </Box>

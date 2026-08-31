@@ -48,9 +48,9 @@ function CalibrationFactorsCard({ factors, onFactorChange, onResetDefaults }) {
         borderRadius: 3,
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        p: { xs: 2.5, md: 4 },
+        p: { xs: 2, md: 4 },
         flex: 1,
-        minHeight: 480,
+        minHeight: { xs: 0, md: 480 },
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -60,7 +60,7 @@ function CalibrationFactorsCard({ factors, onFactorChange, onResetDefaults }) {
         spacing={{ xs: 1, sm: 0 }}
         sx={{ alignItems: { xs: 'flex-start', sm: 'flex-start' }, justifyContent: 'space-between', gap: 2, flexShrink: 0 }}
       >
-        <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary' }}>Calibration factors</Typography>
+        <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary' }}>Calibration factors</Typography>
         <Link
           component="button"
           type="button"
@@ -74,10 +74,10 @@ function CalibrationFactorsCard({ factors, onFactorChange, onResetDefaults }) {
       </Stack>
       <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 3, flexShrink: 0 }}>
         How much extra material each category buys above the bare rule-based formula, to
-        cover real-world waste — 0% uses the formula exactly as written.
+        cover real-world waste. 0% uses the formula exactly as written.
       </Typography>
 
-      <Stack spacing={4} sx={{ flex: 1, justifyContent: 'center', width: '100%' }}>
+      <Stack spacing={{ xs: 3, sm: 4 }} sx={{ flex: 1, justifyContent: 'center', width: '100%' }}>
         {FACTOR_FIELDS.map((field) => (
           <Box key={field.key}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>

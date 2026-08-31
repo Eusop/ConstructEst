@@ -4,6 +4,10 @@ import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import ProfileAvatarSection from '../features/profile/components/ProfileAvatarSection';
@@ -12,6 +16,7 @@ import PersonalInformationSection from '../features/profile/components/PersonalI
 import ChangePasswordSection from '../features/profile/components/ChangePasswordSection';
 import { useUser } from '../context/UserContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
 import { colors } from '../theme/palette';
 
@@ -78,6 +83,7 @@ function ProfilePage() {
   const profile = useUser();
   const { updateProfile } = profile;
   const { addNotification } = useNotifications();
+  const isMobile = useIsMobile();
 
   const [savedForm, setSavedForm] = useState(() => buildForm(profile));
   const [form, setForm] = useState(() => buildForm(profile));
@@ -132,7 +138,12 @@ function ProfilePage() {
   };
 
   return (
-    <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
+    // Mobile: no longer forced to stretch and fill the viewport (`flex:1`)
+    // — with both accordions now closed by default, that forced stretch
+    // left a large empty gap below the collapsed sections instead of the
+    // card simply ending at its natural (shorter) height. sm+ keeps the
+    // original flex:1 behavior unchanged.
+    <Stack spacing={2.5} sx={{ width: '100%', flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
       <Paper
         elevation={0}
         sx={{
@@ -140,8 +151,8 @@ function ProfilePage() {
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
           overflow: 'hidden',
-          flex: 1,
-          minHeight: 0,
+          flex: { xs: 'unset', sm: 1 },
+          minHeight: { xs: 'auto', sm: 0 },
         }}
       >
         <Stack divider={<Divider />}>
@@ -152,41 +163,99 @@ function ProfilePage() {
             onAvatarChange={handleAvatarChange}
           />
 
-          <Box sx={{ p: { xs: 2.5, md: 4 } }}>
-            <ProfileSectionHeader
-              icon={PersonRoundedIcon}
-              iconBg={colors.iconBlueBg}
-              iconFg={colors.iconBlueFg}
-              title="Personal Information"
-              subtitle="Your basic account details"
-            />
-            <PersonalInformationSection
-              form={form}
-              errors={errors}
-              touched={touched}
-              onFieldChange={updateField}
-              onFieldBlur={handleFieldBlur}
-            />
-          </Box>
+          {isMobile ? (
+            <Box sx={{ p: 1.5 }}>
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', mb: 1.25, '&:before': { display: 'none' }, overflow: 'hidden' }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+                  <ProfileSectionHeader
+                    icon={PersonRoundedIcon}
+                    iconBg={colors.iconBlueBg}
+                    iconFg={colors.iconBlueFg}
+                    title="Personal Information"
+                    subtitle="Your basic account details"
+                  />
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <PersonalInformationSection
+                    form={form}
+                    errors={errors}
+                    touched={touched}
+                    onFieldChange={updateField}
+                    onFieldBlur={handleFieldBlur}
+                  />
+                </AccordionDetails>
+              </Accordion>
 
-          <Box sx={{ p: { xs: 2.5, md: 4 } }}>
-            <ProfileSectionHeader
-              icon={LockRoundedIcon}
-              iconBg={colors.iconOrangeBg}
-              iconFg={colors.iconOrangeFg}
-              title="Change Password"
-              subtitle="Keep your account secure"
-            />
-            <ChangePasswordSection
-              form={form}
-              errors={errors}
-              touched={touched}
-              onFieldChange={updateField}
-              onFieldBlur={handleFieldBlur}
-            />
-          </Box>
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+                  <ProfileSectionHeader
+                    icon={LockRoundedIcon}
+                    iconBg={colors.iconOrangeBg}
+                    iconFg={colors.iconOrangeFg}
+                    title="Change Password"
+                    subtitle="Keep your account secure"
+                  />
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <ChangePasswordSection
+                    form={form}
+                    errors={errors}
+                    touched={touched}
+                    onFieldChange={updateField}
+                    onFieldBlur={handleFieldBlur}
+                  />
+                </AccordionDetails>
+              </Accordion>
+            </Box>
+          ) : (
+            <>
+              <Box sx={{ p: 4 }}>
+                <ProfileSectionHeader
+                  icon={PersonRoundedIcon}
+                  iconBg={colors.iconBlueBg}
+                  iconFg={colors.iconBlueFg}
+                  title="Personal Information"
+                  subtitle="Your basic account details"
+                />
+                <PersonalInformationSection
+                  form={form}
+                  errors={errors}
+                  touched={touched}
+                  onFieldChange={updateField}
+                  onFieldBlur={handleFieldBlur}
+                />
+              </Box>
 
-          <Box sx={{ p: { xs: 2.5, md: 4 } }}>
+              <Divider />
+
+              <Box sx={{ p: 4 }}>
+                <ProfileSectionHeader
+                  icon={LockRoundedIcon}
+                  iconBg={colors.iconOrangeBg}
+                  iconFg={colors.iconOrangeFg}
+                  title="Change Password"
+                  subtitle="Keep your account secure"
+                />
+                <ChangePasswordSection
+                  form={form}
+                  errors={errors}
+                  touched={touched}
+                  onFieldChange={updateField}
+                  onFieldBlur={handleFieldBlur}
+                />
+              </Box>
+            </>
+          )}
+
+          <Box sx={{ p: { xs: 2, md: 4 } }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
               <Button
                 onClick={handleCancel}

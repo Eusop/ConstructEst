@@ -33,7 +33,7 @@ function FactorsAppliedBanner({ factors }) {
     >
       <CalculateRoundedIcon sx={{ color: colors.iconBlueFg, fontSize: 20, flexShrink: 0 }} />
       <Typography sx={{ fontSize: '0.85rem', color: colors.iconBlueFg }}>
-        Factors applied —{' '}
+        Factors applied:{' '}
         {items.map((factor, index) => (
           <Box key={factor.label} component="span">
             {factor.label}{' '}
