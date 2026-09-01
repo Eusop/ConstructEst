@@ -12,7 +12,14 @@
  * exports use `let` — both are live ES module bindings, so every importer
  * sees the update on its next render without re-importing anything.
  */
-export const PARSED_MEASUREMENTS = { totalWallLength: '—', floorArea: '—', roofArea: '—', roomsDetected: 0 };
+// groundFloor/secondFloor stay null unless the project was uploaded with a
+// real separate second-floor DXF (see backend engine's geometry2 param) —
+// with only one file, "ground" and the combined total are the same number,
+// so there's nothing honest to show as a distinct per-floor breakdown.
+export const PARSED_MEASUREMENTS = {
+  totalWallLength: '—', floorArea: '—', roofArea: '—', roomsDetected: 0,
+  groundFloor: null, secondFloor: null,
+};
 
 export let ESTIMATED_COST = '₱0';
 export let ESTIMATED_COST_VALUE = 0;
@@ -27,7 +34,8 @@ function formatQuantityLabel(quantity) {
 }
 
 /**
- * @param {{ measurements: {totalWallLength:number, floorArea:number, roofArea:number, roomsDetected:number},
+ * @param {{ measurements: {totalWallLength:number, floorArea:number, roofArea:number, roomsDetected:number,
+ *     groundFloor?: {wallLength:number, floorArea:number}, secondFloor?: {wallLength:number, floorArea:number}},
  *   materials: Array<{key:string, name:string, quantity:number, unit:string}>, estimatedCost: number }} estimation
  */
 export function loadParsedProject(estimation) {
@@ -37,6 +45,12 @@ export function loadParsedProject(estimation) {
   PARSED_MEASUREMENTS.floorArea = `${measurements.floorArea} m²`;
   PARSED_MEASUREMENTS.roofArea = `${measurements.roofArea} m²`;
   PARSED_MEASUREMENTS.roomsDetected = measurements.roomsDetected;
+  PARSED_MEASUREMENTS.groundFloor = measurements.groundFloor
+    ? { wallLength: `${measurements.groundFloor.wallLength} m`, floorArea: `${measurements.groundFloor.floorArea} m²` }
+    : null;
+  PARSED_MEASUREMENTS.secondFloor = measurements.secondFloor
+    ? { wallLength: `${measurements.secondFloor.wallLength} m`, floorArea: `${measurements.secondFloor.floorArea} m²` }
+    : null;
 
   ESTIMATED_COST_VALUE = estimatedCost;
   ESTIMATED_COST = `₱${Math.round(estimatedCost).toLocaleString('en-PH')}`;

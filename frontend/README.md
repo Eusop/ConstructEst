@@ -9,7 +9,7 @@ React + Vite + MUI single-page app, backing onto the `backend/` API.
    ```
    npm install
    ```
-3. **Environment.** Copy `.env.example` to `.env`. `VITE_GOOGLE_MAPS_API_KEY` is optional — the Store Locator map degrades gracefully without one (shows a "Map unavailable" placeholder instead of failing).
+3. **Environment.** Copy `.env.example` to `.env`. No map API key needed — the Store Locator/Admin Stores map runs on Leaflet + free OpenStreetMap tiles.
 
 ## Running
 
@@ -25,14 +25,14 @@ The same seeded admin account (`admin` / `ChangeMe123!`) works for both — the 
 
 **User module** (`/dashboard`, `/projects/...`): upload a DXF, review the parsed quantity take-off, tune calibration factors and structural design parameters, compare stores, pick brands, download the BOM.
 
-**Admin module** (`/admin/...`): user management, hardware stores (with a Google Maps view), materials & brands catalog (global brand definitions + per-store pricing/availability), and the global calibration/design-parameter defaults every new project falls back to.
+**Admin module** (`/admin/...`): user management, hardware stores (with a map view), materials & brands catalog (global brand definitions + per-store pricing/availability), and the global calibration/design-parameter defaults every new project falls back to.
 
 ## Project layout
 
 ```
 src/
   admin/           Admin module — its own layout, pages, contexts, and services (adminService.js)
-  components/      Shared UI (BrandMark, GoogleMapView, form fields, error boundary)
+  components/      Shared UI (BrandMark, MapView, form fields, error boundary)
   context/         User module state: UserContext (auth), ProjectsContext (active project + drafts),
                     NotificationsContext, DashboardActivityContext
   features/        One folder per domain area (projects, estimation, brandSelection, storeLocator,
@@ -51,4 +51,4 @@ src/
 ## Known limitations
 
 - **No route guard on the User module.** Reaching an authenticated page without a valid session surfaces as a generic failure on whatever action is attempted (e.g. a DXF upload fails with a raw "Missing or invalid Authorization header" message rather than redirecting to `/login`). The Admin module and the standalone learning-guide project both use a `RequireAuth`-style guard; this app doesn't yet.
-- **Google Maps store distances are straight-line**, computed from a fixed Tarlac City reference point, not the user's real location or actual driving distance.
+- **Store distances are straight-line**, computed from a fixed Tarlac City reference point, not the user's real location or actual driving distance.

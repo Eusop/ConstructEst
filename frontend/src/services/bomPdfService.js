@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { colors } from '../theme/palette';
 
 function formatCurrency(value) {
-  return `Php ${Math.round(value).toLocaleString('en-PH')}`;
+  return `Php ${Math.round(value ?? 0).toLocaleString('en-PH')}`;
 }
 
 function sanitizeForFilename(text) {

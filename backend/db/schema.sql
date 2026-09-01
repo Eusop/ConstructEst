@@ -38,6 +38,8 @@ CREATE TABLE projects (
   status ENUM('parsing', 'parsed', 'failed') NOT NULL DEFAULT 'parsing',
   dxf_file_path VARCHAR(500) NULL,
   dxf_original_name VARCHAR(255) NULL,
+  second_floor_dxf_path VARCHAR(500) NULL,
+  second_floor_dxf_original_name VARCHAR(255) NULL,
   selected_store_id INT UNSIGNED NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -56,6 +58,13 @@ CREATE TABLE estimation_results (
   floor_area DECIMAL(10, 2) NULL,          -- m^2
   roof_area DECIMAL(10, 2) NULL,           -- m^2
   rooms_detected SMALLINT UNSIGNED NULL,
+  -- Per-floor breakdown, populated only when a real second-floor DXF was
+  -- uploaded (see engine/formulas.py's geometry2/measurements.groundFloor
+  -- and .secondFloor) — NULL for every single-file project.
+  ground_wall_length DECIMAL(10, 2) NULL,
+  ground_floor_area DECIMAL(10, 2) NULL,
+  second_wall_length DECIMAL(10, 2) NULL,
+  second_floor_area DECIMAL(10, 2) NULL,
   estimated_cost DECIMAL(14, 2) NULL,
   is_current TINYINT(1) NOT NULL DEFAULT 1,
   computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -74,6 +83,11 @@ CREATE TABLE estimation_line_items (
   quantity DECIMAL(12, 3) NOT NULL,
   unit VARCHAR(30) NOT NULL,
   basis VARCHAR(255) NULL,
+  -- {ground, second, roofing, shared} -> amount (see formulas.py's
+  -- SOURCE_CATEGORIES) — lets the Quantity Take-off's "By source" view
+  -- group this material without touching `quantity`, which every existing
+  -- consumer (pricing, BOM, optimization) still reads unchanged.
+  source_breakdown JSON NULL,
   CONSTRAINT fk_line_item_estimation FOREIGN KEY (estimation_id) REFERENCES estimation_results(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

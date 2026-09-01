@@ -9,7 +9,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import GoogleMapView from '../../components/GoogleMapView';
+import MapView from '../../components/MapView';
 import EmptyState from '../components/EmptyState';
 import AddStoreDialog from '../components/AddStoreDialog';
 import StoreDetailsDialog from '../components/StoreDetailsDialog';
@@ -98,7 +98,7 @@ function AdminStoresPage() {
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
         <Box sx={{ flex: { lg: 3 }, width: '100%', minHeight: { xs: 240, lg: 360 } }}>
           <Paper elevation={0} sx={{ borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: 1.5, height: '100%' }}>
-            <GoogleMapView center={mapCenter} zoom={13} markers={markers} onMarkerClick={setDetailsStoreId} height="100%" />
+            <MapView center={mapCenter} zoom={13} markers={markers} onMarkerClick={setDetailsStoreId} height="100%" />
           </Paper>
         </Box>
 

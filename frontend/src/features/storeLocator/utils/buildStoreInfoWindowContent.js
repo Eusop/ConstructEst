@@ -5,11 +5,11 @@ function formatPeso(value) {
 }
 
 /**
- * Builds the HTML string shown inside a store marker's Google Maps
- * InfoWindow. InfoWindow content has to be plain HTML (it's rendered
- * outside React's tree), so this stays a small template-string builder
- * rather than a component — kept in Store Locator's own utils since the
- * generic GoogleMapView component has no knowledge of what a "store" is.
+ * Builds the HTML string shown inside a store marker's map popup (Leaflet,
+ * via MapView). Popup content has to be plain HTML (it's rendered outside
+ * React's tree), so this stays a small template-string builder rather than
+ * a component — kept in Store Locator's own utils since the generic
+ * MapView component has no knowledge of what a "store" is.
  *
  * @param {object} store One entry from features/storeLocator/data/storesMock.
  */
@@ -18,20 +18,11 @@ export function buildStoreInfoWindowContent(store) {
     ? `<div style="color:${colors.iconGreenFg};font-weight:600;font-size:12px;margin-top:6px;">✓ ${store.stockLabel}</div>`
     : `<div style="color:${colors.orange};font-weight:600;font-size:12px;margin-top:6px;">⚠ No ${store.outOfStockMaterial} in stock. Try ${store.suggestedStoreName} for this item.</div>`;
 
-  const priceRows = store.materialPrices
-    .map(
-      (item) => `
-        <tr>
-          <td style="padding:2px 10px 2px 0;color:${colors.textSecondary};">${item.material}</td>
-          <td style="padding:2px 0;text-align:right;font-weight:600;color:${colors.textPrimary};white-space:nowrap;">${formatPeso(item.price)}</td>
-        </tr>`,
-    )
-    .join('');
-
-  const priceTable = store.materialPrices.length
-    ? `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:12px;">${priceRows}</table>`
-    : '';
-
+  // No per-material price breakdown at this level — GET /projects/:id/stores
+  // only returns each store's aggregate optimized total (Table 20); the
+  // itemized per-material prices used to be assumed here from an older mock
+  // shape that never matched what the real endpoint returns, so this popup
+  // just shows the total instead of a (never-actually-populated) price table.
   const totalLine = store.totalCost
     ? `<div style="font-weight:700;font-size:14px;color:${colors.textPrimary};margin-top:8px;">${formatPeso(store.totalCost)}</div>`
     : '';
@@ -46,7 +37,6 @@ export function buildStoreInfoWindowContent(store) {
       </div>
       ${totalLine}
       ${stockLine}
-      ${priceTable}
     </div>
   `;
 }

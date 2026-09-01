@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -9,6 +10,8 @@ import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import ToggleButton from '@mui/material/ToggleButton';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -20,6 +23,41 @@ import { QUANTITY_TAKEOFF_MATERIALS } from '../data/quantityTakeoffMaterials';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
 
 const COLUMNS = ['MATERIAL', 'BASIS', 'QUANTITY', 'UNIT', 'UNIT COST', 'TOTAL COST'];
+
+// "By source" grouping — see backend/engine/formulas.py's SOURCE_CATEGORIES.
+// "Roofing" and "Shared / Whole building" aren't floors; they're honest
+// labels for contributions that don't belong to one floor at all (a column
+// runs continuously through both, a footing is foundation-level, a roof
+// sits above the top floor) — forcing those into "Ground"/"Second" would
+// be a fake-precise split.
+const SOURCE_CATEGORY_META = [
+  { key: 'ground', label: 'Ground floor' },
+  { key: 'second', label: 'Second floor' },
+  { key: 'roofing', label: 'Roofing' },
+  { key: 'shared', label: 'Shared / Whole building' },
+];
+
+function formatQty(value) {
+  return Number(value).toLocaleString('en-PH', { maximumFractionDigits: 3 });
+}
+
+// Splits each material's total into its 4 source buckets, keeping only
+// materials that actually contributed to that bucket. Per-bucket quantities
+// are plain-rounded (not ceiling'd like the grand total), so they won't
+// always sum to exactly the "Total" view's number — same as any real BOQ's
+// subtotals rounding independently.
+function buildSourceGroups(materials) {
+  return SOURCE_CATEGORY_META.map(({ key, label }) => ({
+    key,
+    label,
+    items: materials
+      .filter((material) => (material.sourceBreakdown?.[key] ?? 0) > 0)
+      .map((material) => {
+        const categoryQuantity = material.sourceBreakdown[key];
+        return { ...material, quantity: categoryQuantity, quantityLabel: formatQty(categoryQuantity), totalCost: categoryQuantity * material.unitCost };
+      }),
+  })).filter((group) => group.items.length > 0);
+}
 
 const DOT_COLORS = {
   blue: colors.iconBlueFg,
@@ -91,10 +129,15 @@ function buildMaterials(storeys) {
  * @param {number} props.storeys Used to label the CHB basis (e.g. "(2 flr)").
  * @param {{cement: number, steel: number, roofing: number, wastage: number}} props.factors
  * @param {() => void} props.onContinue Called when "Continue to Store Locator" is clicked.
+ * @param {boolean} [props.hasSecondFloorFile] Whether the project has a separate
+ *   second-floor DXF — the "By source" view only makes sense (and only appears)
+ *   when there's a real per-floor distinction to show.
  */
-function QuantityTakeoffTable({ storeys, factors, onContinue }) {
+function QuantityTakeoffTable({ storeys, factors, onContinue, hasSecondFloorFile }) {
+  const [viewMode, setViewMode] = useState('total');
   const materials = buildMaterials(storeys);
   const categoryGroups = groupMaterialsByCategory(materials);
+  const sourceGroups = viewMode === 'bySource' ? buildSourceGroups(materials) : [];
 
   return (
     <Paper
@@ -109,75 +152,140 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
         minHeight: { xs: 0, md: 420 },
       }}
     >
-      <Stack spacing={1.25} sx={{ display: { xs: 'flex', md: 'none' }, p: { xs: 1.5, sm: 2.5 } }}>
-        {categoryGroups.map((group) => (
-          <Accordion
-            key={group.label}
-            // Every group starts closed on mobile — the user taps whichever
-            // category they want to look at instead of the first one
-            // opening automatically.
-            disableGutters
-            elevation={0}
-            sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
+      {hasSecondFloorFile && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', p: { xs: 1.5, sm: 2.5 }, pb: { xs: 0.5, sm: 1 } }}
+        >
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(event, value) => value !== null && setViewMode(value)}
+            sx={{
+              bgcolor: 'grey.100',
+              borderRadius: 999,
+              p: 0.5,
+              '& .MuiToggleButtonGroup-grouped': {
+                border: 0,
+                borderRadius: 999,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                color: 'text.secondary',
+                px: 1.75,
+                '&.Mui-selected': { bgcolor: 'common.white', color: colors.accentBlue, boxShadow: '0 1px 4px rgba(20, 30, 60, 0.12)', '&:hover': { bgcolor: 'common.white' } },
+              },
+            }}
           >
-            <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: 'text.primary' }}>
-                {group.label} <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.78rem' }}>({group.items.length})</Typography>
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ pt: 0 }}>
-              <Stack spacing={1.25}>
-                {group.items.map((material) => (
-                  <MaterialMobileCard key={material.key} material={material} />
-                ))}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </Stack>
+            <ToggleButton value="total" disableRipple>Total</ToggleButton>
+            <ToggleButton value="bySource" disableRipple>By source</ToggleButton>
+          </ToggleButtonGroup>
+          {viewMode === 'bySource' && (
+            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+              Grouped by which floor/element each material comes from — subtotals may not sum exactly to the Total view due to independent rounding.
+            </Typography>
+          )}
+        </Stack>
+      )}
 
-      <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
-        <Table sx={{ minWidth: 800 }}>
-          <TableHead>
-            <TableRow>
-              {COLUMNS.map((col) => (
-                <TableCell
-                  key={col}
-                  sx={{ color: 'text.secondary', fontSize: '0.72rem', fontWeight: 700, letterSpacing: 0.5, borderColor: 'divider' }}
-                >
-                  {col}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {materials.map((material) => (
-              <TableRow key={material.key} sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                <TableCell sx={{ borderColor: 'divider' }}>
-                  <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOT_COLORS[material.color], flexShrink: 0 }} />
-                    <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                      {material.name}
-                    </Typography>
+      {viewMode === 'bySource' ? (
+        <Stack spacing={1.25} sx={{ p: { xs: 1.5, sm: 2.5 } }}>
+          {sourceGroups.map((group) => (
+            <Accordion
+              key={group.key}
+              disableGutters
+              elevation={0}
+              sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+                <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: 'text.primary' }}>
+                  {group.label} <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.78rem' }}>({group.items.length})</Typography>
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Stack spacing={1.25}>
+                  {group.items.map((material) => (
+                    <MaterialMobileCard key={material.key} material={material} />
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </Stack>
+      ) : (
+        <>
+          <Stack spacing={1.25} sx={{ display: { xs: 'flex', md: 'none' }, p: { xs: 1.5, sm: 2.5 } }}>
+            {categoryGroups.map((group) => (
+              <Accordion
+                key={group.label}
+                // Every group starts closed on mobile — the user taps whichever
+                // category they want to look at instead of the first one
+                // opening automatically.
+                disableGutters
+                elevation={0}
+                sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: 'text.primary' }}>
+                    {group.label} <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.78rem' }}>({group.items.length})</Typography>
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <Stack spacing={1.25}>
+                    {group.items.map((material) => (
+                      <MaterialMobileCard key={material.key} material={material} />
+                    ))}
                   </Stack>
-                </TableCell>
-                <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem', borderColor: 'divider', whiteSpace: 'nowrap' }}>
-                  {material.basis}
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>{material.quantityLabel}</TableCell>
-                <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{material.unit}</TableCell>
-                <TableCell sx={{ color: 'text.secondary', borderColor: 'divider', whiteSpace: 'nowrap' }}>
-                  {formatPeso(material.unitCost)}
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider', whiteSpace: 'nowrap' }}>
-                  {formatPeso(material.totalCost)}
-                </TableCell>
-              </TableRow>
+                </AccordionDetails>
+              </Accordion>
             ))}
-          </TableBody>
-        </Table>
-      </Box>
+          </Stack>
+
+          <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 800 }}>
+              <TableHead>
+                <TableRow>
+                  {COLUMNS.map((col) => (
+                    <TableCell
+                      key={col}
+                      sx={{ color: 'text.secondary', fontSize: '0.72rem', fontWeight: 700, letterSpacing: 0.5, borderColor: 'divider' }}
+                    >
+                      {col}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {materials.map((material) => (
+                  <TableRow key={material.key} sx={{ '&:last-child td': { borderBottom: 0 } }}>
+                    <TableCell sx={{ borderColor: 'divider' }}>
+                      <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25 }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOT_COLORS[material.color], flexShrink: 0 }} />
+                        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                          {material.name}
+                        </Typography>
+                      </Stack>
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem', borderColor: 'divider', whiteSpace: 'nowrap' }}>
+                      {material.basis}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>{material.quantityLabel}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{material.unit}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary', borderColor: 'divider', whiteSpace: 'nowrap' }}>
+                      {formatPeso(material.unitCost)}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider', whiteSpace: 'nowrap' }}>
+                      {formatPeso(material.totalCost)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        </>
+      )}
 
       <Divider />
 

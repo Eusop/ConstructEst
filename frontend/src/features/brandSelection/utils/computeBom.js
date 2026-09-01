@@ -24,7 +24,12 @@ export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeI
   const lineItems = MATERIALS.map((material) => {
     const base = BASE_PRICING[material.key];
     const brandOption = choices[material.key] ? resolveBrandOption(storeId, material.key, choices[material.key]) : null;
-    const unitPrice = brandOption?.price ?? base.unitPrice;
+    // Falls back to 0 (not just base.unitPrice, which is undefined for every
+    // non-commodity material — only sand/gravel have one) when a material
+    // has no resolvable brand at this store — e.g. it's genuinely
+    // unavailable there, or no choice was ever made for it. Without this,
+    // unitPrice stays undefined and crashes BomTable's formatNumber.
+    const unitPrice = brandOption?.price ?? base.unitPrice ?? 0;
     const brand = brandOption?.brand ?? base.brand;
 
     return {

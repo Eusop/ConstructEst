@@ -62,6 +62,7 @@ function ProjectResultsPage() {
   const ceilingValue = Number(String(activeProject.budgetCeiling).replace(/,/g, ''));
   const withinBudget = !Number.isFinite(ceilingValue) || ceilingValue === 0 || ESTIMATED_COST_VALUE <= ceilingValue;
   const fileValidation = activeProject.fileValidation ?? {};
+  const secondFloorFileValidation = activeProject.secondFloorFileValidation ?? {};
 
   return (
     <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
@@ -81,6 +82,9 @@ function ProjectResultsPage() {
             projectName={activeProject.projectName}
             shapes={fileValidation.shapes}
             bounds={fileValidation.bounds}
+            hasSecondFloorFile={activeProject.hasSecondFloorFile}
+            secondFloorShapes={secondFloorFileValidation.shapes}
+            secondFloorBounds={secondFloorFileValidation.bounds}
           />
           <ExtractedMeasurementsCard storeys={activeProject.storeys} />
           <EstimatedCostBanner

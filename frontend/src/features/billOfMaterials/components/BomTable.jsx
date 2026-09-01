@@ -17,7 +17,7 @@ import { groupMaterialsByCategory } from '../../../data/materialCategories';
 const COLUMNS = ['MATERIAL', 'BRAND', 'QTY', 'UNIT P', 'AMOUNT'];
 
 function formatNumber(value) {
-  return value.toLocaleString('en-PH', { maximumFractionDigits: 2 });
+  return (value ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 }
 
 function BomMobileCard({ item }) {

@@ -8,7 +8,7 @@ import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import GoogleMapView from '../components/GoogleMapView';
+import MapView from '../components/MapView';
 import StoreListCard from '../features/storeLocator/components/StoreListCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import { STORES, CITY_LOCATION, loadStores } from '../features/storeLocator/data/storesMock';
@@ -127,7 +127,7 @@ function StoreLocatorPage() {
               minHeight: { xs: 260, md: 420 },
             }}
           >
-            <GoogleMapView
+            <MapView
               center={selectedStore?.position ?? CITY_LOCATION}
               zoom={14}
               markers={markers}

@@ -40,16 +40,28 @@ function validate(draft) {
  * the draft that needs to survive navigation.
  */
 function NewProjectPage() {
-  const { draft, updateDraft, fileValidation, setFileValidation, createProjectFromDraft } = useProjects();
+  const {
+    draft,
+    updateDraft,
+    fileValidation,
+    setFileValidation,
+    secondFloorFileValidation,
+    setSecondFloorFileValidation,
+    createProjectFromDraft,
+  } = useProjects();
   const { incrementTotalProjects, logActivity } = useDashboardActivity();
   const { addNotification } = useNotifications();
   const [touched, setTouched] = useState({});
   const navigate = useNavigate();
 
   const isFileValid = fileValidation.status === 'valid';
+  // The second floor file is always optional — an empty/untouched second
+  // dropzone never blocks submission, but an attached-and-invalid one does,
+  // so a bad file can't silently get dropped instead of fixed or removed.
+  const isSecondFloorFileValid = !draft.secondFloorFile || secondFloorFileValidation.status === 'valid';
   const errors = validate(draft);
   const isFormValid = Object.keys(errors).length === 0;
-  const canSubmit = isFormValid && isFileValid;
+  const canSubmit = isFormValid && isFileValid && isSecondFloorFileValid;
 
   const handleFieldBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -79,6 +91,10 @@ function NewProjectPage() {
         onFileSelect={(file) => updateDraft('file', file)}
         onFileRemove={() => updateDraft('file', null)}
         onFileValidation={setFileValidation}
+        secondFloorFileValidation={secondFloorFileValidation}
+        onSecondFloorFileSelect={(file) => updateDraft('secondFloorFile', file)}
+        onSecondFloorFileRemove={() => updateDraft('secondFloorFile', null)}
+        onSecondFloorFileValidation={setSecondFloorFileValidation}
         onCancel={() => navigate(ROUTES.PROJECTS)}
         errors={errors}
         touched={touched}
