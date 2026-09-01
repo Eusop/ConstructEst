@@ -8,7 +8,7 @@ A capstone project (Tarlac State University, BSIT–Web and Mobile Applications)
 
 1. **Upload a DXF floor plan.** The engine parses it (`WALL`/`DOOR`/`WINDOW`/`COLUMN`/`STAIR`/`ROOF`/`FLOOR` layers), extracts wall lengths, floor area, and opening/roof geometry, and computes quantities for 16 structural materials (cement, sand, gravel, CHB, rebar, tie wire, roofing sheets, purlins, ridge, flashing, angle bar, gutter, plywood, lumber, steel props, scaffolding).
 2. **Calibrate.** Cement/steel/roofing/wastage factors and structural design parameters (column/beam/footing dimensions, floor-to-floor height, etc. — the inputs a 2D DXF can't derive) are editable per project, with admin-managed global defaults as the fallback.
-3. **Compare stores and pick brands.** Per-store pricing is optimized against a user-defined budget ceiling, with automatic (Premium/Standard/Budget tier) or manual brand selection, and a Store Locator with Google Maps distance and material-unavailability notifications.
+3. **Compare stores and pick brands.** Per-store pricing is optimized against a user-defined budget ceiling, with automatic (Premium/Standard/Budget tier) or manual brand selection, and a Store Locator with map distance and material-unavailability notifications.
 4. **Generate a Bill of Materials.** Downloadable as a PDF for procurement.
 
 An Admin module manages users, the hardware-store/material-brand catalog and pricing, and the global calibration/design-parameter defaults every new project falls back to.
@@ -32,7 +32,7 @@ cd backend && npm install && cp .env.example .env   # fill in DB password + JWT_
 npm run dev                                          # http://localhost:4000
 
 # 3. Frontend (separate terminal)
-cd frontend && npm install && cp .env.example .env   # optional: Google Maps API key
+cd frontend && npm install && cp .env.example .env
 npm run dev                                          # http://localhost:5173
 ```
 
@@ -40,7 +40,7 @@ Seeded admin login: user ID `admin`, password `ChangeMe123!`.
 
 ## Stack
 
-- **Frontend**: React 19, Vite, MUI, React Router
+- **Frontend**: React 19, Vite, MUI, React Router, Leaflet (free OpenStreetMap tiles — no API key)
 - **Backend**: Node.js/Express (ES modules), JWT auth, MySQL (`mysql2`)
 - **Engine**: Python (`ezdxf`) for DXF parsing and the rule-based formulas, invoked from Node as a subprocess
 
