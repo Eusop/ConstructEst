@@ -72,8 +72,10 @@ function ValidationBadge({ status, message }) {
  * @param {(file: {name: string, sizeLabel: string}) => void} props.onFileSelect
  * @param {() => void} props.onFileRemove
  * @param {(result: object) => void} props.onFileValidation
+ * @param {string} [props.helperText] Override for the placeholder's second line
+ *   (e.g. the second-floor dropzone shouldn't claim "one plan per project").
  */
-function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileValidation }) {
+function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileValidation, helperText }) {
   const theme = useTheme();
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -193,7 +195,7 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
             Drag your .dxf file here, or <Link component="span" sx={{ fontWeight: 700 }}>browse</Link>
           </Typography>
           <Typography sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' }, color: 'text.secondary', mt: 0.5 }}>
-            One plan per project · standard layers (WALLS, FLOOR_AREA, ROOF)
+            {helperText ?? 'One plan per project · standard layers (WALLS, FLOOR_AREA, ROOF)'}
           </Typography>
         </Box>
 

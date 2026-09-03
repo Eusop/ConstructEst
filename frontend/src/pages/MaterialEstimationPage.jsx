@@ -239,7 +239,12 @@ function MaterialEstimationPage() {
         </MobileTabSwitcher>
       </Stack>
 
-      <QuantityTakeoffTable storeys={activeProject.storeys} factors={savedFactors} onContinue={() => navigate(ROUTES.STORE_LOCATOR)} />
+      <QuantityTakeoffTable
+        storeys={activeProject.storeys}
+        factors={savedFactors}
+        onContinue={() => navigate(ROUTES.STORE_LOCATOR)}
+        hasSecondFloorFile={activeProject.hasSecondFloorFile}
+      />
     </Stack>
   );
 }

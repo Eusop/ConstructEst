@@ -1,0 +1,16 @@
+/* Strips Leaflet's default tooltip chrome (white box + border + arrow) for
+   marker labels — the original Google Maps version rendered its label text
+   directly on top of the marker icon, not in a separate speech-bubble. */
+.leaflet-tooltip.map-marker-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.leaflet-tooltip.map-marker-label::before {
+  display: none;
+}

@@ -36,7 +36,12 @@ function formatQuantityLabel(quantity) {
   return Number(quantity).toLocaleString('en-PH', { maximumFractionDigits: 3 });
 }
 
-/** @param {Array<{key:string, name:string, quantity:number, unit:string, basis:string, unitCost:number}>} materials */
+/** @param {Array<{key:string, name:string, quantity:number, unit:string, basis:string, unitCost:number,
+ *   sourceBreakdown?: {ground:number, second:number, roofing:number, shared:number}}>} materials
+ *   `sourceBreakdown` — see backend/engine/formulas.py's SOURCE_CATEGORIES — only meaningfully
+ *   non-zero across more than one bucket for a 2-storey project uploaded with a separate
+ *   second-floor DXF; carried through unchanged so QuantityTakeoffTable's "By source" view
+ *   can group without re-deriving anything. */
 export function loadQuantityTakeoff(materials) {
   QUANTITY_TAKEOFF_MATERIALS.length = 0;
   QUANTITY_TAKEOFF_MATERIALS.push(
@@ -48,6 +53,7 @@ export function loadQuantityTakeoff(materials) {
       unit: material.unit,
       unitCost: material.unitCost,
       basis: material.basis,
+      sourceBreakdown: material.sourceBreakdown ?? null,
       color: MATERIAL_COLORS[material.key] ?? 'blue',
     })),
   );

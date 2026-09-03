@@ -23,6 +23,7 @@ export function toPublicProject(row) {
     budgetCeiling: Number(row.budget_ceiling),
     storeys: row.storeys,
     includeRoofing: Boolean(row.include_roofing),
+    hasSecondFloorFile: Boolean(row.second_floor_dxf_path),
     status: row.status,
     selectedStoreId: row.selected_store_id,
     createdAt: row.created_at,

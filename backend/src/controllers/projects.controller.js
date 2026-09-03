@@ -36,26 +36,36 @@ async function loadCurrentEstimation(projectId) {
   // table an indicative unit/total cost before a store is even chosen —
   // final pricing comes from the store + brand selection made later.
   const lineItems = await query(
-    `SELECT eli.material_key AS \`key\`, eli.name, eli.quantity, eli.unit, eli.basis,
+    `SELECT eli.material_key AS \`key\`, eli.name, eli.quantity, eli.unit, eli.basis, eli.source_breakdown,
             COALESCE((SELECT MIN(base_price) FROM material_brands WHERE material_key = eli.material_key), 0) AS unitCost
      FROM estimation_line_items eli
      WHERE eli.estimation_id = ?`,
     [estimation.id],
   );
 
+  const measurements = {
+    totalWallLength: estimation.total_wall_length,
+    floorArea: estimation.floor_area,
+    roofArea: estimation.roof_area,
+    roomsDetected: estimation.rooms_detected,
+  };
+  if (estimation.ground_wall_length !== null) {
+    measurements.groundFloor = { wallLength: estimation.ground_wall_length, floorArea: estimation.ground_floor_area };
+    measurements.secondFloor = { wallLength: estimation.second_wall_length, floorArea: estimation.second_floor_area };
+  }
+
   return {
-    measurements: {
-      totalWallLength: estimation.total_wall_length,
-      floorArea: estimation.floor_area,
-      roofArea: estimation.roof_area,
-      roomsDetected: estimation.rooms_detected,
-    },
+    measurements,
     estimatedCost: estimation.estimated_cost,
-    materials: lineItems.map((item) => ({
+    materials: lineItems.map(({ source_breakdown, ...item }) => ({
       ...item,
       quantity: Number(item.quantity),
       unitCost: Number(item.unitCost),
       totalCost: Math.round(Number(item.quantity) * Number(item.unitCost) * 100) / 100,
+      // mysql2 auto-parses a JSON column into a JS object already; the
+      // typeof guard just protects against a raw string if that driver
+      // behavior ever changes.
+      sourceBreakdown: typeof source_breakdown === 'string' ? JSON.parse(source_breakdown) : source_breakdown,
     })),
   };
 }
@@ -80,6 +90,9 @@ export const deleteProject = asyncHandler(async (req, res) => {
   if (project.dxf_file_path) {
     fs.rm(project.dxf_file_path, { force: true }, () => {});
   }
+  if (project.second_floor_dxf_path) {
+    fs.rm(project.second_floor_dxf_path, { force: true }, () => {});
+  }
   res.status(204).end();
 });
 
@@ -91,12 +104,21 @@ export const createProject = asyncHandler(async (req, res) => {
 
   if (!projectName || !location) throw new HttpError(400, 'Project name and location are required.');
   if (!Number.isFinite(budgetCeiling) || budgetCeiling <= 0) throw new HttpError(400, 'Budget ceiling must be greater than 0.');
-  if (!req.file) throw new HttpError(400, 'A .dxf floor plan file is required.');
+  const primaryFile = req.files?.dxfFile?.[0];
+  if (!primaryFile) throw new HttpError(400, 'A .dxf floor plan file is required.');
+  // Optional second-floor DXF (2-storey projects only) — lets the engine
+  // use each floor's own real geometry instead of scaling the ground
+  // floor's footprint by storeys. See engine/formulas.py's geometry2 param.
+  const secondFloorFile = req.files?.secondFloorDxfFile?.[0] ?? null;
 
   const insertResult = await query(
-    `INSERT INTO projects (user_id, project_name, location, budget_ceiling, storeys, include_roofing, status, dxf_file_path, dxf_original_name)
-     VALUES (?, ?, ?, ?, ?, ?, 'parsing', ?, ?)`,
-    [req.user.id, projectName, location, budgetCeiling, storeys, includeRoofing ? 1 : 0, req.file.path, req.file.originalname],
+    `INSERT INTO projects (user_id, project_name, location, budget_ceiling, storeys, include_roofing, status, dxf_file_path, dxf_original_name, second_floor_dxf_path, second_floor_dxf_original_name)
+     VALUES (?, ?, ?, ?, ?, ?, 'parsing', ?, ?, ?, ?)`,
+    [
+      req.user.id, projectName, location, budgetCeiling, storeys, includeRoofing ? 1 : 0,
+      primaryFile.path, primaryFile.originalname,
+      secondFloorFile?.path ?? null, secondFloorFile?.originalname ?? null,
+    ],
   );
   const projectId = insertResult.insertId;
 
@@ -107,7 +129,8 @@ export const createProject = asyncHandler(async (req, res) => {
   let parseError = null;
   try {
     engineResult = await runDxfEngine({
-      dxfPath: req.file.path,
+      dxfPath: primaryFile.path,
+      secondFloorDxfPath: secondFloorFile?.path,
       storeys,
       includeRoofing,
       constants,
@@ -140,24 +163,34 @@ async function persistEstimation(projectId, engineResult) {
   await query('UPDATE estimation_results SET is_current = 0 WHERE project_id = ? AND is_current = 1', [projectId]);
 
   const estimatedCost = await estimateTotalCost(engineResult.materials);
+  const { groundFloor, secondFloor } = engineResult.measurements;
   const estResult = await query(
-    `INSERT INTO estimation_results (project_id, total_wall_length, floor_area, roof_area, rooms_detected, estimated_cost)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO estimation_results
+       (project_id, total_wall_length, floor_area, roof_area, rooms_detected,
+        ground_wall_length, ground_floor_area, second_wall_length, second_floor_area, estimated_cost)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       projectId,
       engineResult.measurements.totalWallLength,
       engineResult.measurements.floorArea,
       engineResult.measurements.roofArea,
       engineResult.measurements.roomsDetected,
+      groundFloor?.wallLength ?? null,
+      groundFloor?.floorArea ?? null,
+      secondFloor?.wallLength ?? null,
+      secondFloor?.floorArea ?? null,
       estimatedCost,
     ],
   );
 
   for (const material of engineResult.materials) {
     await query(
-      `INSERT INTO estimation_line_items (estimation_id, material_key, name, quantity, unit, basis)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [estResult.insertId, material.key, material.name, material.quantity, material.unit, material.basis],
+      `INSERT INTO estimation_line_items (estimation_id, material_key, name, quantity, unit, basis, source_breakdown)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        estResult.insertId, material.key, material.name, material.quantity, material.unit, material.basis,
+        material.sourceBreakdown ? JSON.stringify(material.sourceBreakdown) : null,
+      ],
     );
   }
 
@@ -209,6 +242,7 @@ export const recomputeEstimation = asyncHandler(async (req, res) => {
   try {
     engineResult = await runDxfEngine({
       dxfPath: project.dxf_file_path,
+      secondFloorDxfPath: project.second_floor_dxf_path ?? undefined,
       storeys: project.storeys,
       includeRoofing,
       constants,

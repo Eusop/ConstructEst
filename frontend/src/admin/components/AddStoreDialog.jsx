@@ -27,10 +27,10 @@ function validate(form) {
 /**
  * Add Hardware Store dialog — Name/Address plus optional coordinates so the
  * store can plot on the map above (see AdminStoresPage). Coordinates are
- * entered manually rather than picked via Places Autocomplete: no
- * VITE_GOOGLE_MAPS_API_KEY is configured in this environment yet (the map
- * itself already degrades gracefully without one, see GoogleMapView), so
- * this is the functional fallback until one is added.
+ * entered manually rather than picked via an address-autocomplete widget —
+ * the map (see MapView) runs on free OpenStreetMap tiles, which has no
+ * built-in geocoding autocomplete the way a paid Places API would, so
+ * manual entry is the functional way to place a store for now.
  */
 function AddStoreDialog({ open, defaultCenter, onClose, onSubmit }) {
   const isMobile = useIsMobile();

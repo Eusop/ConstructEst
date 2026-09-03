@@ -9,6 +9,10 @@ const INITIAL_DRAFT = {
   storeys: 2,
   includeRoofing: true,
   file: null,
+  // Optional, 2-storey only — lets the engine use each floor's own real
+  // geometry instead of scaling the ground floor's footprint by storeys
+  // (see backend/engine/formulas.py's geometry2 parameter).
+  secondFloorFile: null,
 };
 
 const INITIAL_FILE_VALIDATION = { status: 'idle', message: '' };
@@ -31,8 +35,11 @@ function toContextProject(serverProject, extra = {}) {
     budgetCeiling: serverProject.budgetCeiling,
     storeys: serverProject.storeys,
     includeRoofing: serverProject.includeRoofing,
+    hasSecondFloorFile: serverProject.hasSecondFloorFile ?? false,
     file: null,
     fileValidation: INITIAL_FILE_VALIDATION,
+    secondFloorFile: null,
+    secondFloorFileValidation: INITIAL_FILE_VALIDATION,
     iconColor: ICON_COLORS[serverProject.id % ICON_COLORS.length],
     status: serverProject.status === 'parsed' ? 'Estimated' : serverProject.status === 'failed' ? 'Failed' : 'Parsing',
     selectedStoreId: serverProject.selectedStoreId,
@@ -60,6 +67,7 @@ export function ProjectsProvider({ children }) {
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [draft, setDraft] = useState(INITIAL_DRAFT);
   const [fileValidation, setFileValidation] = useState(INITIAL_FILE_VALIDATION);
+  const [secondFloorFileValidation, setSecondFloorFileValidation] = useState(INITIAL_FILE_VALIDATION);
 
   const activeProjectIdRef = useRef(activeProjectId);
   useEffect(() => {
@@ -80,6 +88,7 @@ export function ProjectsProvider({ children }) {
   const resetDraft = useCallback(() => {
     setDraft(INITIAL_DRAFT);
     setFileValidation(INITIAL_FILE_VALIDATION);
+    setSecondFloorFileValidation(INITIAL_FILE_VALIDATION);
   }, []);
 
   const updateActiveProject = useCallback((patch) => {
@@ -101,7 +110,7 @@ export function ProjectsProvider({ children }) {
   // timer (see useSimulatedParsing/ProjectProcessingPage).
   const createProjectFromDraft = useCallback(() => {
     const tempId = createTempId();
-    const { projectName, location, budgetCeiling, storeys, includeRoofing, file } = draft;
+    const { projectName, location, budgetCeiling, storeys, includeRoofing, file, secondFloorFile } = draft;
 
     setProjects((prev) => [
       ...prev,
@@ -112,8 +121,11 @@ export function ProjectsProvider({ children }) {
         budgetCeiling,
         storeys,
         includeRoofing,
+        hasSecondFloorFile: Boolean(secondFloorFile),
         file,
         fileValidation,
+        secondFloorFile,
+        secondFloorFileValidation,
         iconColor: ICON_COLORS[prev.length % ICON_COLORS.length],
         status: 'Parsing',
         selectedStoreId: null,
@@ -126,6 +138,7 @@ export function ProjectsProvider({ children }) {
     setActiveProjectId(tempId);
     setDraft(INITIAL_DRAFT);
     setFileValidation(INITIAL_FILE_VALIDATION);
+    setSecondFloorFileValidation(INITIAL_FILE_VALIDATION);
 
     (async () => {
       try {
@@ -136,6 +149,7 @@ export function ProjectsProvider({ children }) {
         form.append('storeys', String(storeys));
         form.append('includeRoofing', String(includeRoofing));
         form.append('dxfFile', file.rawFile, file.name);
+        if (secondFloorFile) form.append('secondFloorDxfFile', secondFloorFile.rawFile, secondFloorFile.name);
 
         const result = await apiRequest('/projects', { method: 'POST', body: form, isMultipart: true });
         const finalId = result.project.id;
@@ -143,7 +157,10 @@ export function ProjectsProvider({ children }) {
         setProjects((prev) =>
           prev.map((project) =>
             project.id === tempId
-              ? toContextProject(result.project, { file, fileValidation, estimation: result.estimation, parseError: result.parseError })
+              ? toContextProject(result.project, {
+                  file, fileValidation, secondFloorFile, secondFloorFileValidation,
+                  estimation: result.estimation, parseError: result.parseError,
+                })
               : project,
           ),
         );
@@ -155,7 +172,7 @@ export function ProjectsProvider({ children }) {
     })();
 
     return tempId;
-  }, [draft, fileValidation, updateProjectById]);
+  }, [draft, fileValidation, secondFloorFileValidation, updateProjectById]);
 
   const setActiveProject = useCallback((id) => {
     setActiveProjectId(id);
@@ -196,6 +213,8 @@ export function ProjectsProvider({ children }) {
       resetDraft,
       fileValidation,
       setFileValidation,
+      secondFloorFileValidation,
+      setSecondFloorFileValidation,
       createProjectFromDraft,
       setActiveProject,
       deleteProject,
@@ -210,6 +229,7 @@ export function ProjectsProvider({ children }) {
       updateDraft,
       resetDraft,
       fileValidation,
+      secondFloorFileValidation,
       createProjectFromDraft,
       setActiveProject,
       deleteProject,
