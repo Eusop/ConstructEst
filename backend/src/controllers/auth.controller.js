@@ -19,15 +19,23 @@ export const register = asyncHandler(async (req, res) => {
 
   const passwordHash = bcrypt.hashSync(password, 10);
 
-  const result = await query(
-    `INSERT INTO users (first_name, last_name, user_id, email, prc_license, password_hash, access_role)
-     VALUES (?, ?, ?, ?, ?, ?, 'user')`,
+  // New self-registered accounts start unverified and inactive — an admin
+  // must verify them (see admin.controller.js's verifyUser) before they can
+  // sign in at all. No token is issued here: `login` already filters on
+  // `is_active = 1`, but a token handed out at registration would still
+  // work against every other `requireAuth`-gated route (it only checks the
+  // token's signature, not the account's current is_active/is_verified
+  // state) — so the account simply can't get a session until verified.
+  await query(
+    `INSERT INTO users (first_name, last_name, user_id, email, prc_license, password_hash, access_role, is_active, is_verified)
+     VALUES (?, ?, ?, ?, ?, ?, 'user', 0, 0)`,
     [firstName, lastName, userId, email, prcLicense || null, passwordHash],
   );
 
-  const [user] = await query('SELECT * FROM users WHERE id = ?', [result.insertId]);
-  const token = signToken(user);
-  res.status(201).json({ token, user: toPublicUser(user) });
+  res.status(201).json({
+    message: 'Account created. An admin will verify your account before you can sign in.',
+    pendingVerification: true,
+  });
 });
 
 export const login = asyncHandler(async (req, res) => {

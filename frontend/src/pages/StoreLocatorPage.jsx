@@ -63,7 +63,23 @@ function StoreLocatorPage() {
   }, [activeProject?.id]);
 
   const selectedStoreId = activeProject?.selectedStoreId ?? null;
-  const setSelectedStoreId = (id) => updateActiveProject({ selectedStoreId: id });
+  // Guarded centrally here rather than in each caller (list card + map
+  // marker both funnel through this one function) — an out-of-stock store
+  // can't actually fulfil the project, so Brand Selection was never built
+  // to handle one being chosen; explain why instead of silently selecting
+  // it (or silently doing nothing).
+  const setSelectedStoreId = (id) => {
+    const target = STORES.find((store) => store.id === id);
+    if (target && !target.inStock) {
+      addNotification({
+        type: 'store_selected',
+        title: 'Store unavailable',
+        description: `${target.name} is missing ${target.outOfStockMaterial ?? 'a required material'}. Choose a fully-stocked store to continue.`,
+      });
+      return;
+    }
+    updateActiveProject({ selectedStoreId: id });
+  };
 
   const selectedStore = STORES.find((store) => store.id === selectedStoreId) ?? null;
 

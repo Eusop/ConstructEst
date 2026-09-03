@@ -21,6 +21,7 @@ import { useSimulatedParsing } from '../features/projects/hooks/useSimulatedPars
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useToast } from '../context/ToastContext';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
 
@@ -117,6 +118,7 @@ function ProjectProcessingPage() {
   const { activeProject, deleteProject, activeProjectId } = useProjects();
   const { incrementEstimationsDone, logActivity } = useDashboardActivity();
   const { addNotification } = useNotifications();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const steps = buildSteps(activeProject ?? {});
   const hasFailed = activeProject?.status === 'Failed';
@@ -146,7 +148,9 @@ function ProjectProcessingPage() {
   }, [isComplete, hasFailed, navigate]);
 
   const handleCancel = () => {
-    if (activeProjectId) deleteProject(activeProjectId);
+    if (activeProjectId) {
+      deleteProject(activeProjectId).catch((error) => showToast(error.message || 'Could not discard this project.'));
+    }
     navigate(ROUTES.NEW_PROJECT);
   };
 

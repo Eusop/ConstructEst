@@ -12,6 +12,7 @@ import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import BrandMark from '../../components/BrandMark';
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { label: 'User Management', icon: GroupRoundedIcon, to: ADMIN_ROUTES.USERS },
   { label: 'Hardware Stores', icon: StorefrontRoundedIcon, to: ADMIN_ROUTES.STORES },
   { label: 'Materials & Brands', icon: CategoryRoundedIcon, to: ADMIN_ROUTES.MATERIALS },
+  { label: 'Activity Log', icon: HistoryRoundedIcon, to: ADMIN_ROUTES.ACTIVITY_LOG },
   { label: 'Estimation Settings', icon: TuneRoundedIcon, to: ADMIN_ROUTES.SETTINGS },
 ];
 
@@ -96,8 +98,9 @@ function NavRow({ item, open, active, onClick, onNavigate }) {
  * Admin Module sidebar — same width/collapse behavior, dark background,
  * and nav-row styling as the User Module's Sidebar (see layouts/Sidebar.jsx),
  * but with the Admin-only nav list (Dashboard, User Management, Hardware
- * Stores, Materials & Brands, Estimation Settings, Profile, Logout) and no
- * dependency on NotificationsContext, which the Admin layout doesn't mount.
+ * Stores, Materials & Brands, Activity Log, Estimation Settings, Profile,
+ * Logout) and no dependency on NotificationsContext, which the Admin layout
+ * doesn't mount.
  *
  * Responsive behavior mirrors the User Module's Sidebar exactly: desktop
  * (`md` and up) renders as a normal flex sibling that pushes content over;

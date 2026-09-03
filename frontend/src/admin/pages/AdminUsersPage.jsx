@@ -27,9 +27,10 @@ import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import EmptyState from '../components/EmptyState';
 import UserFormDialog from '../components/UserFormDialog';
+import TypedConfirmDialog from '../../components/TypedConfirmDialog';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
-import { listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive } from '../services/adminService';
+import { listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, verifyAdminUser } from '../services/adminService';
 import { getInitials } from '../../utils/getInitials';
 import { colors } from '../../theme/palette';
 
@@ -42,6 +43,17 @@ function avatarColorFor(id) {
 function formatDate(value) {
   if (!value) return '—';
   return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// A brand-new self-registered account (isVerified: false) reads as "Pending"
+// regardless of isActive — distinct from an existing account an admin
+// deliberately deactivated. See admin.controller.js's verifyUser /
+// auth.controller.js's register.
+function userStatus(user) {
+  if (!user.isVerified) return { label: 'Pending', bg: colors.iconOrangeBg, fg: colors.iconOrangeFg };
+  return user.isActive
+    ? { label: 'Active', bg: colors.iconGreenBg, fg: colors.iconGreenFg }
+    : { label: 'Inactive', bg: 'grey.100', fg: 'text.secondary' };
 }
 
 // Mobile-only rendering (below `md`). Was a 4-band card per user (avatar
@@ -86,15 +98,9 @@ function UserMobileCard({ user, onOpenMenu }) {
             }}
           />
           <Chip
-            label={user.isActive ? 'Active' : 'Inactive'}
+            label={userStatus(user).label}
             size="small"
-            sx={{
-              height: 20,
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              bgcolor: user.isActive ? colors.iconGreenBg : 'grey.100',
-              color: user.isActive ? colors.iconGreenFg : 'text.secondary',
-            }}
+            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: userStatus(user).bg, color: userStatus(user).fg }}
           />
         </Stack>
         <Typography sx={{ color: 'text.secondary', fontSize: '0.68rem', flexShrink: 0 }} noWrap>
@@ -120,6 +126,9 @@ function AdminUsersPage() {
   const [editingUser, setEditingUser] = useState(null);
   // Mobile-only row action menu (kebab) — see UserMobileCard above.
   const [rowMenu, setRowMenu] = useState(null);
+  // Both directions of the active/inactive toggle are gated behind a typed
+  // word (DEACTIVATE / REACTIVATE) — see handleToggleActive.
+  const [pendingToggleUser, setPendingToggleUser] = useState(null);
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
 
@@ -165,7 +174,7 @@ function AdminUsersPage() {
     load();
   };
 
-  const handleToggleActive = async (user) => {
+  const performToggleActive = async (user) => {
     await setAdminUserActive(user.id, !user.isActive);
     logActivity({
       message: `User ${user.isActive ? 'deactivated' : 'reactivated'}: ${user.userName}`,
@@ -175,6 +184,38 @@ function AdminUsersPage() {
     });
     showToast(user.isActive ? 'User deactivated' : 'User reactivated', user.isActive ? 'warning' : 'success');
     load();
+  };
+
+  const handleToggleActive = (user) => setPendingToggleUser(user);
+
+  const handleConfirmToggle = async () => {
+    try {
+      await performToggleActive(pendingToggleUser);
+      setPendingToggleUser(null);
+    } catch (error) {
+      const verb = pendingToggleUser.isActive ? 'deactivate' : 'reactivate';
+      showToast(error.message || `Could not ${verb} this user. Try again.`, 'warning');
+      throw error;
+    }
+  };
+
+  // Approving a pending self-registered account — a plain one-click action
+  // (not gated behind a typed word like deactivate/reactivate): this *is*
+  // the review step itself, not a destructive action on an existing account.
+  const handleVerify = async (user) => {
+    try {
+      await verifyAdminUser(user.id);
+      logActivity({
+        message: `Verified user account: ${user.userName}`,
+        icon: CheckCircleOutlineRoundedIcon,
+        iconBg: colors.iconGreenBg,
+        iconFg: colors.iconGreenFg,
+      });
+      showToast('User verified', 'success');
+      load();
+    } catch (error) {
+      showToast(error.message || 'Could not verify this user. Try again.', 'warning');
+    }
   };
 
   return (
@@ -310,13 +351,9 @@ function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={user.isActive ? 'Active' : 'Inactive'}
+                        label={userStatus(user).label}
                         size="small"
-                        sx={{
-                          fontWeight: 700,
-                          bgcolor: user.isActive ? colors.iconGreenBg : 'grey.100',
-                          color: user.isActive ? colors.iconGreenFg : 'text.secondary',
-                        }}
+                        sx={{ fontWeight: 700, bgcolor: userStatus(user).bg, color: userStatus(user).fg }}
                       />
                     </TableCell>
                     <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{formatDate(user.createdAt)}</TableCell>
@@ -327,11 +364,19 @@ function AdminUsersPage() {
                             <EditRoundedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
-                          <IconButton size="small" onClick={() => handleToggleActive(user)}>
-                            {user.isActive ? <BlockRoundedIcon fontSize="small" color="error" /> : <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />}
-                          </IconButton>
-                        </Tooltip>
+                        {!user.isVerified ? (
+                          <Tooltip title="Verify">
+                            <IconButton size="small" onClick={() => handleVerify(user)}>
+                              <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
+                            <IconButton size="small" onClick={() => handleToggleActive(user)}>
+                              {user.isActive ? <BlockRoundedIcon fontSize="small" color="error" /> : <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />}
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -344,6 +389,29 @@ function AdminUsersPage() {
       </Paper>
 
       <UserFormDialog open={dialogOpen} user={editingUser} onClose={() => setDialogOpen(false)} onSubmit={handleSubmit} />
+
+      <TypedConfirmDialog
+        key={pendingToggleUser?.id ?? 'closed'}
+        open={Boolean(pendingToggleUser)}
+        title={pendingToggleUser?.isActive ? 'Deactivate user' : 'Reactivate user'}
+        confirmWord={pendingToggleUser?.isActive ? 'DEACTIVATE' : 'REACTIVATE'}
+        message={
+          pendingToggleUser?.isActive ? (
+            <>
+              This locks <strong>&ldquo;{pendingToggleUser?.userName ?? ''}&rdquo;</strong> out of their account. They
+              can be reactivated later.
+            </>
+          ) : (
+            <>
+              This restores <strong>&ldquo;{pendingToggleUser?.userName ?? ''}&rdquo;</strong>&apos;s access to their
+              account.
+            </>
+          )
+        }
+        confirmLabel={pendingToggleUser?.isActive ? 'Yes, Deactivate' : 'Yes, Reactivate'}
+        onCancel={() => setPendingToggleUser(null)}
+        onConfirm={handleConfirmToggle}
+      />
 
       {/* Mobile only — opened from UserMobileCard's kebab button. */}
       <Menu anchorEl={rowMenu?.anchorEl} open={Boolean(rowMenu)} onClose={closeRowMenu} disableScrollLock>
@@ -358,21 +426,35 @@ function AdminUsersPage() {
           </ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleToggleActive(rowMenu.user);
-            closeRowMenu();
-          }}
-        >
-          <ListItemIcon>
-            {rowMenu?.user.isActive ? (
-              <BlockRoundedIcon fontSize="small" color="error" />
-            ) : (
+        {rowMenu && !rowMenu.user.isVerified ? (
+          <MenuItem
+            onClick={() => {
+              handleVerify(rowMenu.user);
+              closeRowMenu();
+            }}
+          >
+            <ListItemIcon>
               <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
-            )}
-          </ListItemIcon>
-          <ListItemText>{rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}</ListItemText>
-        </MenuItem>
+            </ListItemIcon>
+            <ListItemText>Verify</ListItemText>
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              handleToggleActive(rowMenu.user);
+              closeRowMenu();
+            }}
+          >
+            <ListItemIcon>
+              {rowMenu?.user.isActive ? (
+                <BlockRoundedIcon fontSize="small" color="error" />
+              ) : (
+                <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
+              )}
+            </ListItemIcon>
+            <ListItemText>{rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
     </Stack>
   );

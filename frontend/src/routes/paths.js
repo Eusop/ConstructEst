@@ -2,6 +2,8 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   SIGNUP: '/signup',
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
   DASHBOARD: '/dashboard',
   PROJECTS: '/projects',
   NEW_PROJECT: '/projects/new',
@@ -21,6 +23,7 @@ export const ADMIN_ROUTES = {
   USERS: '/admin/users',
   STORES: '/admin/stores',
   MATERIALS: '/admin/materials',
+  ACTIVITY_LOG: '/admin/activity-log',
   SETTINGS: '/admin/settings',
   PROFILE: '/admin/profile',
 };

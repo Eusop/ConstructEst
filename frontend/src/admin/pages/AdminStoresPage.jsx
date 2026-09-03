@@ -13,6 +13,7 @@ import MapView from '../../components/MapView';
 import EmptyState from '../components/EmptyState';
 import AddStoreDialog from '../components/AddStoreDialog';
 import StoreDetailsDialog from '../components/StoreDetailsDialog';
+import TypedConfirmDialog from '../../components/TypedConfirmDialog';
 import { useAdminStores } from '../context/AdminStoresContext';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
@@ -35,8 +36,10 @@ function AdminStoresPage() {
   const { showToast } = useAdminToast();
   const [addOpen, setAddOpen] = useState(false);
   const [detailsStoreId, setDetailsStoreId] = useState(null);
+  const [pendingRemoveId, setPendingRemoveId] = useState(null);
 
   const detailsStore = stores.find((store) => store.id === detailsStoreId) ?? null;
+  const pendingRemoveStore = stores.find((store) => store.id === pendingRemoveId) ?? null;
 
   useEffect(() => {
     if (detailsStoreId != null) ensureStoreCatalogLoaded(detailsStoreId);
@@ -67,12 +70,22 @@ function AdminStoresPage() {
     }
   };
 
-  const handleRemove = (storeId) => {
-    const store = stores.find((item) => item.id === storeId);
-    removeStore(storeId);
-    logActivity({ message: `Hardware store removed: ${store?.name ?? ''}`, icon: StorefrontRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg });
-    showToast('Store removed', 'warning');
+  const handleRemoveRequest = (storeId) => {
     setDetailsStoreId(null);
+    setPendingRemoveId(storeId);
+  };
+
+  const handleConfirmRemove = async () => {
+    const store = pendingRemoveStore;
+    try {
+      await removeStore(pendingRemoveId);
+      logActivity({ message: `Hardware store removed: ${store?.name ?? ''}`, icon: StorefrontRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg });
+      showToast('Store removed', 'warning');
+      setPendingRemoveId(null);
+    } catch (error) {
+      showToast(error.message || 'Could not remove store. Try again.', 'warning');
+      throw error;
+    }
   };
 
   return (
@@ -167,7 +180,21 @@ function AdminStoresPage() {
         store={detailsStore}
         onClose={() => setDetailsStoreId(null)}
         onSetActive={setActiveStoreId}
-        onRemove={handleRemove}
+        onRemoveRequest={handleRemoveRequest}
+      />
+      <TypedConfirmDialog
+        key={pendingRemoveId ?? 'closed'}
+        open={Boolean(pendingRemoveId)}
+        title="Remove store"
+        message={
+          <>
+            This permanently removes <strong>&ldquo;{pendingRemoveStore?.name ?? ''}&rdquo;</strong> and all of its
+            configured materials and prices. This can&apos;t be undone.
+          </>
+        }
+        confirmLabel="Yes, Remove"
+        onCancel={() => setPendingRemoveId(null)}
+        onConfirm={handleConfirmRemove}
       />
     </Stack>
   );

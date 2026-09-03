@@ -17,6 +17,9 @@ export const updateAdminUser = (id, body) => apiRequest(`/admin/users/${id}`, { 
 export const setAdminUserActive = (id, isActive) =>
   apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', body: { isActive } });
 
+/** Approves a pending self-registered account — sets it verified + active in one step. */
+export const verifyAdminUser = (id) => apiRequest(`/admin/users/${id}/verify`, { method: 'PATCH' });
+
 export const getGlobalConstants = () => apiRequest('/admin/estimation-constants');
 
 export const updateGlobalConstants = (body) => apiRequest('/admin/estimation-constants', { method: 'PUT', body });
@@ -59,3 +62,16 @@ export const setStoreMaterialPrice = (storeId, materialBrandId, body) =>
  * untouched, so it stays available to price at other stores). */
 export const removeStoreMaterialPrice = (storeId, materialBrandId) =>
   apiRequest(`/admin/stores/${storeId}/materials/${materialBrandId}`, { method: 'DELETE' });
+
+// --- Activity backlog --------------------------------------------------
+
+/** Read-only, persisted admin audit trail — see admin.controller.js's
+ * logAdminActivity for what writes to it (never the client directly).
+ * @param {{ category?: 'user_management' | 'store_management', limit?: number }} [params]
+ */
+export const listAdminActivityLog = (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null),
+  ).toString();
+  return apiRequest(`/admin/activity-log${query ? `?${query}` : ''}`);
+};

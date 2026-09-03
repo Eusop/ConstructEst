@@ -7,8 +7,9 @@ import Button from '@mui/material/Button';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ProjectCard from '../features/projects/components/ProjectCard';
 import EmptyProjectsState from '../features/projects/components/EmptyProjectsState';
-import DeleteProjectDialog from '../features/projects/components/DeleteProjectDialog';
+import TypedConfirmDialog from '../components/TypedConfirmDialog';
 import { useProjects } from '../context/ProjectsContext';
+import { useToast } from '../context/ToastContext';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
 
@@ -20,12 +21,20 @@ import { colors } from '../theme/palette';
  */
 function ProjectsPage() {
   const { projects, activeProjectId, setActiveProject, deleteProject } = useProjects();
+  const { showToast } = useToast();
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const navigate = useNavigate();
 
-  const handleConfirmDelete = () => {
-    deleteProject(pendingDeleteId);
-    setPendingDeleteId(null);
+  const pendingDeleteProject = projects.find((project) => project.id === pendingDeleteId) ?? null;
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteProject(pendingDeleteId);
+      setPendingDeleteId(null);
+    } catch (error) {
+      showToast(error.message || 'Could not delete this project. Please try again.');
+      throw error;
+    }
   };
 
   const handleSelectProject = (projectId) => {
@@ -75,8 +84,17 @@ function ProjectsPage() {
         </Stack>
       )}
 
-      <DeleteProjectDialog
+      <TypedConfirmDialog
+        key={pendingDeleteId ?? 'closed'}
         open={Boolean(pendingDeleteId)}
+        title="Delete project"
+        message={
+          <>
+            This permanently deletes <strong>&ldquo;{pendingDeleteProject?.projectName ?? ''}&rdquo;</strong> and
+            everything computed for it. This can&apos;t be undone.
+          </>
+        }
+        confirmLabel="Yes, Delete"
         onCancel={() => setPendingDeleteId(null)}
         onConfirm={handleConfirmDelete}
       />

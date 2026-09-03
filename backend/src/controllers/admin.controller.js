@@ -6,11 +6,54 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
 import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
 
+// --- Admin activity backlog -------------------------------------------------
+// Persisted, append-only audit trail for Admin Module actions — categorized
+// into 'user_management' / 'store_management' (see the Admin Activity Log
+// page). Called after each mutation below succeeds. Deliberately no
+// UPDATE/DELETE route is ever exposed for admin_activity_log — immutability,
+// even to the admin, is structural, not just a missing UI button.
+async function logAdminActivity(adminUserId, category, action, message, metadata = null) {
+  await query(
+    `INSERT INTO admin_activity_log (admin_user_id, category, action, message, metadata) VALUES (?, ?, ?, ?, ?)`,
+    [adminUserId, category, action, message, metadata ? JSON.stringify(metadata) : null],
+  );
+}
+
+export const listAdminActivity = asyncHandler(async (req, res) => {
+  const { category } = req.query;
+  if (category && !['user_management', 'store_management'].includes(category)) {
+    throw new HttpError(400, 'category must be "user_management" or "store_management".');
+  }
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+
+  const rows = await query(
+    `SELECT al.*, u.first_name, u.last_name
+     FROM admin_activity_log al
+     JOIN users u ON u.id = al.admin_user_id
+     ${category ? 'WHERE al.category = ?' : ''}
+     ORDER BY al.created_at DESC
+     LIMIT ?`,
+    category ? [category, limit] : [limit],
+  );
+
+  res.json({
+    entries: rows.map((row) => ({
+      id: row.id,
+      category: row.category,
+      action: row.action,
+      message: row.message,
+      metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+      adminName: `${row.first_name} ${row.last_name}`.trim(),
+      createdAt: row.created_at,
+    })),
+  });
+});
+
 // --- Users -------------------------------------------------------------
 
 export const listUsers = asyncHandler(async (req, res) => {
   const users = await query('SELECT * FROM users ORDER BY created_at DESC');
-  res.json({ users: users.map((u) => ({ ...toPublicUser(u), isActive: Boolean(u.is_active) })) });
+  res.json({ users: users.map((u) => ({ ...toPublicUser(u), isActive: Boolean(u.is_active), isVerified: Boolean(u.is_verified) })) });
 });
 
 export const createUser = asyncHandler(async (req, res) => {
@@ -27,6 +70,7 @@ export const createUser = asyncHandler(async (req, res) => {
     [firstName, lastName, userId, email, passwordHash, accessRole],
   );
   const [user] = await query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+  await logAdminActivity(req.user.id, 'user_management', 'user_created', `Created user account: ${firstName} ${lastName} (${userId})`);
   res.status(201).json({ user: toPublicUser(user) });
 });
 
@@ -34,12 +78,13 @@ export const updateUser = asyncHandler(async (req, res) => {
   const { firstName, lastName, email, accessRole } = req.body;
   const fields = [];
   const params = [];
-  if (firstName !== undefined) { fields.push('first_name = ?'); params.push(firstName); }
-  if (lastName !== undefined) { fields.push('last_name = ?'); params.push(lastName); }
-  if (email !== undefined) { fields.push('email = ?'); params.push(email); }
+  const changedFields = [];
+  if (firstName !== undefined) { fields.push('first_name = ?'); params.push(firstName); changedFields.push('name'); }
+  if (lastName !== undefined) { fields.push('last_name = ?'); params.push(lastName); if (!changedFields.includes('name')) changedFields.push('name'); }
+  if (email !== undefined) { fields.push('email = ?'); params.push(email); changedFields.push('email'); }
   if (accessRole !== undefined) {
     if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
-    fields.push('access_role = ?'); params.push(accessRole);
+    fields.push('access_role = ?'); params.push(accessRole); changedFields.push('role');
   }
   if (fields.length === 0) throw new HttpError(400, 'No fields to update.');
 
@@ -47,13 +92,31 @@ export const updateUser = asyncHandler(async (req, res) => {
   await query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
   const [user] = await query('SELECT * FROM users WHERE id = ?', [req.params.id]);
   if (!user) throw new HttpError(404, 'User not found.');
+  await logAdminActivity(req.user.id, 'user_management', 'user_updated', `Updated user: ${user.first_name} ${user.last_name} (${changedFields.join(', ')})`);
   res.json({ user: toPublicUser(user) });
 });
 
 export const setUserActive = asyncHandler(async (req, res) => {
   const { isActive } = req.body;
+  const [target] = await query('SELECT first_name, last_name FROM users WHERE id = ?', [req.params.id]);
+  if (!target) throw new HttpError(404, 'User not found.');
   await query('UPDATE users SET is_active = ? WHERE id = ?', [isActive ? 1 : 0, req.params.id]);
+  const name = `${target.first_name} ${target.last_name}`;
+  await logAdminActivity(
+    req.user.id,
+    'user_management',
+    isActive ? 'user_reactivated' : 'user_deactivated',
+    `${isActive ? 'Reactivated' : 'Deactivated'} user: ${name}`,
+  );
   res.json({ message: isActive ? 'User reactivated.' : 'User deactivated.' });
+});
+
+export const verifyUser = asyncHandler(async (req, res) => {
+  const [target] = await query('SELECT first_name, last_name FROM users WHERE id = ?', [req.params.id]);
+  if (!target) throw new HttpError(404, 'User not found.');
+  await query('UPDATE users SET is_verified = 1, is_active = 1 WHERE id = ?', [req.params.id]);
+  await logAdminActivity(req.user.id, 'user_management', 'user_verified', `Verified user account: ${target.first_name} ${target.last_name}`);
+  res.json({ message: 'User verified.' });
 });
 
 // --- Material brands -----------------------------------------------------
@@ -74,6 +137,7 @@ export const createMaterial = asyncHandler(async (req, res) => {
     [materialKey, materialName, unit, brand, spec || null, basePrice, quality || null, category || null, isCommodity ? 1 : 0],
   );
   const [material] = await query('SELECT * FROM material_brands WHERE id = ?', [result.insertId]);
+  await logAdminActivity(req.user.id, 'store_management', 'brand_created', `Added brand: ${brand} (${materialName})`);
   res.status(201).json({ material });
 });
 
@@ -95,11 +159,15 @@ export const updateMaterial = asyncHandler(async (req, res) => {
   await query(`UPDATE material_brands SET ${fields.join(', ')} WHERE id = ?`, params);
   const [material] = await query('SELECT * FROM material_brands WHERE id = ?', [req.params.id]);
   if (!material) throw new HttpError(404, 'Material brand not found.');
+  await logAdminActivity(req.user.id, 'store_management', 'brand_updated', `Updated brand: ${material.brand} (${material.material_name})`);
   res.json({ material });
 });
 
 export const deleteMaterial = asyncHandler(async (req, res) => {
+  const [target] = await query('SELECT brand, material_name FROM material_brands WHERE id = ?', [req.params.id]);
   await query('DELETE FROM material_brands WHERE id = ?', [req.params.id]);
+  const label = target ? `${target.brand} (${target.material_name})` : `#${req.params.id}`;
+  await logAdminActivity(req.user.id, 'store_management', 'brand_deleted', `Deleted brand: ${label}`);
   res.status(204).end();
 });
 
@@ -110,6 +178,7 @@ export const createStore = asyncHandler(async (req, res) => {
   if (!name || !address || lat == null || lng == null) throw new HttpError(400, 'name, address, lat, and lng are required.');
   const result = await query('INSERT INTO stores (name, address, lat, lng) VALUES (?, ?, ?, ?)', [name, address, lat, lng]);
   const [store] = await query('SELECT * FROM stores WHERE id = ?', [result.insertId]);
+  await logAdminActivity(req.user.id, 'store_management', 'store_created', `Added hardware store: ${name}`);
   res.status(201).json({ store });
 });
 
@@ -117,22 +186,27 @@ export const updateStore = asyncHandler(async (req, res) => {
   const { name, address, lat, lng } = req.body;
   const fields = [];
   const params = [];
-  const set = (col, val) => { if (val !== undefined) { fields.push(`${col} = ?`); params.push(val); } };
-  set('name', name);
-  set('address', address);
-  set('lat', lat);
-  set('lng', lng);
+  const changedFields = [];
+  const set = (col, val, label) => { if (val !== undefined) { fields.push(`${col} = ?`); params.push(val); changedFields.push(label); } };
+  set('name', name, 'name');
+  set('address', address, 'address');
+  set('lat', lat, 'location');
+  set('lng', lng, 'location');
   if (fields.length === 0) throw new HttpError(400, 'No fields to update.');
 
   params.push(req.params.id);
   await query(`UPDATE stores SET ${fields.join(', ')} WHERE id = ?`, params);
   const [store] = await query('SELECT * FROM stores WHERE id = ?', [req.params.id]);
   if (!store) throw new HttpError(404, 'Store not found.');
+  const uniqueFields = [...new Set(changedFields)];
+  await logAdminActivity(req.user.id, 'store_management', 'store_updated', `Updated store: ${store.name} (${uniqueFields.join(', ')})`);
   res.json({ store });
 });
 
 export const deleteStore = asyncHandler(async (req, res) => {
+  const [target] = await query('SELECT name FROM stores WHERE id = ?', [req.params.id]);
   await query('DELETE FROM stores WHERE id = ?', [req.params.id]);
+  await logAdminActivity(req.user.id, 'store_management', 'store_removed', `Removed hardware store: ${target?.name ?? `#${req.params.id}`}`);
   res.status(204).end();
 });
 
@@ -184,18 +258,44 @@ export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { price, inStock = true } = req.body;
   if (price == null) throw new HttpError(400, 'price is required.');
 
+  const [[store], [brand], [existing]] = await Promise.all([
+    query('SELECT name FROM stores WHERE id = ?', [storeId]),
+    query('SELECT brand, material_name FROM material_brands WHERE id = ?', [materialBrandId]),
+    query('SELECT price FROM store_material_prices WHERE store_id = ? AND material_brand_id = ?', [storeId, materialBrandId]),
+  ]);
+
   await query(
     `INSERT INTO store_material_prices (store_id, material_brand_id, price, in_stock)
      VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE price = VALUES(price), in_stock = VALUES(in_stock)`,
     [storeId, materialBrandId, price, inStock ? 1 : 0],
   );
+
+  const brandLabel = brand ? `${brand.brand} (${brand.material_name})` : `brand #${materialBrandId}`;
+  const storeLabel = store?.name ?? `store #${storeId}`;
+  const message = existing
+    ? `Changed price of ${brandLabel} at ${storeLabel} from ₱${Number(existing.price).toFixed(2)} to ₱${Number(price).toFixed(2)}`
+    : `Set price of ${brandLabel} at ${storeLabel} to ₱${Number(price).toFixed(2)}`;
+  await logAdminActivity(req.user.id, 'store_management', 'store_price_changed', message, {
+    storeId: Number(storeId),
+    materialBrandId: Number(materialBrandId),
+    previousPrice: existing ? Number(existing.price) : null,
+    newPrice: Number(price),
+    inStock: Boolean(inStock),
+  });
+
   res.json({ message: 'Store price saved.' });
 });
 
 export const removeStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { storeId, materialBrandId } = req.params;
+  const [[store], [brand]] = await Promise.all([
+    query('SELECT name FROM stores WHERE id = ?', [storeId]),
+    query('SELECT brand, material_name FROM material_brands WHERE id = ?', [materialBrandId]),
+  ]);
   await query('DELETE FROM store_material_prices WHERE store_id = ? AND material_brand_id = ?', [storeId, materialBrandId]);
+  const brandLabel = brand ? `${brand.brand} (${brand.material_name})` : `brand #${materialBrandId}`;
+  await logAdminActivity(req.user.id, 'store_management', 'store_price_removed', `Unassigned ${brandLabel} from ${store?.name ?? `store #${storeId}`}`);
   res.status(204).end();
 });
 

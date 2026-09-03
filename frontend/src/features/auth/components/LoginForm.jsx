@@ -14,6 +14,7 @@ import FormTextField from '../../../components/FormTextField';
 import PasswordField from '../../../components/PasswordField';
 import { loginRequest } from '../../../services/authService';
 import { useUser } from '../../../context/UserContext';
+import { useToast } from '../../../context/ToastContext';
 import { ROUTES, ADMIN_ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
 import { isRequired } from '../../../utils/validators';
@@ -39,23 +40,42 @@ function validate(form) {
 function LoginForm() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
-  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { setCurrentUser, updateProfile } = useUser();
+  const { showToast } = useToast();
+
+  // Computed live from `form` every render (not stored in state) so a
+  // shown error updates as you keep typing, rather than freezing until the
+  // next submit click — see SignUpForm.jsx for the same pattern.
+  const errors = validate(form);
+  // Shows the instant there's content, not gated on blur alone — a browser
+  // autofilling saved login credentials never fires a real blur event
+  // (see SignUpForm.jsx for the same fix and fuller explanation).
+  const showError = (field) => {
+    const hasContent = form[field]?.trim().length > 0;
+    return Boolean(errors[field]) && (hasContent || touched[field] || submitAttempted);
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleBlur = (event) => {
+    setTouched((prev) => ({ ...prev, [event.target.name]: true }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const validationErrors = validate(form);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+    setSubmitAttempted(true);
+    if (Object.keys(errors).length > 0) {
+      showToast('Please fix the highlighted fields before continuing.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -63,6 +83,8 @@ function LoginForm() {
       setCurrentUser(user.userName, user.accessRole);
       updateProfile({ id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl });
       navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
+    } catch (error) {
+      showToast(error.message || 'Could not sign in. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -89,8 +111,9 @@ function LoginForm() {
             icon={<PersonRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
             value={form.identifier}
             onChange={handleChange}
-            error={Boolean(errors.identifier)}
-            helperText={errors.identifier || ' '}
+            onBlur={handleBlur}
+            error={Boolean(showError('identifier'))}
+            helperText={showError('identifier') || ' '}
           />
         </Box>
 
@@ -111,8 +134,9 @@ function LoginForm() {
             icon={<LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
             value={form.password}
             onChange={handleChange}
-            error={Boolean(errors.password)}
-            helperText={errors.password || ' '}
+            onBlur={handleBlur}
+            error={Boolean(showError('password'))}
+            helperText={showError('password') || ' '}
           />
         </Box>
 

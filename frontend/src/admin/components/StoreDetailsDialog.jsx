@@ -24,7 +24,7 @@ import { colors } from '../../theme/palette';
  * quick stats plus "Set active & manage", which is the required hand-off
  * into Materials & Brands (see requirement 9's Store -> Materials flow).
  */
-function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
+function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemoveRequest }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   if (!store) return null;
@@ -128,7 +128,7 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemove }) {
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'space-between' }}>
         <Button
-          onClick={() => onRemove(store.id)}
+          onClick={() => onRemoveRequest(store.id)}
           aria-label="Remove store"
           startIcon={<DeleteOutlineRoundedIcon />}
           sx={{

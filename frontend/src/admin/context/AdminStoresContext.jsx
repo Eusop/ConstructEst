@@ -4,6 +4,7 @@ import {
   listAdminStores, createAdminStore, deleteAdminStore, getStoreCatalog,
   createAdminMaterial, updateAdminMaterial, setStoreMaterialPrice, removeStoreMaterialPrice,
 } from '../services/adminService';
+import { useAdminToast } from './AdminToastContext';
 
 const AdminStoresContext = createContext(null);
 
@@ -66,12 +67,13 @@ function projectCatalog(catalogGroups) {
 export function AdminStoresProvider({ children }) {
   const [stores, setStores] = useState([]);
   const [activeStoreId, setActiveStoreIdState] = useState(null);
+  const { showToast } = useAdminToast();
 
   useEffect(() => {
     listAdminStores()
       .then(({ stores: rows }) => setStores(rows.map((row) => ({ ...row, materialKeys: null, materialData: {} }))))
-      .catch(() => {});
-  }, []);
+      .catch(() => showToast('Could not load hardware stores. Try refreshing the page.', 'warning'));
+  }, [showToast]);
 
   const patchStore = useCallback((storeId, patch) => {
     setStores((prev) => prev.map((store) => (store.id === storeId ? { ...store, ...patch } : store)));
@@ -91,8 +93,10 @@ export function AdminStoresProvider({ children }) {
 
   const setActiveStoreId = useCallback((storeId) => {
     setActiveStoreIdState(storeId);
-    if (storeId != null) loadStoreCatalog(storeId).catch(() => {});
-  }, [loadStoreCatalog]);
+    if (storeId != null) {
+      loadStoreCatalog(storeId).catch(() => showToast('Could not load this store’s materials. Try again.', 'warning'));
+    }
+  }, [loadStoreCatalog, showToast]);
 
   // For UI that needs to read a store's materialKeys/materialData without
   // making it the active store (e.g. StoreDetailsDialog, opened from either
@@ -100,8 +104,10 @@ export function AdminStoresProvider({ children }) {
   // loaded, so it's safe to call on every render of that dialog.
   const ensureStoreCatalogLoaded = useCallback((storeId) => {
     const store = stores.find((s) => s.id === storeId);
-    if (store && store.materialKeys === null) loadStoreCatalog(storeId).catch(() => {});
-  }, [stores, loadStoreCatalog]);
+    if (store && store.materialKeys === null) {
+      loadStoreCatalog(storeId).catch(() => showToast('Could not load this store’s materials. Try again.', 'warning'));
+    }
+  }, [stores, loadStoreCatalog, showToast]);
 
   const addStore = useCallback(async ({ name, address, lat, lng }) => {
     const { store } = await createAdminStore({ name, address, lat, lng });
@@ -111,10 +117,16 @@ export function AdminStoresProvider({ children }) {
     return newStore;
   }, []);
 
-  const removeStore = useCallback((storeId) => {
+  // Awaits the real DELETE before touching local state — see
+  // ProjectsContext.jsx's deleteProject for why this can't be optimistic:
+  // a rejected delete needs to leave the store in place and tell the admin
+  // why, not silently vanish it from the screen while it's still in the
+  // database (and worse here, previously the caller unconditionally showed
+  // a "Store removed" success toast even when this failed).
+  const removeStore = useCallback(async (storeId) => {
+    await deleteAdminStore(storeId);
     setStores((prev) => prev.filter((store) => store.id !== storeId));
     setActiveStoreIdState((prev) => (prev === storeId ? null : prev));
-    deleteAdminStore(storeId).catch(() => {});
   }, []);
 
   const findCatalogGroup = useCallback(

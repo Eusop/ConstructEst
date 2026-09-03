@@ -21,6 +21,10 @@ CREATE TABLE users (
   access_role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
   avatar_url VARCHAR(500) NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
+  -- Self-registered accounts start unverified (register sets this to 0
+  -- explicitly); admin-created accounts and every pre-existing row take the
+  -- column default (1) — see db/migrations/008_users_is_verified.sql.
+  is_verified TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -220,4 +224,22 @@ CREATE TABLE activity_log (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_activity_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Admin activity backlog — a separate, persisted, append-only audit trail
+-- for Admin Module actions (distinct from the User Module's activity_log
+-- above). Categorized into User Management / Store Management (see the
+-- Admin Activity Log page). No UPDATE/DELETE route is ever exposed for this
+-- table — immutability, even to the admin, is structural.
+-- ---------------------------------------------------------------------------
+CREATE TABLE admin_activity_log (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  admin_user_id INT UNSIGNED NOT NULL,
+  category ENUM('user_management', 'store_management') NOT NULL,
+  action VARCHAR(50) NOT NULL,
+  message VARCHAR(500) NOT NULL,
+  metadata JSON NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_admin_activity_admin FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

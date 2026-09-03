@@ -16,6 +16,7 @@ import PersonalInformationSection from '../features/profile/components/PersonalI
 import ChangePasswordSection from '../features/profile/components/ChangePasswordSection';
 import { useUser } from '../context/UserContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
 import { colors } from '../theme/palette';
@@ -53,7 +54,7 @@ function validate(form) {
     if (!isRequired(form.newPassword)) {
       errors.newPassword = 'New password is required';
     } else if (!isStrongPassword(form.newPassword)) {
-      errors.newPassword = 'Use at least 8 characters with a mix of letters, numbers, and symbols';
+      errors.newPassword = '8–16 characters with uppercase, lowercase, a number, and a special character';
     }
 
     if (!isRequired(form.confirmPassword)) {
@@ -83,6 +84,7 @@ function ProfilePage() {
   const profile = useUser();
   const { updateProfile } = profile;
   const { addNotification } = useNotifications();
+  const { showToast } = useToast();
   const isMobile = useIsMobile();
 
   const [savedForm, setSavedForm] = useState(() => buildForm(profile));
@@ -122,7 +124,10 @@ function ProfilePage() {
       newPassword: true,
       confirmPassword: true,
     });
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      showToast('Please fix the highlighted fields before saving.');
+      return;
+    }
 
     updateProfile({ userName: form.fullName, username: form.username, email: form.email });
     addNotification({
