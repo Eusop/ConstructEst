@@ -224,17 +224,40 @@ function StoreLocatorPage() {
           </Paper>
         </Box>
 
-        <Stack spacing={1.5} sx={{ flex: { md: 2 }, width: '100%' }}>
-          {STORES.map((store) => (
-            <StoreListCard
-              key={store.id}
-              store={store}
-              badgeColor={badgeColorFor(store)}
-              selected={store.id === selectedStoreId}
-              onSelect={() => setSelectedStoreId(store.id)}
-            />
-          ))}
-        </Stack>
+        <Box sx={{ flex: { md: 2 }, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              bgcolor: 'common.white',
+              boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
+              p: 1.5,
+              flex: 1,
+              minHeight: { xs: 260, md: 420 },
+              // Without its own bounded height + scroll, this list had no
+              // ceiling and just grew past its row's actual height — the
+              // "Continue to Brand Selection" button below (rendered right
+              // after that row ends, per its own determined height) then
+              // visually landed on top of whichever cards were still
+              // overflowing past that boundary. Matches the map's own
+              // Paper treatment on the left, so the two columns now behave
+              // (and look) the same way instead of only one being a card.
+              overflow: 'auto',
+            }}
+          >
+            <Stack spacing={1.5}>
+              {STORES.map((store) => (
+                <StoreListCard
+                  key={store.id}
+                  store={store}
+                  badgeColor={badgeColorFor(store)}
+                  selected={store.id === selectedStoreId}
+                  onSelect={() => setSelectedStoreId(store.id)}
+                />
+              ))}
+            </Stack>
+          </Paper>
+        </Box>
       </Stack>
 
       <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>

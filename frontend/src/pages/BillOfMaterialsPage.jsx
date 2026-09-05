@@ -149,6 +149,13 @@ function BillOfMaterialsPage() {
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
           p: { xs: 1.5, md: 4 },
+          // 'auto' rather than leaving overflow unset (default 'visible') —
+          // without a scroll boundary, this card renders shorter than its
+          // actual content (table + cost summary) once flex-sized, and the
+          // table's later rows/the summary box spill past the white card's
+          // bottom edge instead of scrolling within it (same risk as
+          // ManualBrandTable.jsx's identical Paper shape).
+          overflow: 'auto',
           flex: 1,
           minHeight: 0,
         }}

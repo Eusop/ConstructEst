@@ -152,7 +152,12 @@ function BrandSelectionPage() {
       </Stack>
 
       {mode === 'automatic' ? (
-        <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
+        // No flex:1/minHeight:0 here (unlike the manual branch below) — both
+        // children are natural-height content, not a bounded scroll panel,
+        // so forcing this wrapper to shrink to the outer Stack's flex share
+        // let it compute shorter than the actual card grid, spilling the
+        // "Continue" button below on top of the still-overflowing cards.
+        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
           <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} />
           <RecommendedBrandsSummary tierKey={tier} grandTotal={grandTotal} storeId={storeId} />
         </Stack>
@@ -237,7 +242,7 @@ function BrandSelectionPage() {
       )}
 
       {mode === 'automatic' && (
-        <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' }, pb: { xs: 2, sm: 3 } }}>
           <Button
             onClick={handleContinue}
             variant="contained"

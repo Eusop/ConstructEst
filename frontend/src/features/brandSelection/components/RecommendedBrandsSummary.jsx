@@ -116,8 +116,6 @@ function RecommendedBrandsSummary({ tierKey, grandTotal, storeId }) {
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
         p: { xs: 2, md: 3 },
-        flex: 1,
-        minHeight: { xs: 0, md: 320 },
       }}
     >
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2.5 }}>

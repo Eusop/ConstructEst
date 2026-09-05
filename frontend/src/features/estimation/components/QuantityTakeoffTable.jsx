@@ -147,6 +147,18 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
         flex: 1,
         minWidth: 0,
         minHeight: { xs: 0, md: 420 },
+        // A flex column so the header (Total/By source toggle) and footer
+        // (factors banner + Continue button) stay pinned at their natural
+        // height while only the middle content area scrolls internally —
+        // without this, the Paper's own fixed flex-computed height (now
+        // that the page shell has a real height ceiling — see
+        // DashboardLayout.jsx) combined with `overflow: hidden` above just
+        // clipped the footer outright whenever the "Total" view's full,
+        // ungrouped row list ran taller than the card (the "By source"
+        // view's collapsed-by-default accordions rarely hit this, which is
+        // why the button only seemed to vanish in one of the two views).
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {/* Always available, not just for 2-storey/two-file projects — every
@@ -158,7 +170,7 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1}
-        sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', p: { xs: 1.5, sm: 2.5 }, pb: { xs: 0.5, sm: 1 } }}
+        sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', p: { xs: 1.5, sm: 2.5 }, pb: { xs: 0.5, sm: 1 }, flexShrink: 0 }}
       >
         <ToggleButtonGroup
           value={viewMode}
@@ -190,6 +202,7 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
         )}
       </Stack>
 
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
       {viewMode === 'bySource' ? (
         <Stack spacing={1.25} sx={{ p: { xs: 1.5, sm: 2.5 } }}>
           {sourceGroups.map((group) => (
@@ -287,13 +300,14 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
           </Box>
         </>
       )}
+      </Box>
 
-      <Divider />
+      <Divider sx={{ flexShrink: 0 }} />
 
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
-        sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, p: { xs: 2.5, md: 3 } }}
+        sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, p: { xs: 2.5, md: 3 }, flexShrink: 0 }}
       >
         <FactorsAppliedBanner factors={factors} />
 
