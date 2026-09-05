@@ -8,6 +8,12 @@ import Divider from '@mui/material/Divider';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
+import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import FormTextField from '../../../components/FormTextField';
@@ -43,6 +49,7 @@ function LoginForm() {
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingApprovalOpen, setPendingApprovalOpen] = useState(false);
   const navigate = useNavigate();
   const { setCurrentUser, updateProfile } = useUser();
   const { showToast } = useToast();
@@ -84,7 +91,15 @@ function LoginForm() {
       updateProfile({ id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl });
       navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
     } catch (error) {
-      showToast(error.message || 'Could not sign in. Please try again.');
+      // Pending approval gets its own overlay, not the usual toast — it's
+      // not really "wrong credentials" (the toast's implication), and it's
+      // worth more than a few seconds on screen since it explains why
+      // nothing else the user tries here will work yet.
+      if (error.code === 'PENDING_VERIFICATION') {
+        setPendingApprovalOpen(true);
+      } else {
+        showToast(error.message || 'Could not sign in. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -178,6 +193,31 @@ function LoginForm() {
           </Link>
         </Typography>
       </Stack>
+
+      <Dialog open={pendingApprovalOpen} onClose={() => setPendingApprovalOpen(false)} disableScrollLock maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.25, fontWeight: 700 }}>
+          <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: colors.iconOrangeBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <HourglassTopRoundedIcon sx={{ color: colors.iconOrangeFg, fontSize: 18 }} />
+          </Box>
+          Account pending approval
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'text.primary' }}>
+            Your account has been created, but an admin needs to review and approve it before you can sign in.
+            There&apos;s nothing more to do on your end — try again once you&apos;ve been notified it&apos;s approved.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setPendingApprovalOpen(false)}
+            variant="contained"
+            disableElevation
+            sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+          >
+            Got it
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -30,13 +30,25 @@ export function errorHandler(err, req, res, next) {
 
   const status = err.status || 500;
   const message = status === 500 ? 'Something went wrong on our end.' : err.message;
-  return res.status(status).json({ message });
+  const body = { message };
+  // `code` here is an app-level HttpError code (e.g. 'PENDING_VERIFICATION',
+  // see auth.controller.js's login) — not the MySQL driver's err.code
+  // checked above — so the frontend can branch on a stable identifier
+  // instead of matching message text, which a wording change would
+  // silently break. Guarded to real HttpErrors only: a raw 500 could carry
+  // an unrelated system error code (e.g. 'ECONNREFUSED') that has no
+  // business leaking into a response body.
+  if (err.code && status !== 500) body.code = err.code;
+  return res.status(status).json(body);
 }
 
-/** Small helper for controllers: `throw new HttpError(400, 'message')`. */
+/** Small helper for controllers: `throw new HttpError(400, 'message')` —
+ * or `throw new HttpError(403, 'message', 'SOME_CODE')` when the frontend
+ * needs to branch on this specific error rather than just display it. */
 export class HttpError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }

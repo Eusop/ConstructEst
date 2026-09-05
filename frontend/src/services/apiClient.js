@@ -8,9 +8,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const TOKEN_KEY = 'constructest_token';
 
 export class ApiError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -54,7 +55,7 @@ export async function apiRequest(path, { method = 'GET', body, isMultipart = fal
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, data?.message || `Request failed (${response.status}).`);
+    throw new ApiError(response.status, data?.message || `Request failed (${response.status}).`, data?.code);
   }
 
   return data;

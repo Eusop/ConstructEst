@@ -62,6 +62,15 @@ CREATE TABLE estimation_results (
   floor_area DECIMAL(10, 2) NULL,          -- m^2
   roof_area DECIMAL(10, 2) NULL,           -- m^2
   rooms_detected SMALLINT UNSIGNED NULL,
+  -- Additional detail the DXF engine already computes alongside the figures
+  -- above — see engine/formulas.py's `measurements` dict and the "Detailed
+  -- extraction information" section on the Results page.
+  door_area DECIMAL(10, 2) NULL,           -- m^2
+  window_area DECIMAL(10, 2) NULL,         -- m^2
+  column_count SMALLINT UNSIGNED NULL,
+  floor_perimeter DECIMAL(10, 2) NULL,     -- meters
+  roof_perimeter DECIMAL(10, 2) NULL,      -- meters
+  roof_ridge_length DECIMAL(10, 2) NULL,   -- meters
   -- Per-floor breakdown, populated only when a real second-floor DXF was
   -- uploaded (see engine/formulas.py's geometry2/measurements.groundFloor
   -- and .secondFloor) — NULL for every single-file project.

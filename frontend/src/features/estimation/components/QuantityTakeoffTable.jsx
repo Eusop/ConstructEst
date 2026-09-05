@@ -129,11 +129,8 @@ function buildMaterials(storeys) {
  * @param {number} props.storeys Used to label the CHB basis (e.g. "(2 flr)").
  * @param {{cement: number, steel: number, roofing: number, wastage: number}} props.factors
  * @param {() => void} props.onContinue Called when "Continue to Store Locator" is clicked.
- * @param {boolean} [props.hasSecondFloorFile] Whether the project has a separate
- *   second-floor DXF — the "By source" view only makes sense (and only appears)
- *   when there's a real per-floor distinction to show.
  */
-function QuantityTakeoffTable({ storeys, factors, onContinue, hasSecondFloorFile }) {
+function QuantityTakeoffTable({ storeys, factors, onContinue }) {
   const [viewMode, setViewMode] = useState('total');
   const materials = buildMaterials(storeys);
   const categoryGroups = groupMaterialsByCategory(materials);
@@ -152,42 +149,46 @@ function QuantityTakeoffTable({ storeys, factors, onContinue, hasSecondFloorFile
         minHeight: { xs: 0, md: 420 },
       }}
     >
-      {hasSecondFloorFile && (
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1}
-          sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', p: { xs: 1.5, sm: 2.5 }, pb: { xs: 0.5, sm: 1 } }}
-        >
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(event, value) => value !== null && setViewMode(value)}
-            sx={{
-              bgcolor: 'grey.100',
+      {/* Always available, not just for 2-storey/two-file projects — every
+          material's sourceBreakdown already tags ground/roofing/shared
+          contributions regardless of storeys (see backend/engine/formulas.py's
+          SOURCE_CATEGORIES); buildSourceGroups drops any bucket with nothing
+          in it, so a 1-storey project's "By source" view just naturally has
+          no "Second floor" group instead of needing to be hidden outright. */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1}
+        sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', p: { xs: 1.5, sm: 2.5 }, pb: { xs: 0.5, sm: 1 } }}
+      >
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(event, value) => value !== null && setViewMode(value)}
+          sx={{
+            bgcolor: 'grey.100',
+            borderRadius: 999,
+            p: 0.5,
+            '& .MuiToggleButtonGroup-grouped': {
+              border: 0,
               borderRadius: 999,
-              p: 0.5,
-              '& .MuiToggleButtonGroup-grouped': {
-                border: 0,
-                borderRadius: 999,
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                color: 'text.secondary',
-                px: 1.75,
-                '&.Mui-selected': { bgcolor: 'common.white', color: colors.accentBlue, boxShadow: '0 1px 4px rgba(20, 30, 60, 0.12)', '&:hover': { bgcolor: 'common.white' } },
-              },
-            }}
-          >
-            <ToggleButton value="total" disableRipple>Total</ToggleButton>
-            <ToggleButton value="bySource" disableRipple>By source</ToggleButton>
-          </ToggleButtonGroup>
-          {viewMode === 'bySource' && (
-            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-              Grouped by which floor/element each material comes from — subtotals may not sum exactly to the Total view due to independent rounding.
-            </Typography>
-          )}
-        </Stack>
-      )}
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              color: 'text.secondary',
+              px: 1.75,
+              '&.Mui-selected': { bgcolor: 'common.white', color: colors.accentBlue, boxShadow: '0 1px 4px rgba(20, 30, 60, 0.12)', '&:hover': { bgcolor: 'common.white' } },
+            },
+          }}
+        >
+          <ToggleButton value="total" disableRipple>Total</ToggleButton>
+          <ToggleButton value="bySource" disableRipple>By source</ToggleButton>
+        </ToggleButtonGroup>
+        {viewMode === 'bySource' && (
+          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+            Grouped by which floor/element each material comes from — subtotals may not sum exactly to the Total view due to independent rounding.
+          </Typography>
+        )}
+      </Stack>
 
       {viewMode === 'bySource' ? (
         <Stack spacing={1.25} sx={{ p: { xs: 1.5, sm: 2.5 } }}>

@@ -8,13 +8,19 @@
  */
 
 // Tarlac City, Philippines — used as the map's default center before any
-// store is selected, and as the distance reference point (see
-// haversineKm below): the backend doesn't have the user's live location,
-// so distances shown are from this fixed reference, not true "from you".
+// store is selected, and as the distance-reference fallback (see
+// haversineKm/loadStores below) whenever the browser's real geolocation
+// isn't available (denied, unsupported, or timed out) — see
+// hooks/useUserLocation.js, which StoreLocatorPage uses to get the user's
+// actual position when possible.
 const CITY_CENTER = { lat: 15.4802, lng: 120.5979 };
 
 export const STORES = [];
 export const CITY_LOCATION = CITY_CENTER;
+// Set by loadStores() each time it runs — lets the UI say honestly whether
+// "distance" is really from the user or just approximated from the city
+// reference point.
+export let DISTANCE_IS_FROM_USER = false;
 
 function haversineKm(a, b) {
   const R = 6371;
@@ -31,13 +37,18 @@ function haversineKm(a, b) {
  *   optimizedTotal:number|null, inStock:boolean, isCheapest:boolean,
  *   missingMaterials:Array<{materialKey:string,name:string,suggestedStoreId:number|null,suggestedStoreName:string|null}>}>} stores
  *   Already sorted cheapest-first by the backend.
+ * @param {{lat:number,lng:number}} [origin] The point to measure distance from — the
+ *   user's real browser geolocation when available (see hooks/useUserLocation.js),
+ *   else the fixed city reference point (CITY_CENTER, the previous fallback-only
+ *   behavior). Store positions themselves are already real (admin-entered coordinates).
  */
-export function loadStores(stores) {
+export function loadStores(stores, origin = CITY_CENTER) {
+  DISTANCE_IS_FROM_USER = origin !== CITY_CENTER;
   STORES.length = 0;
   STORES.push(
     ...stores.map((store, index) => {
       const position = { lat: store.lat, lng: store.lng };
-      const distanceKm = haversineKm(CITY_CENTER, position);
+      const distanceKm = haversineKm(origin, position);
       const missing = store.missingMaterials[0];
 
       return {

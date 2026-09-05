@@ -11,10 +11,11 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import MapView from '../components/MapView';
 import StoreListCard from '../features/storeLocator/components/StoreListCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
-import { STORES, CITY_LOCATION, loadStores } from '../features/storeLocator/data/storesMock';
+import { STORES, CITY_LOCATION, DISTANCE_IS_FROM_USER, loadStores } from '../features/storeLocator/data/storesMock';
 import { buildStoreInfoWindowContent } from '../features/storeLocator/utils/buildStoreInfoWindowContent';
 import { useProjects } from '../context/ProjectsContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useUserLocation } from '../hooks/useUserLocation';
 import { apiRequest } from '../services/apiClient';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
@@ -23,6 +24,12 @@ function badgeColorFor(store) {
   if (!store.inStock) return 'grey.400';
   return store.isCheapest ? colors.iconGreenFg : colors.orange;
 }
+
+// Synthetic marker id for the user's own position — never a real store, so
+// it's excluded from selection/info-window logic below rather than being
+// looked up in STORES (which would find nothing and silently no-op, or
+// worse, get treated as a valid-but-unrecognized store id).
+const USER_LOCATION_MARKER_ID = 'user-location';
 
 /**
  * Store Locator: compares canvassed hardware stores' Bill of Materials
@@ -37,24 +44,42 @@ function StoreLocatorPage() {
   const { activeProject, updateActiveProject } = useProjects();
   const { addNotification } = useNotifications();
   const navigate = useNavigate();
+  const [rawStores, setRawStores] = useState(null);
   const [loadedForId, setLoadedForId] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const ready = loadedForId === activeProject?.id;
+  const { location: userLocation, status: geoStatus, refetch: refetchLocation } = useUserLocation();
+  // True once geolocation has settled at least once — stays true after
+  // that, even while a later "locate me" refetch briefly puts geoStatus
+  // back to 'loading', so clicking that button doesn't re-blank the whole
+  // page behind the big spinner below (only the button itself shows a
+  // small spinner for that — see MapView's isLocating prop).
+  const [hasSettledLocationOnce, setHasSettledLocationOnce] = useState(false);
+  useEffect(() => {
+    if (geoStatus === 'loading' || hasSettledLocationOnce) return;
+    queueMicrotask(() => setHasSettledLocationOnce(true));
+  }, [geoStatus, hasSettledLocationOnce]);
+  // Waits on both the store fetch and the *first* geolocation attempt
+  // settling (granted or not) before computing anything — avoids ever
+  // showing a distance from the wrong origin and then silently swapping it
+  // once geolocation resolves a moment later.
+  const ready = loadedForId === activeProject?.id && (geoStatus !== 'loading' || hasSettledLocationOnce);
 
   useEffect(() => {
     if (!activeProject || typeof activeProject.id !== 'number') return undefined;
     let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setRawStores(null);
+    });
 
     apiRequest(`/projects/${activeProject.id}/stores`)
       .then(({ stores }) => {
         if (cancelled) return;
-        loadStores(stores);
-        setLoadedForId(activeProject.id);
+        setRawStores(stores);
       })
       .catch((err) => {
         if (cancelled) return;
         setLoadError(err.message || 'Could not load store comparison.');
-        setLoadedForId(activeProject.id);
+        setRawStores([]);
       });
 
     return () => {
@@ -62,13 +87,33 @@ function StoreLocatorPage() {
     };
   }, [activeProject?.id]);
 
+  useEffect(() => {
+    if (rawStores === null || geoStatus === 'loading' || typeof activeProject?.id !== 'number') return undefined;
+    let cancelled = false;
+    loadStores(rawStores, userLocation ?? CITY_LOCATION);
+    queueMicrotask(() => {
+      if (!cancelled) setLoadedForId(activeProject.id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rawStores, userLocation, geoStatus, activeProject?.id]);
+
   const selectedStoreId = activeProject?.selectedStoreId ?? null;
+  // Whether the map should currently be centered on the user's own
+  // position rather than the selected store — set by the locate button,
+  // cleared the moment a store is (re-)selected, so that always wins back
+  // as the obvious next thing to look at. Without this, a selected store's
+  // position unconditionally out-prioritized the user's, which made the
+  // locate button silently do nothing whenever a store was selected.
+  const [focusOnUser, setFocusOnUser] = useState(false);
   // Guarded centrally here rather than in each caller (list card + map
   // marker both funnel through this one function) — an out-of-stock store
   // can't actually fulfil the project, so Brand Selection was never built
   // to handle one being chosen; explain why instead of silently selecting
   // it (or silently doing nothing).
   const setSelectedStoreId = (id) => {
+    if (id === USER_LOCATION_MARKER_ID) return;
     const target = STORES.find((store) => store.id === id);
     if (target && !target.inStock) {
       addNotification({
@@ -78,26 +123,43 @@ function StoreLocatorPage() {
       });
       return;
     }
+    setFocusOnUser(false);
     updateActiveProject({ selectedStoreId: id });
   };
 
-  const selectedStore = STORES.find((store) => store.id === selectedStoreId) ?? null;
+  const handleLocateRequest = () => {
+    setFocusOnUser(true);
+    refetchLocation();
+  };
 
-  const markers = useMemo(
-    () =>
-      STORES.map((store) => ({
-        id: store.id,
-        position: store.position,
-        title: store.name,
-        label: String(store.rank),
-        color: badgeColorFor(store),
-        selected: store.id === selectedStoreId,
-      })),
+  const selectedStore = STORES.find((store) => store.id === selectedStoreId) ?? null;
+  const focusedOnUser = focusOnUser && userLocation;
+  const mapCenter = focusedOnUser ? userLocation : selectedStore?.position ?? userLocation ?? CITY_LOCATION;
+  // Wider overview by default; zooms in closer once something specific is
+  // being looked at (a selected store, or "locate me") — MapView animates
+  // the transition (flyTo), so this reads as zooming in on it, not a flat
+  // recenter at the same level as the overview.
+  const mapZoom = selectedStore || focusedOnUser ? 16 : 14;
+
+  const markers = useMemo(() => {
+    const storeMarkers = STORES.map((store) => ({
+      id: store.id,
+      position: store.position,
+      title: store.name,
+      label: String(store.rank),
+      color: badgeColorFor(store),
+      selected: store.id === selectedStoreId,
+    }));
+    if (!userLocation) return storeMarkers;
+    return [
+      ...storeMarkers,
+      { id: USER_LOCATION_MARKER_ID, position: userLocation, title: 'Your location', label: 'You', color: colors.accentBlue, selected: false },
+    ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedStoreId, ready],
-  );
+  }, [selectedStoreId, ready, userLocation]);
 
   const getInfoContent = useCallback((id) => {
+    if (id === USER_LOCATION_MARKER_ID) return '<strong>Your location</strong>';
     const store = STORES.find((item) => item.id === id);
     return store ? buildStoreInfoWindowContent(store) : '';
   }, []);
@@ -121,6 +183,11 @@ function StoreLocatorPage() {
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
           Total BOM cost and distance for canvassed stores near {activeProject.location}.
         </Typography>
+        {!DISTANCE_IS_FROM_USER && (
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25, fontStyle: 'italic' }}>
+            Location access unavailable — distances approximated from Tarlac City center.
+          </Typography>
+        )}
         {loadError && (
           <Typography sx={{ color: colors.iconRedFg, fontSize: '0.85rem', mt: 0.5 }}>{loadError}</Typography>
         )}
@@ -144,12 +211,14 @@ function StoreLocatorPage() {
             }}
           >
             <MapView
-              center={selectedStore?.position ?? CITY_LOCATION}
-              zoom={14}
+              center={mapCenter}
+              zoom={mapZoom}
               markers={markers}
               onMarkerClick={setSelectedStoreId}
               getInfoContent={getInfoContent}
               selectedMarkerId={selectedStoreId}
+              onLocateRequest={handleLocateRequest}
+              isLocating={geoStatus === 'loading'}
               height="100%"
             />
           </Paper>

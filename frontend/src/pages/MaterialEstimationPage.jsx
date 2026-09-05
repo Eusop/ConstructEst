@@ -243,7 +243,6 @@ function MaterialEstimationPage() {
         storeys={activeProject.storeys}
         factors={savedFactors}
         onContinue={() => navigate(ROUTES.STORE_LOCATOR)}
-        hasSecondFloorFile={activeProject.hasSecondFloorFile}
       />
     </Stack>
   );

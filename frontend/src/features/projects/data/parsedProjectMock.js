@@ -18,6 +18,7 @@
 // so there's nothing honest to show as a distinct per-floor breakdown.
 export const PARSED_MEASUREMENTS = {
   totalWallLength: '—', floorArea: '—', roofArea: '—', roomsDetected: 0,
+  doorArea: '—', windowArea: '—', columnCount: '—', floorPerimeter: '—', roofPerimeter: '—', roofRidgeLength: '—',
   groundFloor: null, secondFloor: null,
 };
 
@@ -33,8 +34,17 @@ function formatQuantityLabel(quantity) {
   return Number(quantity).toLocaleString('en-PH', { maximumFractionDigits: 3 });
 }
 
+// Detail fields are only populated for projects computed after the
+// "detailed extraction information" migration (009) — an older estimation
+// row has these as NULL/undefined until it's recomputed, so this falls back
+// to the placeholder "—" rather than rendering "null m²".
+function formatDetail(value, suffix = '') {
+  return value == null ? '—' : `${value}${suffix}`;
+}
+
 /**
  * @param {{ measurements: {totalWallLength:number, floorArea:number, roofArea:number, roomsDetected:number,
+ *     doorArea?:number, windowArea?:number, columnCount?:number, floorPerimeter?:number, roofPerimeter?:number, roofRidgeLength?:number,
  *     groundFloor?: {wallLength:number, floorArea:number}, secondFloor?: {wallLength:number, floorArea:number}},
  *   materials: Array<{key:string, name:string, quantity:number, unit:string}>, estimatedCost: number }} estimation
  */
@@ -45,6 +55,12 @@ export function loadParsedProject(estimation) {
   PARSED_MEASUREMENTS.floorArea = `${measurements.floorArea} m²`;
   PARSED_MEASUREMENTS.roofArea = `${measurements.roofArea} m²`;
   PARSED_MEASUREMENTS.roomsDetected = measurements.roomsDetected;
+  PARSED_MEASUREMENTS.doorArea = formatDetail(measurements.doorArea, ' m²');
+  PARSED_MEASUREMENTS.windowArea = formatDetail(measurements.windowArea, ' m²');
+  PARSED_MEASUREMENTS.columnCount = formatDetail(measurements.columnCount);
+  PARSED_MEASUREMENTS.floorPerimeter = formatDetail(measurements.floorPerimeter, ' m');
+  PARSED_MEASUREMENTS.roofPerimeter = formatDetail(measurements.roofPerimeter, ' m');
+  PARSED_MEASUREMENTS.roofRidgeLength = formatDetail(measurements.roofRidgeLength, ' m');
   PARSED_MEASUREMENTS.groundFloor = measurements.groundFloor
     ? { wallLength: `${measurements.groundFloor.wallLength} m`, floorArea: `${measurements.groundFloor.floorArea} m²` }
     : null;

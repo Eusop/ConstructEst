@@ -42,13 +42,26 @@ export const login = asyncHandler(async (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier || !password) throw new HttpError(400, 'Email/User ID and password are required.');
 
+  // No `is_active` filter here (unlike before) — a pending/deactivated
+  // account still needs to be fetched so a *correct* password can be told
+  // apart from a *wrong* one below. Only after the password checks out do
+  // we look at is_verified/is_active, so a wrong password on a pending or
+  // deactivated account still gets the generic message, never a hint that
+  // the identifier exists.
   const [user] = await query(
-    'SELECT * FROM users WHERE (email = ? OR user_id = ?) AND is_active = 1',
+    'SELECT * FROM users WHERE (email = ? OR user_id = ?)',
     [identifier, identifier],
   );
 
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     throw new HttpError(401, 'Incorrect email/User ID or password.');
+  }
+
+  if (!user.is_verified) {
+    throw new HttpError(403, "Your account hasn't been approved by an admin yet.", 'PENDING_VERIFICATION');
+  }
+  if (!user.is_active) {
+    throw new HttpError(403, 'This account has been deactivated.', 'ACCOUNT_DEACTIVATED');
   }
 
   const token = signToken(user);

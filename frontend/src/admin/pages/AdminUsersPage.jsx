@@ -56,6 +56,41 @@ function userStatus(user) {
     : { label: 'Inactive', bg: 'grey.100', fg: 'text.secondary' };
 }
 
+// One line of the account review shown inside the Deactivate/Reactivate/
+// Activate confirmations — see UserProfileReview below.
+function ProfileReviewRow({ label, value }) {
+  return (
+    <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
+      <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>{label}</Typography>
+      <Typography sx={{ color: 'text.primary', fontSize: '0.82rem', fontWeight: 600, textAlign: 'right' }} noWrap>
+        {value}
+      </Typography>
+    </Stack>
+  );
+}
+
+// Shared account-review block used as the `message` for all three
+// TypedConfirmDialogs below (Deactivate/Reactivate/Activate) — an admin
+// reviews who they're actually acting on before the typed word unlocks the
+// button, not just a one-line "are you sure" with a name buried in it.
+function UserProfileReview({ user, intro }) {
+  if (!user) return null;
+  return (
+    <Stack spacing={1.5}>
+      <Typography sx={{ color: 'text.primary' }}>{intro}</Typography>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: 'divider' }}>
+        <Stack spacing={0.75}>
+          <ProfileReviewRow label="Name" value={user.userName} />
+          <ProfileReviewRow label="Username" value={user.username} />
+          <ProfileReviewRow label="Email" value={user.email} />
+          <ProfileReviewRow label="PRC license" value={user.prcLicense || 'Not provided'} />
+          <ProfileReviewRow label="Registered" value={formatDate(user.createdAt)} />
+        </Stack>
+      </Paper>
+    </Stack>
+  );
+}
+
 // Mobile-only rendering (below `md`). Was a 4-band card per user (avatar
 // row, chip row, a full Divider, then a footer row just for the date and
 // two action icons) — with a real user list that's a very tall scroll for
@@ -129,6 +164,9 @@ function AdminUsersPage() {
   // Both directions of the active/inactive toggle are gated behind a typed
   // word (DEACTIVATE / REACTIVATE) — see handleToggleActive.
   const [pendingToggleUser, setPendingToggleUser] = useState(null);
+  // Approving a pending self-registered account is gated behind typing
+  // ACTIVATE — see handleVerify.
+  const [pendingVerifyUser, setPendingVerifyUser] = useState(null);
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
 
@@ -199,22 +237,23 @@ function AdminUsersPage() {
     }
   };
 
-  // Approving a pending self-registered account — a plain one-click action
-  // (not gated behind a typed word like deactivate/reactivate): this *is*
-  // the review step itself, not a destructive action on an existing account.
-  const handleVerify = async (user) => {
+  const handleVerify = (user) => setPendingVerifyUser(user);
+
+  const handleConfirmVerify = async () => {
     try {
-      await verifyAdminUser(user.id);
+      await verifyAdminUser(pendingVerifyUser.id);
       logActivity({
-        message: `Verified user account: ${user.userName}`,
+        message: `Verified user account: ${pendingVerifyUser.userName}`,
         icon: CheckCircleOutlineRoundedIcon,
         iconBg: colors.iconGreenBg,
         iconFg: colors.iconGreenFg,
       });
       showToast('User verified', 'success');
+      setPendingVerifyUser(null);
       load();
     } catch (error) {
-      showToast(error.message || 'Could not verify this user. Try again.', 'warning');
+      showToast(error.message || 'Could not activate this user. Try again.', 'warning');
+      throw error;
     }
   };
 
@@ -396,21 +435,29 @@ function AdminUsersPage() {
         title={pendingToggleUser?.isActive ? 'Deactivate user' : 'Reactivate user'}
         confirmWord={pendingToggleUser?.isActive ? 'DEACTIVATE' : 'REACTIVATE'}
         message={
-          pendingToggleUser?.isActive ? (
-            <>
-              This locks <strong>&ldquo;{pendingToggleUser?.userName ?? ''}&rdquo;</strong> out of their account. They
-              can be reactivated later.
-            </>
-          ) : (
-            <>
-              This restores <strong>&ldquo;{pendingToggleUser?.userName ?? ''}&rdquo;</strong>&apos;s access to their
-              account.
-            </>
-          )
+          <UserProfileReview
+            user={pendingToggleUser}
+            intro={
+              pendingToggleUser?.isActive
+                ? 'Review this account before deactivating it. This locks them out — they can be reactivated later.'
+                : 'Review this account before reactivating it. This restores their access.'
+            }
+          />
         }
         confirmLabel={pendingToggleUser?.isActive ? 'Yes, Deactivate' : 'Yes, Reactivate'}
         onCancel={() => setPendingToggleUser(null)}
         onConfirm={handleConfirmToggle}
+      />
+
+      <TypedConfirmDialog
+        key={pendingVerifyUser?.id ?? 'closed'}
+        open={Boolean(pendingVerifyUser)}
+        title="Activate user"
+        confirmWord="ACTIVATE"
+        message={<UserProfileReview user={pendingVerifyUser} intro="Review this account before activating it." />}
+        confirmLabel="Yes, Activate"
+        onCancel={() => setPendingVerifyUser(null)}
+        onConfirm={handleConfirmVerify}
       />
 
       {/* Mobile only — opened from UserMobileCard's kebab button. */}

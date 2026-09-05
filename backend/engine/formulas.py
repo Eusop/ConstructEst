@@ -50,6 +50,19 @@ still an unreviewed candidate for that same process:
   - Gutter (Table 16: roof eave length / 1.8m per pc) has no distinct
     "eave length" available from a simple rectangular ROOF outline, so
     it's approximated using the same roof perimeter flashing already uses.
+  - Formwork materials (plywood/"Phenolic Board", lumber/"Coco Lumber",
+    steel props, scaffolding — Table 19) are computed and priced here as a
+    one-time purchase of the full raw quantity, with no reuse/cycling
+    factor. This matches Table 19's own formula exactly, which has no
+    reuse variable — per the expert validation form: estimating per total
+    formwork area is an accepted approach, but a real bill of materials
+    would additionally account for how many times a contractor can reuse
+    the same formwork panels/props/sets across pour stages (columns, then
+    beams, then slab), which would lower the actual quantity purchased.
+    Deliberately out of scope here — the paper's Table 19, and this
+    engine, estimate raw material need, not procurement/reuse planning.
+    See services/optimization.service.js's computeBom (Node backend),
+    which prices every material key identically, formwork included.
 """
 import math
 
@@ -367,12 +380,29 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # floor's DXF was given — same "combine, don't just report file 1's own"
     # treatment floorArea already gets; otherwise unchanged.
     total_wall_length_m = wall_length_m + geometry2["wall_length_m"] if geometry2 is not None else wall_length_m
+    # Same combine-both-floors treatment for the extra "detailed extraction"
+    # figures below — door/window openings and the floor outline's own
+    # perimeter are per-floor quantities like wall length, so they're summed
+    # the same way. column_count is deliberately NOT summed here: a column
+    # is one continuous member running through every floor, not a separate
+    # one per floor (see its resolution above), and roof_perimeter_m /
+    # roof_ridge_length_m already come from whichever single file represents
+    # the roof (roof_source above) — there's only ever one roof.
+    total_door_area_m2 = door_area_m2 + (geometry2["door_area_m2"] if geometry2 is not None else 0.0)
+    total_window_area_m2 = window_area_m2 + (geometry2["window_area_m2"] if geometry2 is not None else 0.0)
+    total_floor_perimeter_m = floor_perimeter_m + (geometry2["floor_perimeter_m"] if geometry2 is not None else 0.0)
 
     measurements = {
         "totalWallLength": round(total_wall_length_m, 2),
         "floorArea": round(total_floor_area_m2, 2),
         "roofArea": round(roof_area_m2, 2),
         "roomsDetected": geometry["rooms_detected"],
+        "doorArea": round(total_door_area_m2, 2),
+        "windowArea": round(total_window_area_m2, 2),
+        "columnCount": column_count,
+        "floorPerimeter": round(total_floor_perimeter_m, 2),
+        "roofPerimeter": round(roof_perimeter_m, 2),
+        "roofRidgeLength": round(roof_ridge_length_m, 2),
     }
     if geometry2 is not None:
         # Per-floor breakdown, only meaningful (and only returned) when a

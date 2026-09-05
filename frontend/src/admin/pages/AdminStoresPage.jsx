@@ -11,7 +11,7 @@ import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import MapView from '../../components/MapView';
 import EmptyState from '../components/EmptyState';
-import AddStoreDialog from '../components/AddStoreDialog';
+import StoreFormDialog from '../components/StoreFormDialog';
 import StoreDetailsDialog from '../components/StoreDetailsDialog';
 import TypedConfirmDialog from '../../components/TypedConfirmDialog';
 import { useAdminStores } from '../context/AdminStoresContext';
@@ -25,16 +25,17 @@ const DEFAULT_CENTER = { lat: 15.4802, lng: 120.5979 };
 
 /**
  * Hardware Stores: the required first step before Materials & Brands can be
- * managed (requirements 9/10). Add via the dialog (Name/Address/coordinates
- * — see AddStoreDialog for why coordinates are manual for now), see them
- * plotted on the map, then "Set active & manage" hands off into Materials &
- * Brands for that store.
+ * managed (requirements 9/10). Add or edit via StoreFormDialog
+ * (Name/Address/click-to-drop-pin coordinates), see them plotted on the
+ * map, then "Set active & manage" hands off into Materials & Brands for
+ * that store.
  */
 function AdminStoresPage() {
-  const { stores, activeStoreId, addStore, removeStore, setActiveStoreId, ensureStoreCatalogLoaded } = useAdminStores();
+  const { stores, activeStoreId, addStore, updateStore, removeStore, setActiveStoreId, ensureStoreCatalogLoaded } = useAdminStores();
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
-  const [addOpen, setAddOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingStore, setEditingStore] = useState(null);
   const [detailsStoreId, setDetailsStoreId] = useState(null);
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
 
@@ -59,14 +60,31 @@ function AdminStoresPage() {
 
   const mapCenter = detailsStore ? { lat: detailsStore.lat, lng: detailsStore.lng } : stores[0] ? { lat: stores[0].lat, lng: stores[0].lng } : DEFAULT_CENTER;
 
-  const handleAddStore = async (form) => {
+  const handleAdd = () => {
+    setEditingStore(null);
+    setFormOpen(true);
+  };
+
+  const handleEditRequest = (store) => {
+    setDetailsStoreId(null);
+    setEditingStore(store);
+    setFormOpen(true);
+  };
+
+  const handleSaveStore = async (form) => {
     try {
-      const store = await addStore(form);
-      logActivity({ message: `Hardware store added: ${store.name}`, icon: StorefrontRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg });
-      showToast('Store added to system');
-      setAddOpen(false);
-    } catch {
-      showToast('Could not add store. Try again.', 'warning');
+      if (editingStore) {
+        await updateStore(editingStore.id, form);
+        logActivity({ message: `Hardware store updated: ${form.name}`, icon: StorefrontRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
+        showToast('Store updated');
+      } else {
+        const store = await addStore(form);
+        logActivity({ message: `Hardware store added: ${store.name}`, icon: StorefrontRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg });
+        showToast('Store added to system');
+      }
+      setFormOpen(false);
+    } catch (error) {
+      showToast(error.message || `Could not ${editingStore ? 'update' : 'add'} store. Try again.`, 'warning');
     }
   };
 
@@ -98,7 +116,7 @@ function AdminStoresPage() {
           </Typography>
         </Box>
         <Button
-          onClick={() => setAddOpen(true)}
+          onClick={handleAdd}
           variant="contained"
           disableElevation
           startIcon={<AddRoundedIcon />}
@@ -174,12 +192,20 @@ function AdminStoresPage() {
         </Box>
       </Stack>
 
-      <AddStoreDialog open={addOpen} defaultCenter={DEFAULT_CENTER} onClose={() => setAddOpen(false)} onSubmit={handleAddStore} />
+      <StoreFormDialog
+        key={editingStore?.id ?? 'add'}
+        open={formOpen}
+        store={editingStore}
+        defaultCenter={DEFAULT_CENTER}
+        onClose={() => setFormOpen(false)}
+        onSubmit={handleSaveStore}
+      />
       <StoreDetailsDialog
         open={Boolean(detailsStore)}
         store={detailsStore}
         onClose={() => setDetailsStoreId(null)}
         onSetActive={setActiveStoreId}
+        onEditRequest={handleEditRequest}
         onRemoveRequest={handleRemoveRequest}
       />
       <TypedConfirmDialog

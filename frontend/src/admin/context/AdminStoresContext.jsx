@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getMaterialDefinition } from '../data/materialCatalog';
 import {
-  listAdminStores, createAdminStore, deleteAdminStore, getStoreCatalog,
+  listAdminStores, createAdminStore, updateAdminStore, deleteAdminStore, getStoreCatalog,
   createAdminMaterial, updateAdminMaterial, setStoreMaterialPrice, removeStoreMaterialPrice,
 } from '../services/adminService';
 import { useAdminToast } from './AdminToastContext';
@@ -117,6 +117,11 @@ export function AdminStoresProvider({ children }) {
     return newStore;
   }, []);
 
+  const updateStore = useCallback(async (storeId, { name, address, lat, lng }) => {
+    await updateAdminStore(storeId, { name, address, lat, lng });
+    patchStore(storeId, { name, address, lat, lng });
+  }, [patchStore]);
+
   // Awaits the real DELETE before touching local state — see
   // ProjectsContext.jsx's deleteProject for why this can't be optimistic:
   // a rejected delete needs to leave the store in place and tell the admin
@@ -204,6 +209,7 @@ export function AdminStoresProvider({ children }) {
       setActiveStoreId,
       ensureStoreCatalogLoaded,
       addStore,
+      updateStore,
       removeStore,
       addMaterialsToStore,
       removeMaterialFromStore,
@@ -220,6 +226,7 @@ export function AdminStoresProvider({ children }) {
       setActiveStoreId,
       ensureStoreCatalogLoaded,
       addStore,
+      updateStore,
       removeStore,
       addMaterialsToStore,
       removeMaterialFromStore,

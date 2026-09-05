@@ -48,6 +48,12 @@ async function loadCurrentEstimation(projectId) {
     floorArea: estimation.floor_area,
     roofArea: estimation.roof_area,
     roomsDetected: estimation.rooms_detected,
+    doorArea: estimation.door_area,
+    windowArea: estimation.window_area,
+    columnCount: estimation.column_count,
+    floorPerimeter: estimation.floor_perimeter,
+    roofPerimeter: estimation.roof_perimeter,
+    roofRidgeLength: estimation.roof_ridge_length,
   };
   if (estimation.ground_wall_length !== null) {
     measurements.groundFloor = { wallLength: estimation.ground_wall_length, floorArea: estimation.ground_floor_area };
@@ -167,14 +173,21 @@ async function persistEstimation(projectId, engineResult) {
   const estResult = await query(
     `INSERT INTO estimation_results
        (project_id, total_wall_length, floor_area, roof_area, rooms_detected,
+        door_area, window_area, column_count, floor_perimeter, roof_perimeter, roof_ridge_length,
         ground_wall_length, ground_floor_area, second_wall_length, second_floor_area, estimated_cost)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       projectId,
       engineResult.measurements.totalWallLength,
       engineResult.measurements.floorArea,
       engineResult.measurements.roofArea,
       engineResult.measurements.roomsDetected,
+      engineResult.measurements.doorArea,
+      engineResult.measurements.windowArea,
+      engineResult.measurements.columnCount,
+      engineResult.measurements.floorPerimeter,
+      engineResult.measurements.roofPerimeter,
+      engineResult.measurements.roofRidgeLength,
       groundFloor?.wallLength ?? null,
       groundFloor?.floorArea ?? null,
       secondFloor?.wallLength ?? null,

@@ -51,7 +51,11 @@ function TypedConfirmDialog({ open, title, message, confirmWord = 'DELETE', conf
     <Dialog open={open} onClose={isConfirming ? undefined : onCancel} disableScrollLock maxWidth="xs" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>{title}</DialogTitle>
       <DialogContent>
-        <DialogContentText sx={{ color: 'text.primary', mb: 2 }}>{message}</DialogContentText>
+        {/* component="div" — `message` isn't always inline text; the Admin
+            verify-user flow puts a whole profile-review block in here, which
+            would be invalid HTML nested inside DialogContentText's default
+            <p>. */}
+        <DialogContentText component="div" sx={{ color: 'text.primary', mb: 2 }}>{message}</DialogContentText>
         <DialogContentText sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 1 }}>
           Type <strong>{confirmWord}</strong> to confirm.
         </DialogContentText>

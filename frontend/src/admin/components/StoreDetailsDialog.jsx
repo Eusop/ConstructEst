@@ -12,6 +12,7 @@ import Chip from '@mui/material/Chip';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { MATERIAL_CATALOG } from '../data/materialCatalog';
@@ -24,7 +25,7 @@ import { colors } from '../../theme/palette';
  * quick stats plus "Set active & manage", which is the required hand-off
  * into Materials & Brands (see requirement 9's Store -> Materials flow).
  */
-function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemoveRequest }) {
+function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, onRemoveRequest }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   if (!store) return null;
@@ -127,25 +128,46 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onRemoveRequest
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'space-between' }}>
-        <Button
-          onClick={() => onRemoveRequest(store.id)}
-          aria-label="Remove store"
-          startIcon={<DeleteOutlineRoundedIcon />}
-          sx={{
-            color: colors.iconRedFg,
-            '&:hover': { bgcolor: colors.iconRedBg },
-            px: { xs: 1.25, sm: 2 },
-            py: { xs: 0.5, sm: 1.5 },
-            fontSize: { xs: '0.8rem', sm: '1.05rem' },
-            whiteSpace: 'nowrap',
-            minWidth: 0,
-            '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
-          }}
-        >
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-            Remove store
-          </Box>
-        </Button>
+        <Stack direction="row" spacing={0.5}>
+          <Button
+            onClick={() => onEditRequest(store)}
+            aria-label="Edit store"
+            startIcon={<EditRoundedIcon />}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': { bgcolor: 'grey.100' },
+              px: { xs: 1.25, sm: 2 },
+              py: { xs: 0.5, sm: 1.5 },
+              fontSize: { xs: '0.8rem', sm: '1.05rem' },
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Edit
+            </Box>
+          </Button>
+          <Button
+            onClick={() => onRemoveRequest(store.id)}
+            aria-label="Remove store"
+            startIcon={<DeleteOutlineRoundedIcon />}
+            sx={{
+              color: colors.iconRedFg,
+              '&:hover': { bgcolor: colors.iconRedBg },
+              px: { xs: 1.25, sm: 2 },
+              py: { xs: 0.5, sm: 1.5 },
+              fontSize: { xs: '0.8rem', sm: '1.05rem' },
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Remove store
+            </Box>
+          </Button>
+        </Stack>
         <Button
           onClick={handleManage}
           variant="contained"
