@@ -81,9 +81,8 @@ function UserProfileReview({ user, intro }) {
       <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: 'divider' }}>
         <Stack spacing={0.75}>
           <ProfileReviewRow label="Name" value={user.userName} />
-          <ProfileReviewRow label="Username" value={user.username} />
+          <ProfileReviewRow label="Employee ID" value={user.employeeId} />
           <ProfileReviewRow label="Email" value={user.email} />
-          <ProfileReviewRow label="PRC license" value={user.prcLicense || 'Not provided'} />
           <ProfileReviewRow label="Registered" value={formatDate(user.createdAt)} />
         </Stack>
       </Paper>
@@ -111,7 +110,7 @@ function UserMobileCard({ user, onOpenMenu }) {
             {user.userName}
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem' }} noWrap>
-            {user.username} · {user.email}
+            {user.employeeId} · {user.email}
           </Typography>
         </Box>
         <IconButton size="small" onClick={(event) => onOpenMenu(event, user)} sx={{ flexShrink: 0, mr: -0.5 }} aria-label="User actions">
@@ -182,7 +181,7 @@ function AdminUsersPage() {
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return users;
-    return users.filter((user) => [user.userName, user.username, user.email].some((value) => value?.toLowerCase().includes(term)));
+    return users.filter((user) => [user.userName, user.employeeId, user.email].some((value) => value?.toLowerCase().includes(term)));
   }, [users, search]);
 
   const handleAdd = () => {
@@ -291,7 +290,7 @@ function AdminUsersPage() {
             <SearchRoundedIcon sx={{ fontSize: 20, color: 'text.secondary', flexShrink: 0 }} />
             <Box
               component="input"
-              placeholder="Search users by name, username, or email"
+              placeholder="Search users by name, employee ID, or email"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               sx={{ border: 'none', outline: 'none', bgcolor: 'transparent', width: '100%', minWidth: 0, font: 'inherit', color: 'text.primary' }}
@@ -332,7 +331,7 @@ function AdminUsersPage() {
             description={
               users.length === 0
                 ? 'Accounts you create will show up here, ready to manage.'
-                : 'Try a different name, username, or email.'
+                : 'Try a different name, employee ID, or email.'
             }
             action={
               users.length === 0 ? (
@@ -356,7 +355,7 @@ function AdminUsersPage() {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Username</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Employee ID</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Role</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</TableCell>
@@ -375,7 +374,7 @@ function AdminUsersPage() {
                         <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.userName}</Typography>
                       </Stack>
                     </TableCell>
-                    <TableCell sx={{ color: 'text.secondary' }}>{user.username}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>{user.employeeId}</TableCell>
                     <TableCell sx={{ color: 'text.secondary' }}>{user.email}</TableCell>
                     <TableCell>
                       <Chip

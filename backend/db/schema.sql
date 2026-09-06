@@ -7,16 +7,14 @@ USE constructest;
 
 -- ---------------------------------------------------------------------------
 -- Users. Two access roles only (`user`, `admin`) per the project's confirmed
--- design — homeowner/engineer are both `user`; prc_license is informational,
--- not a gate on any feature.
+-- design — homeowner/engineer are both `user`.
 -- ---------------------------------------------------------------------------
 CREATE TABLE users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
-  user_id VARCHAR(50) NOT NULL UNIQUE,       -- login "username" (SignUpForm's userId)
+  employee_id VARCHAR(50) NOT NULL UNIQUE,   -- login identifier (SignUpForm's employeeId)
   email VARCHAR(255) NOT NULL UNIQUE,
-  prc_license VARCHAR(50) NULL,
   password_hash VARCHAR(255) NOT NULL,
   access_role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
   avatar_url VARCHAR(500) NULL,
@@ -134,6 +132,11 @@ CREATE TABLE stores (
   address VARCHAR(255) NOT NULL,
   lat DECIMAL(10, 6) NOT NULL,
   lng DECIMAL(10, 6) NOT NULL,
+  -- Deactivated stores drop out of the Store Locator comparison entirely
+  -- (see optimization.service.js's getStoreOptimization) but stay visible
+  -- and editable in the Admin Module — mirrors users' is_active, reversible
+  -- via the same typed DEACTIVATE/REACTIVATE confirmation pattern.
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

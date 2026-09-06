@@ -14,6 +14,8 @@ import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
+import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { MATERIAL_CATALOG } from '../data/materialCatalog';
 import { ADMIN_ROUTES } from '../../routes/paths';
@@ -25,10 +27,11 @@ import { colors } from '../../theme/palette';
  * quick stats plus "Set active & manage", which is the required hand-off
  * into Materials & Brands (see requirement 9's Store -> Materials flow).
  */
-function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, onRemoveRequest }) {
+function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, onRemoveRequest, onToggleActiveRequest }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   if (!store) return null;
+  const isDeactivated = store.isActive === false;
 
   const materialKeys = store.materialKeys ?? [];
   const brandCount = Object.values(store.materialData).reduce((sum, data) => sum + (data.brands ? data.brands.length : data.price != null ? 1 : 0), 0);
@@ -45,7 +48,12 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
           <StorefrontRoundedIcon sx={{ color: colors.iconOrangeFg }} />
         </Box>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: '1.1rem' }}>{store.name}</Typography>
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.1rem' }}>{store.name}</Typography>
+            {isDeactivated && (
+              <Chip label="Deactivated" size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'grey.100', color: 'text.secondary' }} />
+            )}
+          </Stack>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
             <LocationOnRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
             <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }} noWrap>{store.address}</Typography>
@@ -127,8 +135,15 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'space-between' }}>
-        <Stack direction="row" spacing={0.5}>
+      {/* Two rows rather than one — Edit/Deactivate/Remove plus the primary
+          "Set active & manage" action no longer fit on a single row now that
+          Deactivate joined Edit/Remove store, which was squeezing "Set
+          active & manage" half off the dialog's edge. The secondary/
+          destructive actions share a row (still wrapping on very narrow
+          widths as a safety net); the primary action gets its own full-
+          width row below, unmissable rather than competing for space. */}
+      <DialogActions sx={{ px: 3, pb: 3, flexDirection: 'column', alignItems: 'stretch', gap: 1.25 }}>
+        <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', justifyContent: 'center' }}>
           <Button
             onClick={() => onEditRequest(store)}
             aria-label="Edit store"
@@ -146,6 +161,25 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
           >
             <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
               Edit
+            </Box>
+          </Button>
+          <Button
+            onClick={() => onToggleActiveRequest(store)}
+            aria-label={isDeactivated ? 'Reactivate store' : 'Deactivate store'}
+            startIcon={isDeactivated ? <CheckCircleOutlineRoundedIcon /> : <BlockRoundedIcon />}
+            sx={{
+              color: isDeactivated ? colors.iconGreenFg : colors.iconOrangeFg,
+              '&:hover': { bgcolor: isDeactivated ? colors.iconGreenBg : colors.iconOrangeBg },
+              px: { xs: 1.25, sm: 2 },
+              py: { xs: 0.5, sm: 1.5 },
+              fontSize: { xs: '0.8rem', sm: '1.05rem' },
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {isDeactivated ? 'Reactivate' : 'Deactivate'}
             </Box>
           </Button>
           <Button
@@ -172,14 +206,13 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
           onClick={handleManage}
           variant="contained"
           disableElevation
+          fullWidth
           endIcon={<ArrowForwardRoundedIcon />}
           sx={{
             bgcolor: colors.accentBlue,
             '&:hover': { bgcolor: colors.accentBlueDark },
-            px: { xs: 1.25, sm: 2 },
-            py: { xs: 0.5, sm: 1.5 },
-            fontSize: { xs: '0.8rem', sm: '1.05rem' },
-            whiteSpace: 'nowrap',
+            py: { xs: 0.75, sm: 1.5 },
+            fontSize: { xs: '0.85rem', sm: '1.05rem' },
           }}
         >
           Set active & manage

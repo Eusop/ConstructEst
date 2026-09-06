@@ -269,19 +269,19 @@ function AdminMaterialsPage() {
     }
   };
 
-  const handleSaveBrand = async (form) => {
+  const handleSaveBrand = async (form, quotationFile) => {
     const { materialKey, brand } = brandDialog;
     setBrandDialog({ open: false, materialKey: null, brand: null });
     try {
       if (brand) {
-        await updateBrand(activeStore.id, materialKey, brand.id, form);
+        await updateBrand(activeStore.id, materialKey, brand.id, form, quotationFile);
       } else {
-        await addBrand(activeStore.id, materialKey, form);
+        await addBrand(activeStore.id, materialKey, form, quotationFile);
         logActivity({ message: `Brand added: ${form.name} (${getMaterialDefinition(materialKey)?.name}) · ${formatPeso(form.price)}`, icon: AddRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg });
       }
       showToast('Brand saved');
-    } catch {
-      showToast('Could not save brand. Try again.', 'warning');
+    } catch (error) {
+      showToast(error.message || 'Could not save brand. Try again.', 'warning');
     }
   };
 
@@ -294,14 +294,14 @@ function AdminMaterialsPage() {
     }
   };
 
-  const handleSaveBulk = async (form) => {
+  const handleSaveBulk = async (form, quotationFile) => {
     setBulkDialog({ open: false, materialKey: null });
     try {
-      await updateBulkMaterial(activeStore.id, bulkDialog.materialKey, form);
+      await updateBulkMaterial(activeStore.id, bulkDialog.materialKey, form, quotationFile);
       logActivity({ message: `${getMaterialDefinition(bulkDialog.materialKey)?.name} updated at ${activeStore.name}: ${formatPeso(form.price)}`, icon: EditRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
       showToast('Material updated');
-    } catch {
-      showToast('Could not update material. Try again.', 'warning');
+    } catch (error) {
+      showToast(error.message || 'Could not update material. Try again.', 'warning');
     }
   };
 

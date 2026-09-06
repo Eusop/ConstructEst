@@ -12,16 +12,16 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormTextField from '../../components/FormTextField';
 import PasswordField from '../../components/PasswordField';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
-import { isRequired, isValidEmail, isValidName, isValidUserId, getUserIdHint, isStrongPassword } from '../../utils/validators';
+import { isRequired, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword } from '../../utils/validators';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useAdminToast } from '../context/AdminToastContext';
 import { colors } from '../../theme/palette';
 
-const EMPTY_FORM = { firstName: '', lastName: '', userId: '', email: '', password: '', accessRole: 'user' };
+const EMPTY_FORM = { firstName: '', lastName: '', employeeId: '', email: '', password: '', accessRole: 'user' };
 
 function buildForm(user) {
   if (!user) return EMPTY_FORM;
-  return { firstName: user.firstName, lastName: user.lastName, userId: user.userId, email: user.email, password: '', accessRole: user.accessRole };
+  return { firstName: user.firstName, lastName: user.lastName, employeeId: user.employeeId, email: user.email, password: '', accessRole: user.accessRole };
 }
 
 function validate(form, isEdit) {
@@ -30,8 +30,8 @@ function validate(form, isEdit) {
   else if (!isValidName(form.firstName)) errors.firstName = 'Must start with a letter and be at least 2 characters';
   if (!isRequired(form.lastName)) errors.lastName = 'Last name is required';
   else if (!isValidName(form.lastName)) errors.lastName = 'Must start with a letter and be at least 2 characters';
-  if (!isRequired(form.userId)) errors.userId = 'User ID is required';
-  else if (!isValidUserId(form.userId)) errors.userId = getUserIdHint(form.userId) ?? '3–20 characters: start with a letter, then letters, numbers, or _ . -';
+  if (!isRequired(form.employeeId)) errors.employeeId = 'Employee ID is required';
+  else if (!isValidEmployeeId(form.employeeId)) errors.employeeId = getEmployeeIdHint(form.employeeId) ?? '3–20 characters: start with a letter, then letters, numbers, or _ . -';
   if (!isRequired(form.email)) errors.email = 'Email is required';
   else if (!isValidEmail(form.email)) errors.email = 'Enter a valid email address';
   if (!isEdit) {
@@ -125,8 +125,8 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>User ID</Typography>
-              <FormTextField name="userId" value={form.userId} onChange={handleChange} onBlur={handleBlur} disabled={isEdit} error={Boolean(showError('userId'))} helperText={showError('userId') || (isEdit ? 'User ID cannot be changed' : ' ')} />
+              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Employee ID</Typography>
+              <FormTextField name="employeeId" value={form.employeeId} onChange={handleChange} onBlur={handleBlur} disabled={isEdit} error={Boolean(showError('employeeId'))} helperText={showError('employeeId') || (isEdit ? 'Employee ID cannot be changed' : ' ')} />
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Email</Typography>

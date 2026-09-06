@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { uploadQuotation } from '../middleware/upload.js';
 import {
   listUsers, createUser, updateUser, setUserActive, verifyUser,
   listMaterials, createMaterial, updateMaterial, deleteMaterial,
-  createStore, updateStore, deleteStore,
-  getStoreCatalog, upsertStoreMaterialPrice, removeStoreMaterialPrice,
+  createStore, updateStore, deleteStore, setStoreActive,
+  getStoreCatalog, upsertStoreMaterialPrice, removeStoreMaterialPrice, downloadQuotation,
   getGlobalConstants, updateGlobalConstants,
   getGlobalDesignOverrides, updateGlobalDesignOverrides,
   listAdminActivity,
@@ -35,10 +36,12 @@ router.delete('/materials/:id', deleteMaterial);
 router.get('/stores', listStores);
 router.post('/stores', createStore);
 router.put('/stores/:id', updateStore);
+router.patch('/stores/:id/status', setStoreActive);
 router.delete('/stores/:id', deleteStore);
 router.get('/stores/:id/catalog', getStoreCatalog);
-router.put('/stores/:storeId/materials/:materialBrandId', upsertStoreMaterialPrice);
+router.put('/stores/:storeId/materials/:materialBrandId', uploadQuotation, upsertStoreMaterialPrice);
 router.delete('/stores/:storeId/materials/:materialBrandId', removeStoreMaterialPrice);
+router.get('/quotations/:storedName', downloadQuotation);
 
 router.get('/estimation-constants', getGlobalConstants);
 router.put('/estimation-constants', updateGlobalConstants);

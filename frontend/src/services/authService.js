@@ -20,10 +20,10 @@ export async function loginRequest({ identifier, password, keepSignedIn }) {
 // Only set one if a future response ever does include it, rather than
 // assuming it always will.
 export async function signUpRequest(details) {
-  const { firstName, lastName, userId, email, prcLicense, password } = details;
+  const { firstName, lastName, employeeId, email, password } = details;
   const response = await apiRequest('/auth/register', {
     method: 'POST',
-    body: { firstName, lastName, userId, email, prcLicense: prcLicense || undefined, password },
+    body: { firstName, lastName, employeeId, email, password },
   });
   if (response.token) setAuthToken(response.token, true);
   return response;

@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Button from '@mui/material/Button';
@@ -16,14 +15,13 @@ import { signUpRequest } from '../../../services/authService';
 import { useToast } from '../../../context/ToastContext';
 import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
-import { isRequired, passwordsMatch, isValidEmail, isValidName, isValidUserId, getUserIdHint, isStrongPassword } from '../../../utils/validators';
+import { isRequired, passwordsMatch, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword } from '../../../utils/validators';
 
 const INITIAL_FORM = {
   firstName: '',
   lastName: '',
-  userId: '',
+  employeeId: '',
   email: '',
-  prcLicense: '',
   password: '',
   confirmPassword: '',
 };
@@ -43,10 +41,10 @@ function validate(form) {
     errors.lastName = 'Must start with a letter and be at least 2 characters';
   }
 
-  if (!isRequired(form.userId)) {
-    errors.userId = 'User ID is required';
-  } else if (!isValidUserId(form.userId)) {
-    errors.userId = getUserIdHint(form.userId) ?? '3–20 characters: start with a letter, then letters, numbers, or _ . -';
+  if (!isRequired(form.employeeId)) {
+    errors.employeeId = 'Employee ID is required';
+  } else if (!isValidEmployeeId(form.employeeId)) {
+    errors.employeeId = getEmployeeIdHint(form.employeeId) ?? '3–20 characters: start with a letter, then letters, numbers, or _ . -';
   }
 
   if (!isRequired(form.email)) {
@@ -71,8 +69,8 @@ function validate(form) {
 }
 
 /**
- * Sign up form: name / User ID / email / optional PRC license / password
- * fields, a Terms of Service & Privacy Policy agreement, and the primary
+ * Sign up form: name / Employee ID / email / password fields, a Terms of
+ * Service & Privacy Policy agreement, and the primary
  * Create account action.
  *
  * Validation is live, not just on submit: `errors` is recomputed from
@@ -194,17 +192,17 @@ function SignUpForm() {
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
           <Box sx={{ flex: 1 }}>
             <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>
-              User ID
+              Employee ID
             </Typography>
             <FormTextField
-              name="userId"
+              name="employeeId"
               placeholder="mreyes"
               autoComplete="username"
-              value={form.userId}
+              value={form.employeeId}
               onChange={handleChange}
               onBlur={handleBlur}
-              error={Boolean(showError('userId'))}
-              helperText={showError('userId') || ' '}
+              error={Boolean(showError('employeeId'))}
+              helperText={showError('employeeId') || ' '}
             />
           </Box>
           <Box sx={{ flex: 1 }}>
@@ -224,25 +222,6 @@ function SignUpForm() {
             />
           </Box>
         </Stack>
-
-        <Box>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.75 }}>
-            <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
-              PRC license no.
-            </Typography>
-            <Chip
-              label="Optional"
-              size="small"
-              sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'grey.100', color: 'text.secondary' }}
-            />
-          </Stack>
-          <FormTextField
-            name="prcLicense"
-            placeholder="CE-0092451"
-            value={form.prcLicense}
-            onChange={handleChange}
-          />
-        </Box>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
           <Box sx={{ flex: 1 }}>

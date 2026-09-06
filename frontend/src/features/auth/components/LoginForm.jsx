@@ -29,13 +29,13 @@ const INITIAL_FORM = { identifier: '', password: '' };
 
 function validate(form) {
   const errors = {};
-  if (!isRequired(form.identifier)) errors.identifier = 'Email or User ID is required';
+  if (!isRequired(form.identifier)) errors.identifier = 'Email or Employee ID is required';
   if (!isRequired(form.password)) errors.password = 'Password is required';
   return errors;
 }
 
 /**
- * Sign in form: "Email or User ID" + password fields, a "Keep me signed in"
+ * Sign in form: "Email or Employee ID" + password fields, a "Keep me signed in"
  * preference, the primary Sign in action, and the "Create an account" prompt.
  *
  * Backed by the real backend (see services/authService.js) — the returned
@@ -88,7 +88,7 @@ function LoginForm() {
     try {
       const user = await loginRequest({ ...form, keepSignedIn });
       setCurrentUser(user.userName, user.accessRole);
-      updateProfile({ id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl });
+      updateProfile({ id: user.id, employeeId: user.employeeId, email: user.email, avatarUrl: user.avatarUrl });
       navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
     } catch (error) {
       // Pending approval gets its own overlay, not the usual toast — it's
@@ -117,7 +117,7 @@ function LoginForm() {
       <Stack spacing={2.5}>
         <Box>
           <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>
-            Email or User ID
+            Email or Employee ID
           </Typography>
           <FormTextField
             name="identifier"

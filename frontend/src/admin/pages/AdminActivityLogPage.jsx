@@ -7,11 +7,14 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
+import Link from '@mui/material/Link';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
+import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import EmptyState from '../components/EmptyState';
-import { listAdminActivityLog } from '../services/adminService';
+import { listAdminActivityLog, downloadQuotationFile } from '../services/adminService';
+import { useAdminToast } from '../context/AdminToastContext';
 import { colors } from '../../theme/palette';
 
 const CATEGORIES = [
@@ -38,6 +41,13 @@ function AdminActivityLogPage() {
   const [category, setCategory] = useState(CATEGORIES[0].value);
   const [entries, setEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { showToast } = useAdminToast();
+
+  const handleDownloadQuotation = (metadata) => {
+    downloadQuotationFile(metadata.quotationStoredName, metadata.quotationFileName).catch(() => {
+      showToast('Could not download the quotation file. Try again.', 'warning');
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +131,18 @@ function AdminActivityLogPage() {
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25 }}>
                         {entry.adminName} · {formatDateTime(entry.createdAt)}
                       </Typography>
+                      {entry.metadata?.quotationStoredName && (
+                        <Link
+                          component="button"
+                          type="button"
+                          onClick={() => handleDownloadQuotation(entry.metadata)}
+                          underline="hover"
+                          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, mt: 0.5, fontSize: '0.78rem', color: colors.iconBlueFg, fontWeight: 600 }}
+                        >
+                          <DescriptionRoundedIcon sx={{ fontSize: 14 }} />
+                          {entry.metadata.quotationFileName ?? 'View quotation'}
+                        </Link>
+                      )}
                     </Box>
                   </Stack>
                 );

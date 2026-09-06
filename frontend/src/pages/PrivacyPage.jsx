@@ -7,7 +7,7 @@ const SECTIONS = [
   },
   {
     heading: '2. What we collect',
-    body: 'Account information you provide at sign-up (name, User ID, email, password). The DXF floor plan files you upload and the project details you enter (location, budget ceiling, storeys, calibration/design settings). Basic activity such as which pages you use and when, to help us evaluate the system during the capstone\'s testing phase.',
+    body: 'Account information you provide at sign-up (name, Employee ID, email, password). The DXF floor plan files you upload and the project details you enter (location, budget ceiling, storeys, calibration/design settings). Basic activity such as which pages you use and when, to help us evaluate the system during the capstone\'s testing phase.',
   },
   {
     heading: '3. How we use it',

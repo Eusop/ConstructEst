@@ -6,7 +6,7 @@ export function notFoundHandler(req, res) {
 // form, so a duplicate-key error can say *which* field collided instead of
 // a vague "That value is already in use." (which reads as if it could be
 // about the password — it's never the password; passwords aren't unique).
-const DUPLICATE_FIELD_LABELS = { user_id: 'User ID', email: 'email address' };
+const DUPLICATE_FIELD_LABELS = { employee_id: 'Employee ID', email: 'email address' };
 
 function describeDuplicateEntry(err) {
   const sqlMessage = err.sqlMessage || err.message || '';

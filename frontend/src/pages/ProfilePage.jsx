@@ -26,7 +26,7 @@ const EMPTY_PASSWORD_FIELDS = { currentPassword: '', newPassword: '', confirmPas
 function buildForm(profile) {
   return {
     fullName: profile.userName ?? '',
-    username: profile.username ?? '',
+    employeeId: profile.employeeId ?? '',
     email: profile.email ?? '',
     avatarUrl: profile.avatarUrl ?? null,
     ...EMPTY_PASSWORD_FIELDS,
@@ -37,7 +37,7 @@ function validate(form) {
   const errors = {};
 
   if (!isRequired(form.fullName)) errors.fullName = 'Full name is required';
-  if (!isRequired(form.username)) errors.username = 'Username is required';
+  if (!isRequired(form.employeeId)) errors.employeeId = 'Employee ID is required';
 
   if (!isRequired(form.email)) {
     errors.email = 'Email is required';
@@ -68,7 +68,7 @@ function validate(form) {
 }
 
 /**
- * Profile: the signed-in user's editable identity (name, username, email,
+ * Profile: the signed-in user's editable identity (name, employee ID, email,
  * avatar) plus a password-change form. Frontend-only — "Save changes"
  * commits into UserContext (so e.g. the Dashboard greeting picks up a new
  * name immediately), "Cancel" discards the draft back to whatever's
@@ -118,7 +118,7 @@ function ProfilePage() {
   const handleSave = () => {
     setTouched({
       fullName: true,
-      username: true,
+      employeeId: true,
       email: true,
       currentPassword: true,
       newPassword: true,
@@ -129,7 +129,7 @@ function ProfilePage() {
       return;
     }
 
-    updateProfile({ userName: form.fullName, username: form.username, email: form.email });
+    updateProfile({ userName: form.fullName, employeeId: form.employeeId, email: form.email });
     addNotification({
       type: 'profile_updated',
       title: 'Profile updated',
@@ -163,7 +163,7 @@ function ProfilePage() {
         <Stack divider={<Divider />}>
           <ProfileAvatarSection
             fullName={form.fullName}
-            username={form.username}
+            employeeId={form.employeeId}
             avatarUrl={form.avatarUrl}
             onAvatarChange={handleAvatarChange}
           />

@@ -28,24 +28,24 @@ export function isValidName(value) {
 }
 
 // 3-20 characters, starts with a letter, then letters/digits/_/./- only —
-// a fairly standard username convention.
-const USER_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{2,19}$/;
+// a fairly standard identifier convention.
+const EMPLOYEE_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{2,19}$/;
 
-export function isValidUserId(value) {
-  return USER_ID_PATTERN.test(value.trim());
+export function isValidEmployeeId(value) {
+  return EMPLOYEE_ID_PATTERN.test(value.trim());
 }
 
 /**
- * What's actually missing from an in-progress User ID, spelled out instead
- * of just restating the whole rule — e.g. "22" -> "Needs to start with a
- * letter, be at least 3 characters". Returns null once the value is valid
- * (or empty — a blank field's message is "required", handled separately by
- * the caller).
+ * What's actually missing from an in-progress Employee ID, spelled out
+ * instead of just restating the whole rule — e.g. "22" -> "Needs to start
+ * with a letter, be at least 3 characters". Returns null once the value is
+ * valid (or empty — a blank field's message is "required", handled
+ * separately by the caller).
  *
  * @param {string} value
  * @returns {string|null}
  */
-export function getUserIdHint(value) {
+export function getEmployeeIdHint(value) {
   const trimmed = value.trim();
   if (!trimmed) return null;
 

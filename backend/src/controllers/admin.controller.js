@@ -1,3 +1,5 @@
+import path from 'node:path';
+import fs from 'node:fs';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { toPublicUser } from '../utils/serializers.js';
@@ -5,6 +7,7 @@ import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
 import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
+import { UPLOAD_DIR } from '../middleware/upload.js';
 
 // --- Admin activity backlog -------------------------------------------------
 // Persisted, append-only audit trail for Admin Module actions — categorized
@@ -57,20 +60,20 @@ export const listUsers = asyncHandler(async (req, res) => {
 });
 
 export const createUser = asyncHandler(async (req, res) => {
-  const { firstName, lastName, userId, email, password, accessRole = 'user' } = req.body;
-  if (!firstName || !lastName || !userId || !email || !password) {
-    throw new HttpError(400, 'firstName, lastName, userId, email, and password are required.');
+  const { firstName, lastName, employeeId, email, password, accessRole = 'user' } = req.body;
+  if (!firstName || !lastName || !employeeId || !email || !password) {
+    throw new HttpError(400, 'firstName, lastName, employeeId, email, and password are required.');
   }
   if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
 
   const passwordHash = bcrypt.hashSync(password, 10);
   const result = await query(
-    `INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role)
+    `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [firstName, lastName, userId, email, passwordHash, accessRole],
+    [firstName, lastName, employeeId, email, passwordHash, accessRole],
   );
   const [user] = await query('SELECT * FROM users WHERE id = ?', [result.insertId]);
-  await logAdminActivity(req.user.id, 'user_management', 'user_created', `Created user account: ${firstName} ${lastName} (${userId})`);
+  await logAdminActivity(req.user.id, 'user_management', 'user_created', `Created user account: ${firstName} ${lastName} (${employeeId})`);
   res.status(201).json({ user: toPublicUser(user) });
 });
 
@@ -210,6 +213,24 @@ export const deleteStore = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
+// Deactivate/reactivate is the reversible alternative to deleteStore above —
+// a deactivated store drops out of the Store Locator comparison (see
+// optimization.service.js's getStoreOptimization) but stays in the Admin
+// Module, still editable, ready to reactivate. Mirrors setUserActive.
+export const setStoreActive = asyncHandler(async (req, res) => {
+  const { isActive } = req.body;
+  const [target] = await query('SELECT name FROM stores WHERE id = ?', [req.params.id]);
+  if (!target) throw new HttpError(404, 'Store not found.');
+  await query('UPDATE stores SET is_active = ? WHERE id = ?', [isActive ? 1 : 0, req.params.id]);
+  await logAdminActivity(
+    req.user.id,
+    'store_management',
+    isActive ? 'store_reactivated' : 'store_deactivated',
+    `${isActive ? 'Reactivated' : 'Deactivated'} hardware store: ${target.name}`,
+  );
+  res.json({ message: isActive ? 'Store reactivated.' : 'Store deactivated.' });
+});
+
 /** The full global material_brands catalog, left-joined against this
  * store's own store_material_prices rows — `storePrice`/`inStock` are null
  * for a brand this store hasn't priced yet, which is how the frontend
@@ -253,10 +274,31 @@ export const getStoreCatalog = asyncHandler(async (req, res) => {
   res.json({ catalog: [...byKey.values()] });
 });
 
+function truthy(value, fallback) {
+  if (value === undefined) return fallback;
+  return value === true || value === 'true';
+}
+
+// A price change needs a quotation file (PDF/Word/Excel, see uploadQuotation
+// in middleware/upload.js) as documentary proof of why the price is what it
+// is — every real "someone decided this price" path (Add/Edit Brand,
+// Bulk Material's price editor) goes through here with one attached. The
+// one exception is `usesCatalogPrice`: "Add materials to store" carries a
+// brand's *existing* global catalog price into a store's first stocking of
+// it verbatim — nothing was actually decided, so there's nothing to justify
+// (see AdminStoresContext.jsx's addMaterialsToStore, the only caller that
+// sets this flag).
 export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { storeId, materialBrandId } = req.params;
-  const { price, inStock = true } = req.body;
+  const { price, inStock } = req.body;
   if (price == null) throw new HttpError(400, 'price is required.');
+  const usesCatalogPrice = truthy(req.body.usesCatalogPrice, false);
+  if (!usesCatalogPrice && !req.file) {
+    throw new HttpError(400, 'A quotation file (PDF, Word, or Excel) is required to set or change a price.');
+  }
+
+  const numericPrice = Number(price);
+  const stockFlag = truthy(inStock, true);
 
   const [[store], [brand], [existing]] = await Promise.all([
     query('SELECT name FROM stores WHERE id = ?', [storeId]),
@@ -268,20 +310,21 @@ export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
     `INSERT INTO store_material_prices (store_id, material_brand_id, price, in_stock)
      VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE price = VALUES(price), in_stock = VALUES(in_stock)`,
-    [storeId, materialBrandId, price, inStock ? 1 : 0],
+    [storeId, materialBrandId, numericPrice, stockFlag ? 1 : 0],
   );
 
   const brandLabel = brand ? `${brand.brand} (${brand.material_name})` : `brand #${materialBrandId}`;
   const storeLabel = store?.name ?? `store #${storeId}`;
   const message = existing
-    ? `Changed price of ${brandLabel} at ${storeLabel} from ₱${Number(existing.price).toFixed(2)} to ₱${Number(price).toFixed(2)}`
-    : `Set price of ${brandLabel} at ${storeLabel} to ₱${Number(price).toFixed(2)}`;
+    ? `Changed price of ${brandLabel} at ${storeLabel} from ₱${Number(existing.price).toFixed(2)} to ₱${numericPrice.toFixed(2)}`
+    : `Set price of ${brandLabel} at ${storeLabel} to ₱${numericPrice.toFixed(2)}`;
   await logAdminActivity(req.user.id, 'store_management', 'store_price_changed', message, {
     storeId: Number(storeId),
     materialBrandId: Number(materialBrandId),
     previousPrice: existing ? Number(existing.price) : null,
-    newPrice: Number(price),
-    inStock: Boolean(inStock),
+    newPrice: numericPrice,
+    inStock: stockFlag,
+    ...(req.file ? { quotationStoredName: req.file.filename, quotationFileName: req.file.originalname } : {}),
   });
 
   res.json({ message: 'Store price saved.' });
@@ -297,6 +340,24 @@ export const removeStoreMaterialPrice = asyncHandler(async (req, res) => {
   const brandLabel = brand ? `${brand.brand} (${brand.material_name})` : `brand #${materialBrandId}`;
   await logAdminActivity(req.user.id, 'store_management', 'store_price_removed', `Unassigned ${brandLabel} from ${store?.name ?? `store #${storeId}`}`);
   res.status(204).end();
+});
+
+// Serves a quotation file a price change was justified with (see
+// upsertStoreMaterialPrice's `quotationStoredName` metadata, rendered as a
+// download link on the Activity Log's price-change entries). `storedName`
+// is always one of multer's own generated filenames (see uploadQuotation in
+// middleware/upload.js) — never client-supplied free text — but this still
+// rejects anything containing a path separator as a defensive measure
+// against ever reading outside UPLOAD_DIR.
+export const downloadQuotation = asyncHandler(async (req, res) => {
+  const { storedName } = req.params;
+  if (!storedName || /[/\\]/.test(storedName)) throw new HttpError(400, 'Invalid file name.');
+
+  const filePath = path.join(UPLOAD_DIR, storedName);
+  if (!fs.existsSync(filePath)) throw new HttpError(404, 'Quotation file not found.');
+
+  const downloadName = req.query.name ? String(req.query.name) : storedName;
+  res.download(filePath, downloadName);
 });
 
 // --- Global estimation constants -------------------------------------------

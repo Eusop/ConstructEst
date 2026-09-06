@@ -11,6 +11,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormTextField from '../../components/FormTextField';
+import QuotationFilePicker from './QuotationFilePicker';
 import { colors } from '../../theme/palette';
 
 /**
@@ -20,20 +21,30 @@ import { colors } from '../../theme/palette';
 function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit }) {
   const [form, setForm] = useState({ price: '', available: true });
   const [error, setError] = useState('');
+  const [quotationFile, setQuotationFile] = useState(null);
+  const [quotationError, setQuotationError] = useState('');
 
   useEffect(() => {
     if (open) {
       setForm({ price: data?.price != null ? String(data.price) : '', available: data?.available ?? true });
       setError('');
+      setQuotationFile(null);
+      setQuotationError('');
     }
   }, [open, data]);
 
   const handleSubmit = () => {
+    let hasError = false;
     if (!form.price || Number.isNaN(Number(form.price)) || Number(form.price) < 0) {
       setError('Enter a valid price');
-      return;
+      hasError = true;
     }
-    onSubmit({ price: Number(form.price), available: form.available });
+    if (!quotationFile) {
+      setQuotationError('A quotation is required to set or change this price');
+      hasError = true;
+    }
+    if (hasError) return;
+    onSubmit({ price: Number(form.price), available: form.available }, quotationFile);
   };
 
   return (
@@ -76,6 +87,15 @@ function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit 
               <ToggleButton value="out">Out of stock</ToggleButton>
             </ToggleButtonGroup>
           </Box>
+
+          <QuotationFilePicker
+            file={quotationFile}
+            onFileChange={(file) => {
+              setQuotationFile(file);
+              setQuotationError('');
+            }}
+            error={quotationError}
+          />
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
