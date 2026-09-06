@@ -14,7 +14,7 @@ USE constructest;
 -- No admin UI/signup path exists, so this is the only way in; change the
 -- password via PUT /api/users/me/password once you've logged in.
 -- ---------------------------------------------------------------------------
-INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role)
+INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role)
 VALUES ('System', 'Admin', 'admin', 'admin@constructest.local',
         '$2a$10$tsAJhcupRMJt1XVsmBIiQe1M4qMcXQ6JaBs6JUcnEQRJjdpWZcUqq', 'admin');
 

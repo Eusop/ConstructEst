@@ -6,11 +6,11 @@ import FormTextField from '../../../components/FormTextField';
 const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 };
 
 /**
- * "Personal Information" section body: editable Full Name, Username, and
+ * "Personal Information" section body: editable Full Name, Employee ID, and
  * Email Address.
  *
  * @param {object} props
- * @param {{fullName: string, username: string, email: string}} props.form
+ * @param {{fullName: string, employeeId: string, email: string}} props.form
  * @param {object} props.errors
  * @param {object} props.touched
  * @param {(field: string, value: string) => void} props.onFieldChange
@@ -33,15 +33,15 @@ function PersonalInformationSection({ form, errors, touched, onFieldChange, onFi
           />
         </Box>
         <Box sx={{ flex: 1 }}>
-          <Typography sx={FIELD_LABEL_SX}>Username</Typography>
+          <Typography sx={FIELD_LABEL_SX}>Employee ID</Typography>
           <FormTextField
-            name="username"
+            name="employeeId"
             autoComplete="off"
-            value={form.username}
-            onChange={(event) => onFieldChange('username', event.target.value)}
-            onBlur={() => onFieldBlur('username')}
-            error={Boolean(touched.username && errors.username)}
-            helperText={(touched.username && errors.username) || ' '}
+            value={form.employeeId}
+            onChange={(event) => onFieldChange('employeeId', event.target.value)}
+            onBlur={() => onFieldBlur('employeeId')}
+            error={Boolean(touched.employeeId && errors.employeeId)}
+            helperText={(touched.employeeId && errors.employeeId) || ' '}
           />
         </Box>
       </Stack>

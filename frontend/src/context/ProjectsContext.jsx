@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest, ApiError } from '../services/apiClient';
 import { isLoggedIn } from '../services/authService';
+import { useToast } from './ToastContext';
 
 const INITIAL_DRAFT = {
   projectName: '',
@@ -68,6 +69,7 @@ export function ProjectsProvider({ children }) {
   const [draft, setDraft] = useState(INITIAL_DRAFT);
   const [fileValidation, setFileValidation] = useState(INITIAL_FILE_VALIDATION);
   const [secondFloorFileValidation, setSecondFloorFileValidation] = useState(INITIAL_FILE_VALIDATION);
+  const { showToast } = useToast();
 
   const activeProjectIdRef = useRef(activeProjectId);
   useEffect(() => {
@@ -78,8 +80,8 @@ export function ProjectsProvider({ children }) {
     if (!isLoggedIn()) return;
     apiRequest('/projects')
       .then(({ projects: rows }) => setProjects(rows.map((row) => toContextProject(row))))
-      .catch(() => {});
-  }, []);
+      .catch(() => showToast('Could not load your projects. Try refreshing the page.'));
+  }, [showToast]);
 
   const updateDraft = useCallback((field, value) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -178,12 +180,17 @@ export function ProjectsProvider({ children }) {
     setActiveProjectId(id);
   }, []);
 
-  const deleteProject = useCallback((id) => {
+  // Awaits the real DELETE before touching local state — deliberately not
+  // optimistic. An optimistic remove-then-fire-and-forget looked instant but
+  // meant a rejected delete silently left the project gone from the screen
+  // while still sitting in the database, only to reappear unexplained on
+  // the next reload. Callers now get a rejected Promise on failure instead.
+  const deleteProject = useCallback(async (id) => {
+    if (typeof id === 'number') {
+      await apiRequest(`/projects/${id}`, { method: 'DELETE' });
+    }
     setProjects((prev) => prev.filter((project) => project.id !== id));
     setActiveProjectId((prev) => (prev === id ? null : prev));
-    if (typeof id === 'number') {
-      apiRequest(`/projects/${id}`, { method: 'DELETE' }).catch(() => {});
-    }
   }, []);
 
   // Fetches the full estimation for the active project if it isn't already

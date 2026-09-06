@@ -8,9 +8,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const TOKEN_KEY = 'constructest_token';
 
 export class ApiError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -54,8 +55,44 @@ export async function apiRequest(path, { method = 'GET', body, isMultipart = fal
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, data?.message || `Request failed (${response.status}).`);
+    throw new ApiError(response.status, data?.message || `Request failed (${response.status}).`, data?.code);
   }
 
   return data;
+}
+
+/**
+ * Fetches a file behind an authenticated route and hands the browser a save
+ * prompt for it — a plain `<a href>` can't carry the Bearer token these
+ * routes require (see admin.controller.js's downloadQuotation), so this
+ * pulls it down as a blob first and triggers the download itself.
+ *
+ * @param {string} path e.g. '/admin/quotations/172...-quote.pdf'
+ * @param {string} [filename] Suggested save-as name; defaults to whatever the path's last segment is.
+ */
+export async function downloadFile(path, filename) {
+  const headers = {};
+  const token = getAuthToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_URL}${path}`, { headers });
+  if (!response.ok) {
+    let message = `Download failed (${response.status}).`;
+    try {
+      message = (await response.json())?.message || message;
+    } catch {
+      // No/invalid JSON body — keep the generic message.
+    }
+    throw new ApiError(response.status, message);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || path.split('/').pop();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

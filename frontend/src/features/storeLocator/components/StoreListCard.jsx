@@ -64,7 +64,11 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
         borderRadius: 3,
         bgcolor: 'common.white',
         p: 2,
-        cursor: 'pointer',
+        // Still clickable when out of stock (onSelect fires the "why not"
+        // notification — see StoreLocatorPage's setSelectedStoreId guard)
+        // but visually signals it won't actually select, rather than
+        // looking identical to a normal, selectable card.
+        cursor: store.inStock ? 'pointer' : 'not-allowed',
         border: '1.5px solid',
         borderColor: selected ? colors.iconGreenFg : 'divider',
         boxShadow: selected ? `0 0 0 3px ${colors.iconGreenBg}` : '0 2px 10px rgba(20, 30, 60, 0.06)',

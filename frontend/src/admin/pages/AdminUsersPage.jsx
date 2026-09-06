@@ -27,9 +27,10 @@ import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import EmptyState from '../components/EmptyState';
 import UserFormDialog from '../components/UserFormDialog';
+import TypedConfirmDialog from '../../components/TypedConfirmDialog';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
-import { listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive } from '../services/adminService';
+import { listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, verifyAdminUser } from '../services/adminService';
 import { getInitials } from '../../utils/getInitials';
 import { colors } from '../../theme/palette';
 
@@ -42,6 +43,51 @@ function avatarColorFor(id) {
 function formatDate(value) {
   if (!value) return '—';
   return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// A brand-new self-registered account (isVerified: false) reads as "Pending"
+// regardless of isActive — distinct from an existing account an admin
+// deliberately deactivated. See admin.controller.js's verifyUser /
+// auth.controller.js's register.
+function userStatus(user) {
+  if (!user.isVerified) return { label: 'Pending', bg: colors.iconOrangeBg, fg: colors.iconOrangeFg };
+  return user.isActive
+    ? { label: 'Active', bg: colors.iconGreenBg, fg: colors.iconGreenFg }
+    : { label: 'Inactive', bg: 'grey.100', fg: 'text.secondary' };
+}
+
+// One line of the account review shown inside the Deactivate/Reactivate/
+// Activate confirmations — see UserProfileReview below.
+function ProfileReviewRow({ label, value }) {
+  return (
+    <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
+      <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>{label}</Typography>
+      <Typography sx={{ color: 'text.primary', fontSize: '0.82rem', fontWeight: 600, textAlign: 'right' }} noWrap>
+        {value}
+      </Typography>
+    </Stack>
+  );
+}
+
+// Shared account-review block used as the `message` for all three
+// TypedConfirmDialogs below (Deactivate/Reactivate/Activate) — an admin
+// reviews who they're actually acting on before the typed word unlocks the
+// button, not just a one-line "are you sure" with a name buried in it.
+function UserProfileReview({ user, intro }) {
+  if (!user) return null;
+  return (
+    <Stack spacing={1.5}>
+      <Typography sx={{ color: 'text.primary' }}>{intro}</Typography>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: 'divider' }}>
+        <Stack spacing={0.75}>
+          <ProfileReviewRow label="Name" value={user.userName} />
+          <ProfileReviewRow label="Employee ID" value={user.employeeId} />
+          <ProfileReviewRow label="Email" value={user.email} />
+          <ProfileReviewRow label="Registered" value={formatDate(user.createdAt)} />
+        </Stack>
+      </Paper>
+    </Stack>
+  );
 }
 
 // Mobile-only rendering (below `md`). Was a 4-band card per user (avatar
@@ -64,7 +110,7 @@ function UserMobileCard({ user, onOpenMenu }) {
             {user.userName}
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem' }} noWrap>
-            {user.username} · {user.email}
+            {user.employeeId} · {user.email}
           </Typography>
         </Box>
         <IconButton size="small" onClick={(event) => onOpenMenu(event, user)} sx={{ flexShrink: 0, mr: -0.5 }} aria-label="User actions">
@@ -86,15 +132,9 @@ function UserMobileCard({ user, onOpenMenu }) {
             }}
           />
           <Chip
-            label={user.isActive ? 'Active' : 'Inactive'}
+            label={userStatus(user).label}
             size="small"
-            sx={{
-              height: 20,
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              bgcolor: user.isActive ? colors.iconGreenBg : 'grey.100',
-              color: user.isActive ? colors.iconGreenFg : 'text.secondary',
-            }}
+            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: userStatus(user).bg, color: userStatus(user).fg }}
           />
         </Stack>
         <Typography sx={{ color: 'text.secondary', fontSize: '0.68rem', flexShrink: 0 }} noWrap>
@@ -120,6 +160,12 @@ function AdminUsersPage() {
   const [editingUser, setEditingUser] = useState(null);
   // Mobile-only row action menu (kebab) — see UserMobileCard above.
   const [rowMenu, setRowMenu] = useState(null);
+  // Both directions of the active/inactive toggle are gated behind a typed
+  // word (DEACTIVATE / REACTIVATE) — see handleToggleActive.
+  const [pendingToggleUser, setPendingToggleUser] = useState(null);
+  // Approving a pending self-registered account is gated behind typing
+  // ACTIVATE — see handleVerify.
+  const [pendingVerifyUser, setPendingVerifyUser] = useState(null);
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
 
@@ -135,7 +181,7 @@ function AdminUsersPage() {
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return users;
-    return users.filter((user) => [user.userName, user.username, user.email].some((value) => value?.toLowerCase().includes(term)));
+    return users.filter((user) => [user.userName, user.employeeId, user.email].some((value) => value?.toLowerCase().includes(term)));
   }, [users, search]);
 
   const handleAdd = () => {
@@ -165,7 +211,7 @@ function AdminUsersPage() {
     load();
   };
 
-  const handleToggleActive = async (user) => {
+  const performToggleActive = async (user) => {
     await setAdminUserActive(user.id, !user.isActive);
     logActivity({
       message: `User ${user.isActive ? 'deactivated' : 'reactivated'}: ${user.userName}`,
@@ -175,6 +221,39 @@ function AdminUsersPage() {
     });
     showToast(user.isActive ? 'User deactivated' : 'User reactivated', user.isActive ? 'warning' : 'success');
     load();
+  };
+
+  const handleToggleActive = (user) => setPendingToggleUser(user);
+
+  const handleConfirmToggle = async () => {
+    try {
+      await performToggleActive(pendingToggleUser);
+      setPendingToggleUser(null);
+    } catch (error) {
+      const verb = pendingToggleUser.isActive ? 'deactivate' : 'reactivate';
+      showToast(error.message || `Could not ${verb} this user. Try again.`, 'warning');
+      throw error;
+    }
+  };
+
+  const handleVerify = (user) => setPendingVerifyUser(user);
+
+  const handleConfirmVerify = async () => {
+    try {
+      await verifyAdminUser(pendingVerifyUser.id);
+      logActivity({
+        message: `Verified user account: ${pendingVerifyUser.userName}`,
+        icon: CheckCircleOutlineRoundedIcon,
+        iconBg: colors.iconGreenBg,
+        iconFg: colors.iconGreenFg,
+      });
+      showToast('User verified', 'success');
+      setPendingVerifyUser(null);
+      load();
+    } catch (error) {
+      showToast(error.message || 'Could not activate this user. Try again.', 'warning');
+      throw error;
+    }
   };
 
   return (
@@ -211,7 +290,7 @@ function AdminUsersPage() {
             <SearchRoundedIcon sx={{ fontSize: 20, color: 'text.secondary', flexShrink: 0 }} />
             <Box
               component="input"
-              placeholder="Search users by name, username, or email"
+              placeholder="Search users by name, employee ID, or email"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               sx={{ border: 'none', outline: 'none', bgcolor: 'transparent', width: '100%', minWidth: 0, font: 'inherit', color: 'text.primary' }}
@@ -252,7 +331,7 @@ function AdminUsersPage() {
             description={
               users.length === 0
                 ? 'Accounts you create will show up here, ready to manage.'
-                : 'Try a different name, username, or email.'
+                : 'Try a different name, employee ID, or email.'
             }
             action={
               users.length === 0 ? (
@@ -276,7 +355,7 @@ function AdminUsersPage() {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Username</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Employee ID</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Role</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</TableCell>
@@ -295,7 +374,7 @@ function AdminUsersPage() {
                         <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.userName}</Typography>
                       </Stack>
                     </TableCell>
-                    <TableCell sx={{ color: 'text.secondary' }}>{user.username}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>{user.employeeId}</TableCell>
                     <TableCell sx={{ color: 'text.secondary' }}>{user.email}</TableCell>
                     <TableCell>
                       <Chip
@@ -310,13 +389,9 @@ function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={user.isActive ? 'Active' : 'Inactive'}
+                        label={userStatus(user).label}
                         size="small"
-                        sx={{
-                          fontWeight: 700,
-                          bgcolor: user.isActive ? colors.iconGreenBg : 'grey.100',
-                          color: user.isActive ? colors.iconGreenFg : 'text.secondary',
-                        }}
+                        sx={{ fontWeight: 700, bgcolor: userStatus(user).bg, color: userStatus(user).fg }}
                       />
                     </TableCell>
                     <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{formatDate(user.createdAt)}</TableCell>
@@ -327,11 +402,19 @@ function AdminUsersPage() {
                             <EditRoundedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
-                          <IconButton size="small" onClick={() => handleToggleActive(user)}>
-                            {user.isActive ? <BlockRoundedIcon fontSize="small" color="error" /> : <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />}
-                          </IconButton>
-                        </Tooltip>
+                        {!user.isVerified ? (
+                          <Tooltip title="Verify">
+                            <IconButton size="small" onClick={() => handleVerify(user)}>
+                              <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
+                            <IconButton size="small" onClick={() => handleToggleActive(user)}>
+                              {user.isActive ? <BlockRoundedIcon fontSize="small" color="error" /> : <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />}
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -344,6 +427,37 @@ function AdminUsersPage() {
       </Paper>
 
       <UserFormDialog open={dialogOpen} user={editingUser} onClose={() => setDialogOpen(false)} onSubmit={handleSubmit} />
+
+      <TypedConfirmDialog
+        key={pendingToggleUser?.id ?? 'closed'}
+        open={Boolean(pendingToggleUser)}
+        title={pendingToggleUser?.isActive ? 'Deactivate user' : 'Reactivate user'}
+        confirmWord={pendingToggleUser?.isActive ? 'DEACTIVATE' : 'REACTIVATE'}
+        message={
+          <UserProfileReview
+            user={pendingToggleUser}
+            intro={
+              pendingToggleUser?.isActive
+                ? 'Review this account before deactivating it. This locks them out — they can be reactivated later.'
+                : 'Review this account before reactivating it. This restores their access.'
+            }
+          />
+        }
+        confirmLabel={pendingToggleUser?.isActive ? 'Yes, Deactivate' : 'Yes, Reactivate'}
+        onCancel={() => setPendingToggleUser(null)}
+        onConfirm={handleConfirmToggle}
+      />
+
+      <TypedConfirmDialog
+        key={pendingVerifyUser?.id ?? 'closed'}
+        open={Boolean(pendingVerifyUser)}
+        title="Activate user"
+        confirmWord="ACTIVATE"
+        message={<UserProfileReview user={pendingVerifyUser} intro="Review this account before activating it." />}
+        confirmLabel="Yes, Activate"
+        onCancel={() => setPendingVerifyUser(null)}
+        onConfirm={handleConfirmVerify}
+      />
 
       {/* Mobile only — opened from UserMobileCard's kebab button. */}
       <Menu anchorEl={rowMenu?.anchorEl} open={Boolean(rowMenu)} onClose={closeRowMenu} disableScrollLock>
@@ -358,21 +472,35 @@ function AdminUsersPage() {
           </ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleToggleActive(rowMenu.user);
-            closeRowMenu();
-          }}
-        >
-          <ListItemIcon>
-            {rowMenu?.user.isActive ? (
-              <BlockRoundedIcon fontSize="small" color="error" />
-            ) : (
+        {rowMenu && !rowMenu.user.isVerified ? (
+          <MenuItem
+            onClick={() => {
+              handleVerify(rowMenu.user);
+              closeRowMenu();
+            }}
+          >
+            <ListItemIcon>
               <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
-            )}
-          </ListItemIcon>
-          <ListItemText>{rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}</ListItemText>
-        </MenuItem>
+            </ListItemIcon>
+            <ListItemText>Verify</ListItemText>
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              handleToggleActive(rowMenu.user);
+              closeRowMenu();
+            }}
+          >
+            <ListItemIcon>
+              {rowMenu?.user.isActive ? (
+                <BlockRoundedIcon fontSize="small" color="error" />
+              ) : (
+                <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
+              )}
+            </ListItemIcon>
+            <ListItemText>{rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
     </Stack>
   );

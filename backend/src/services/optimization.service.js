@@ -24,7 +24,11 @@ async function getQuantityTakeoff(projectId) {
  */
 export async function getStoreOptimization(projectId) {
   const materials = await getQuantityTakeoff(projectId);
-  const stores = await query('SELECT * FROM stores ORDER BY name');
+  // Deactivated stores (admin.controller.js's setStoreActive) are excluded
+  // entirely — they're temporarily out of commission, not just a store that
+  // happens to be missing one material (that case still shows up, with
+  // missingMaterials naming the gap, below).
+  const stores = await query('SELECT * FROM stores WHERE is_active = 1 ORDER BY name');
 
   const results = [];
   for (const store of stores) {

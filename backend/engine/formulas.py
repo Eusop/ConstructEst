@@ -22,11 +22,20 @@ different footprints per storey. The single-file path (`geometry2=None`)
 is unchanged and remains the default/fallback for anyone who only has
 one file, or whose DXF already draws both floors on the same layers.
 
-Assumptions made where the paper's tables don't give every needed
-constant (flagged inline, each one a candidate for the licensed-engineer
-validation step the paper itself calls for — this engine hasn't had
-that review):
-  - Main reinforcement assumed 10mm dia (0.617 kg/m) for all rebar tallies.
+Assumptions/gaps, several already run past a licensed civil engineer's
+expert-validation review (Engr. Espiritu, see the project's validation
+form) — his corrections are applied where noted; everything else here is
+still an unreviewed candidate for that same process:
+  - Rebar diameter is now element-specific per his confirmed defaults:
+    10mm for walls and the ground slab, 12mm for the suspended (2nd floor)
+    slab. Stairs still use the 10mm rate too, but that one's still an
+    unvalidated assumption — his form didn't state a stair diameter.
+  - Column rebar is a known gap, not yet an assumption: columns contribute
+    concrete (Table 14) but no reinforcement at all today, even though his
+    form confirmed column rebar diameters (12mm 1-storey / 16mm 2-storey) —
+    implying Table 14 expects a column rebar formula this engine doesn't
+    have yet. Deliberately deferred (a real formula to design, not a rate
+    swap) rather than bundled into the diameter fix above.
   - Footing plan dimensions default to 0.60m x 0.60m per column (paper
     gives a default depth only, not width/length).
   - Total beam run length is approximated as the wall run length (or, with
@@ -41,11 +50,29 @@ that review):
   - Gutter (Table 16: roof eave length / 1.8m per pc) has no distinct
     "eave length" available from a simple rectangular ROOF outline, so
     it's approximated using the same roof perimeter flashing already uses.
+  - Formwork materials (plywood/"Phenolic Board", lumber/"Coco Lumber",
+    steel props, scaffolding — Table 19) are computed and priced here as a
+    one-time purchase of the full raw quantity, with no reuse/cycling
+    factor. This matches Table 19's own formula exactly, which has no
+    reuse variable — per the expert validation form: estimating per total
+    formwork area is an accepted approach, but a real bill of materials
+    would additionally account for how many times a contractor can reuse
+    the same formwork panels/props/sets across pour stages (columns, then
+    beams, then slab), which would lower the actual quantity purchased.
+    Deliberately out of scope here — the paper's Table 19, and this
+    engine, estimate raw material need, not procurement/reuse planning.
+    See services/optimization.service.js's computeBom (Node backend),
+    which prices every material key identically, formwork included.
 """
 import math
 
 WALL_HEIGHT_PER_STOREY_M = 3.0
-REBAR_UNIT_WEIGHT_KG_PER_M = 0.617  # 10mm dia, PNS/DPWH standard table
+# Standard nominal mass formula for deformed reinforcing bars, kg/m = d^2/162
+# (d in mm) — PNS/DPWH standard table. Element-to-diameter mapping per
+# Engr. Espiritu's expert validation: 10mm for walls/ground slab, 12mm for
+# the suspended (2nd floor) slab.
+REBAR_UNIT_WEIGHT_10MM_KG_PER_M = 0.617
+REBAR_UNIT_WEIGHT_12MM_KG_PER_M = 0.889
 
 # NSCP 2016 moderate slope, rise:run = 1:3 -> sqrt(rise^2 + run^2) / run = sqrt(10) / 3
 PITCH_MULTIPLIER = math.sqrt(10) / 3
@@ -128,11 +155,14 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # 16) against whichever file actually represents the roof — the ground
     # floor's here, or the second floor's when one was given.
 
-    # Rebar length tracked per category rather than one scalar — Table 12/13/18
+    # Rebar WEIGHT (not raw length) tracked per category — Table 12/13/18
     # all contribute to the same steelRebar/tieWire totals, but each
-    # contribution genuinely does belong to a specific source, so the
-    # category breakdown (see SOURCE_CATEGORIES) needs to follow it through.
-    rebar_length_by_category = {category: 0.0 for category in SOURCE_CATEGORIES}
+    # contribution both belongs to a specific source (see SOURCE_CATEGORIES)
+    # and uses its own diameter's unit weight (walls/ground slab at 10mm,
+    # suspended slab at 12mm — see REBAR_UNIT_WEIGHT_*), so length is
+    # converted to weight right where each contribution happens rather than
+    # summed as one length and converted once with a single flat rate.
+    rebar_weight_by_category = {category: 0.0 for category in SOURCE_CATEGORIES}
 
     # --- Table 12: Wall materials -----------------------------------------
     # Each storey uses its own floor's real wall run/openings when a second
@@ -155,8 +185,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
 
         vertical_bars = ceil_int(storey_wall_length_m / 0.60) + 1
         horizontal_bars = ceil_int(WALL_HEIGHT_PER_STOREY_M / 0.60) + 1
-        rebar_length_by_category[storey_category] += vertical_bars * WALL_HEIGHT_PER_STOREY_M
-        rebar_length_by_category[storey_category] += horizontal_bars * storey_wall_length_m
+        wall_rebar_length_m = vertical_bars * WALL_HEIGHT_PER_STOREY_M + horizontal_bars * storey_wall_length_m
+        rebar_weight_by_category[storey_category] += wall_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
 
     # --- Table 13: Slab materials ------------------------------------------
     ground_slab_volume = floor_area_m2 * 0.15
@@ -167,7 +197,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         floor_wid = max(bounds[3] - bounds[1], 0.01)
         rebar_len_count = ceil_int(floor_len / 0.30) + 1
         rebar_wid_count = ceil_int(floor_wid / 0.30) + 1
-        rebar_length_by_category["ground"] += rebar_len_count * floor_wid + rebar_wid_count * floor_len
+        ground_slab_rebar_length_m = rebar_len_count * floor_wid + rebar_wid_count * floor_len
+        rebar_weight_by_category["ground"] += ground_slab_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
 
     if storeys >= 2:
         # The 2nd floor's own footprint when its DXF was supplied — real
@@ -189,7 +220,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             suspended_wid = max(suspended_bounds[3] - suspended_bounds[1], 0.01)
             rebar_len_count = ceil_int(suspended_len / 0.15) + 1
             rebar_wid_count = ceil_int(suspended_wid / 0.15) + 1
-            rebar_length_by_category[suspended_category] += rebar_len_count * suspended_wid + rebar_wid_count * suspended_len
+            suspended_slab_rebar_length_m = rebar_len_count * suspended_wid + rebar_wid_count * suspended_len
+            rebar_weight_by_category[suspended_category] += suspended_slab_rebar_length_m * REBAR_UNIT_WEIGHT_12MM_KG_PER_M
 
     # --- Table 14: Column materials -----------------------------------------
     col_w, col_d, col_h = default_column_size(storeys)
@@ -249,8 +281,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         slab_volume = slab_area * 0.15
         step_volume = 0.5 * 0.18 * 0.25 * stair_width * risers
         acc.add_concrete_mix(slab_volume + step_volume, cement_factor, "Stair slab + step volume", "shared")
-        rebar_length_by_category["shared"] += (ceil_int(slant / 0.15) + 1) * stair_width
-        rebar_length_by_category["shared"] += (ceil_int(stair_width / 0.15) + 1) * slant
+        # Diameter unspecified by the expert validation form for stairs —
+        # 10mm stays a documented assumption here, same as before.
+        stair_rebar_length_m = (ceil_int(slant / 0.15) + 1) * stair_width + (ceil_int(stair_width / 0.15) + 1) * slant
+        rebar_weight_by_category["shared"] += stair_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
 
     # --- Table 19: Scaffolding & Formwork ------------------------------------
     # True combined footprint (both floors' own real areas) when a second
@@ -275,13 +309,15 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # --- Reinforcement rollup (Table 12/13/18 rebar + Table 12 tie wire) ----
     # steelRebar/tieWire are computed once per category (not once overall)
     # so their contribution to each category's breakdown is honest, rather
-    # than dumping the whole reinforcement total into one bucket.
-    for category, length_m in rebar_length_by_category.items():
-        if length_m <= 0:
+    # than dumping the whole reinforcement total into one bucket. Weight is
+    # already diameter-adjusted per contribution (see rebar_weight_by_category
+    # above) — only the Steel Factor is left to apply here.
+    for category, weight_kg in rebar_weight_by_category.items():
+        if weight_kg <= 0:
             continue
-        weight_kg = length_m * REBAR_UNIT_WEIGHT_KG_PER_M * steel_factor
-        acc.add("steelRebar", weight_kg / 1000, "Reinforcement length x unit weight", category)
-        acc.add("tieWire", weight_kg / 100, "Rebar weight x tie-wire ratio", category)
+        adjusted_weight_kg = weight_kg * steel_factor
+        acc.add("steelRebar", adjusted_weight_kg / 1000, "Reinforcement length x unit weight", category)
+        acc.add("tieWire", adjusted_weight_kg / 100, "Rebar weight x tie-wire ratio", category)
 
     # Apply the general wastage factor to consumables prone to cut/spill
     # waste — CHB already carries its own 5% (Table 12); rebar/tie wire are
@@ -344,12 +380,29 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # floor's DXF was given — same "combine, don't just report file 1's own"
     # treatment floorArea already gets; otherwise unchanged.
     total_wall_length_m = wall_length_m + geometry2["wall_length_m"] if geometry2 is not None else wall_length_m
+    # Same combine-both-floors treatment for the extra "detailed extraction"
+    # figures below — door/window openings and the floor outline's own
+    # perimeter are per-floor quantities like wall length, so they're summed
+    # the same way. column_count is deliberately NOT summed here: a column
+    # is one continuous member running through every floor, not a separate
+    # one per floor (see its resolution above), and roof_perimeter_m /
+    # roof_ridge_length_m already come from whichever single file represents
+    # the roof (roof_source above) — there's only ever one roof.
+    total_door_area_m2 = door_area_m2 + (geometry2["door_area_m2"] if geometry2 is not None else 0.0)
+    total_window_area_m2 = window_area_m2 + (geometry2["window_area_m2"] if geometry2 is not None else 0.0)
+    total_floor_perimeter_m = floor_perimeter_m + (geometry2["floor_perimeter_m"] if geometry2 is not None else 0.0)
 
     measurements = {
         "totalWallLength": round(total_wall_length_m, 2),
         "floorArea": round(total_floor_area_m2, 2),
         "roofArea": round(roof_area_m2, 2),
         "roomsDetected": geometry["rooms_detected"],
+        "doorArea": round(total_door_area_m2, 2),
+        "windowArea": round(total_window_area_m2, 2),
+        "columnCount": column_count,
+        "floorPerimeter": round(total_floor_perimeter_m, 2),
+        "roofPerimeter": round(roof_perimeter_m, 2),
+        "roofRidgeLength": round(roof_ridge_length_m, 2),
     }
     if geometry2 is not None:
         # Per-floor breakdown, only meaningful (and only returned) when a

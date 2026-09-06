@@ -7,20 +7,22 @@ USE constructest;
 
 -- ---------------------------------------------------------------------------
 -- Users. Two access roles only (`user`, `admin`) per the project's confirmed
--- design — homeowner/engineer are both `user`; prc_license is informational,
--- not a gate on any feature.
+-- design — homeowner/engineer are both `user`.
 -- ---------------------------------------------------------------------------
 CREATE TABLE users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
-  user_id VARCHAR(50) NOT NULL UNIQUE,       -- login "username" (SignUpForm's userId)
+  employee_id VARCHAR(50) NOT NULL UNIQUE,   -- login identifier (SignUpForm's employeeId)
   email VARCHAR(255) NOT NULL UNIQUE,
-  prc_license VARCHAR(50) NULL,
   password_hash VARCHAR(255) NOT NULL,
   access_role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
   avatar_url VARCHAR(500) NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
+  -- Self-registered accounts start unverified (register sets this to 0
+  -- explicitly); admin-created accounts and every pre-existing row take the
+  -- column default (1) — see db/migrations/008_users_is_verified.sql.
+  is_verified TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -58,6 +60,15 @@ CREATE TABLE estimation_results (
   floor_area DECIMAL(10, 2) NULL,          -- m^2
   roof_area DECIMAL(10, 2) NULL,           -- m^2
   rooms_detected SMALLINT UNSIGNED NULL,
+  -- Additional detail the DXF engine already computes alongside the figures
+  -- above — see engine/formulas.py's `measurements` dict and the "Detailed
+  -- extraction information" section on the Results page.
+  door_area DECIMAL(10, 2) NULL,           -- m^2
+  window_area DECIMAL(10, 2) NULL,         -- m^2
+  column_count SMALLINT UNSIGNED NULL,
+  floor_perimeter DECIMAL(10, 2) NULL,     -- meters
+  roof_perimeter DECIMAL(10, 2) NULL,      -- meters
+  roof_ridge_length DECIMAL(10, 2) NULL,   -- meters
   -- Per-floor breakdown, populated only when a real second-floor DXF was
   -- uploaded (see engine/formulas.py's geometry2/measurements.groundFloor
   -- and .secondFloor) — NULL for every single-file project.
@@ -121,6 +132,11 @@ CREATE TABLE stores (
   address VARCHAR(255) NOT NULL,
   lat DECIMAL(10, 6) NOT NULL,
   lng DECIMAL(10, 6) NOT NULL,
+  -- Deactivated stores drop out of the Store Locator comparison entirely
+  -- (see optimization.service.js's getStoreOptimization) but stay visible
+  -- and editable in the Admin Module — mirrors users' is_active, reversible
+  -- via the same typed DEACTIVATE/REACTIVATE confirmation pattern.
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -220,4 +236,22 @@ CREATE TABLE activity_log (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_activity_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- Admin activity backlog — a separate, persisted, append-only audit trail
+-- for Admin Module actions (distinct from the User Module's activity_log
+-- above). Categorized into User Management / Store Management (see the
+-- Admin Activity Log page). No UPDATE/DELETE route is ever exposed for this
+-- table — immutability, even to the admin, is structural.
+-- ---------------------------------------------------------------------------
+CREATE TABLE admin_activity_log (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  admin_user_id INT UNSIGNED NOT NULL,
+  category ENUM('user_management', 'store_management') NOT NULL,
+  action VARCHAR(50) NOT NULL,
+  message VARCHAR(500) NOT NULL,
+  metadata JSON NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_admin_activity_admin FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

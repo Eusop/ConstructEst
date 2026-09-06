@@ -3,6 +3,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import PasswordField from '../../../components/PasswordField';
+import PasswordStrengthMeter from '../../../components/PasswordStrengthMeter';
 
 const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 };
 const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />;
@@ -21,6 +22,14 @@ const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary
  * @param {(field: string) => void} props.onFieldBlur
  */
 function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBlur }) {
+  // Shows the instant there's content, not gated on blur alone — a browser
+  // autofilling saved credentials never fires a real blur event (see
+  // SignUpForm.jsx for the same fix and fuller explanation).
+  const showError = (field) => {
+    const hasContent = form[field]?.trim().length > 0;
+    return Boolean(errors[field]) && (hasContent || touched[field]);
+  };
+
   return (
     <Stack spacing={2.5}>
       <Box>
@@ -33,8 +42,8 @@ function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBl
           value={form.currentPassword}
           onChange={(event) => onFieldChange('currentPassword', event.target.value)}
           onBlur={() => onFieldBlur('currentPassword')}
-          error={Boolean(touched.currentPassword && errors.currentPassword)}
-          helperText={(touched.currentPassword && errors.currentPassword) || ' '}
+          error={Boolean(showError('currentPassword'))}
+          helperText={showError('currentPassword') || ' '}
         />
       </Box>
 
@@ -49,9 +58,10 @@ function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBl
             value={form.newPassword}
             onChange={(event) => onFieldChange('newPassword', event.target.value)}
             onBlur={() => onFieldBlur('newPassword')}
-            error={Boolean(touched.newPassword && errors.newPassword)}
-            helperText={(touched.newPassword && errors.newPassword) || ' '}
+            error={Boolean(showError('newPassword'))}
+            helperText={showError('newPassword') || ' '}
           />
+          <PasswordStrengthMeter password={form.newPassword} />
         </Box>
         <Box sx={{ flex: 1 }}>
           <Typography sx={FIELD_LABEL_SX}>Confirm New Password</Typography>
@@ -63,14 +73,14 @@ function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBl
             value={form.confirmPassword}
             onChange={(event) => onFieldChange('confirmPassword', event.target.value)}
             onBlur={() => onFieldBlur('confirmPassword')}
-            error={Boolean(touched.confirmPassword && errors.confirmPassword)}
-            helperText={(touched.confirmPassword && errors.confirmPassword) || ' '}
+            error={Boolean(showError('confirmPassword'))}
+            helperText={showError('confirmPassword') || ' '}
           />
         </Box>
       </Stack>
 
       <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: -1.5 }}>
-        Use at least 8 characters with a mix of letters, numbers, and symbols.
+        8–16 characters with uppercase, lowercase, a number, and a special character.
       </Typography>
     </Stack>
   );

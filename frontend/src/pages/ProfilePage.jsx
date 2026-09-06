@@ -16,6 +16,7 @@ import PersonalInformationSection from '../features/profile/components/PersonalI
 import ChangePasswordSection from '../features/profile/components/ChangePasswordSection';
 import { useUser } from '../context/UserContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
 import { colors } from '../theme/palette';
@@ -25,7 +26,7 @@ const EMPTY_PASSWORD_FIELDS = { currentPassword: '', newPassword: '', confirmPas
 function buildForm(profile) {
   return {
     fullName: profile.userName ?? '',
-    username: profile.username ?? '',
+    employeeId: profile.employeeId ?? '',
     email: profile.email ?? '',
     avatarUrl: profile.avatarUrl ?? null,
     ...EMPTY_PASSWORD_FIELDS,
@@ -36,7 +37,7 @@ function validate(form) {
   const errors = {};
 
   if (!isRequired(form.fullName)) errors.fullName = 'Full name is required';
-  if (!isRequired(form.username)) errors.username = 'Username is required';
+  if (!isRequired(form.employeeId)) errors.employeeId = 'Employee ID is required';
 
   if (!isRequired(form.email)) {
     errors.email = 'Email is required';
@@ -53,7 +54,7 @@ function validate(form) {
     if (!isRequired(form.newPassword)) {
       errors.newPassword = 'New password is required';
     } else if (!isStrongPassword(form.newPassword)) {
-      errors.newPassword = 'Use at least 8 characters with a mix of letters, numbers, and symbols';
+      errors.newPassword = '8–16 characters with uppercase, lowercase, a number, and a special character';
     }
 
     if (!isRequired(form.confirmPassword)) {
@@ -67,7 +68,7 @@ function validate(form) {
 }
 
 /**
- * Profile: the signed-in user's editable identity (name, username, email,
+ * Profile: the signed-in user's editable identity (name, employee ID, email,
  * avatar) plus a password-change form. Frontend-only — "Save changes"
  * commits into UserContext (so e.g. the Dashboard greeting picks up a new
  * name immediately), "Cancel" discards the draft back to whatever's
@@ -83,6 +84,7 @@ function ProfilePage() {
   const profile = useUser();
   const { updateProfile } = profile;
   const { addNotification } = useNotifications();
+  const { showToast } = useToast();
   const isMobile = useIsMobile();
 
   const [savedForm, setSavedForm] = useState(() => buildForm(profile));
@@ -116,15 +118,18 @@ function ProfilePage() {
   const handleSave = () => {
     setTouched({
       fullName: true,
-      username: true,
+      employeeId: true,
       email: true,
       currentPassword: true,
       newPassword: true,
       confirmPassword: true,
     });
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      showToast('Please fix the highlighted fields before saving.');
+      return;
+    }
 
-    updateProfile({ userName: form.fullName, username: form.username, email: form.email });
+    updateProfile({ userName: form.fullName, employeeId: form.employeeId, email: form.email });
     addNotification({
       type: 'profile_updated',
       title: 'Profile updated',
@@ -158,7 +163,7 @@ function ProfilePage() {
         <Stack divider={<Divider />}>
           <ProfileAvatarSection
             fullName={form.fullName}
-            username={form.username}
+            employeeId={form.employeeId}
             avatarUrl={form.avatarUrl}
             onAvatarChange={handleAvatarChange}
           />

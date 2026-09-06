@@ -11,28 +11,32 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormTextField from '../../components/FormTextField';
 import PasswordField from '../../components/PasswordField';
-import { isRequired, isValidEmail, minLength } from '../../utils/validators';
+import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
+import { isRequired, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword } from '../../utils/validators';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useAdminToast } from '../context/AdminToastContext';
 import { colors } from '../../theme/palette';
 
-const EMPTY_FORM = { firstName: '', lastName: '', userId: '', email: '', password: '', accessRole: 'user' };
+const EMPTY_FORM = { firstName: '', lastName: '', employeeId: '', email: '', password: '', accessRole: 'user' };
 
 function buildForm(user) {
   if (!user) return EMPTY_FORM;
-  return { firstName: user.firstName, lastName: user.lastName, userId: user.userId, email: user.email, password: '', accessRole: user.accessRole };
+  return { firstName: user.firstName, lastName: user.lastName, employeeId: user.employeeId, email: user.email, password: '', accessRole: user.accessRole };
 }
 
 function validate(form, isEdit) {
   const errors = {};
   if (!isRequired(form.firstName)) errors.firstName = 'First name is required';
+  else if (!isValidName(form.firstName)) errors.firstName = 'Must start with a letter and be at least 2 characters';
   if (!isRequired(form.lastName)) errors.lastName = 'Last name is required';
-  if (!isRequired(form.userId)) errors.userId = 'User ID is required';
-  else if (!minLength(form.userId, 3)) errors.userId = 'User ID must be at least 3 characters';
+  else if (!isValidName(form.lastName)) errors.lastName = 'Must start with a letter and be at least 2 characters';
+  if (!isRequired(form.employeeId)) errors.employeeId = 'Employee ID is required';
+  else if (!isValidEmployeeId(form.employeeId)) errors.employeeId = getEmployeeIdHint(form.employeeId) ?? '3–20 characters: start with a letter, then letters, numbers, or _ . -';
   if (!isRequired(form.email)) errors.email = 'Email is required';
   else if (!isValidEmail(form.email)) errors.email = 'Enter a valid email address';
   if (!isEdit) {
     if (!isRequired(form.password)) errors.password = 'Password is required';
-    else if (!minLength(form.password, 6)) errors.password = 'Password must be at least 6 characters';
+    else if (!isStrongPassword(form.password)) errors.password = '8–16 characters with uppercase, lowercase, a number, and a special character';
   }
   return errors;
 }
@@ -52,30 +56,52 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
   const isMobile = useIsMobile();
   const isEdit = Boolean(user);
   const [form, setForm] = useState(() => buildForm(user));
-  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useAdminToast();
+
+  // Derived fresh from `form` every render (not stored in state) — see
+  // SignUpForm.jsx for why: it's what makes a shown error update live as
+  // you keep typing instead of freezing until the next submit click.
+  const errors = validate(form, isEdit);
+  // Shows the instant there's content, not gated on blur alone — a browser
+  // autofilling name/email fields never fires a real blur event (see
+  // SignUpForm.jsx for the same fix and fuller explanation).
+  const showError = (field) => {
+    const hasContent = form[field]?.trim().length > 0;
+    return Boolean(errors[field]) && (hasContent || touched[field] || submitAttempted);
+  };
 
   useEffect(() => {
     if (open) {
       setForm(buildForm(user));
-      setErrors({});
+      setTouched({});
+      setSubmitAttempted(false);
     }
   }, [open, user]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleBlur = (event) => {
+    setTouched((prev) => ({ ...prev, [event.target.name]: true }));
   };
 
   const handleSubmit = async () => {
-    const validationErrors = validate(form, isEdit);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+    setSubmitAttempted(true);
+    if (Object.keys(errors).length > 0) {
+      showToast('Please fix the highlighted fields.', 'error');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       await onSubmit(form);
+    } catch (error) {
+      showToast(error.message || 'Could not save this user. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -89,29 +115,30 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>First name</Typography>
-              <FormTextField name="firstName" value={form.firstName} onChange={handleChange} error={Boolean(errors.firstName)} helperText={errors.firstName || ' '} />
+              <FormTextField name="firstName" value={form.firstName} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('firstName'))} helperText={showError('firstName') || ' '} />
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Last name</Typography>
-              <FormTextField name="lastName" value={form.lastName} onChange={handleChange} error={Boolean(errors.lastName)} helperText={errors.lastName || ' '} />
+              <FormTextField name="lastName" value={form.lastName} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('lastName'))} helperText={showError('lastName') || ' '} />
             </Box>
           </Stack>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>User ID</Typography>
-              <FormTextField name="userId" value={form.userId} onChange={handleChange} disabled={isEdit} error={Boolean(errors.userId)} helperText={errors.userId || (isEdit ? 'User ID cannot be changed' : ' ')} />
+              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Employee ID</Typography>
+              <FormTextField name="employeeId" value={form.employeeId} onChange={handleChange} onBlur={handleBlur} disabled={isEdit} error={Boolean(showError('employeeId'))} helperText={showError('employeeId') || (isEdit ? 'Employee ID cannot be changed' : ' ')} />
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Email</Typography>
-              <FormTextField name="email" type="email" value={form.email} onChange={handleChange} error={Boolean(errors.email)} helperText={errors.email || ' '} />
+              <FormTextField name="email" type="email" value={form.email} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('email'))} helperText={showError('email') || ' '} />
             </Box>
           </Stack>
 
           {!isEdit && (
             <Box>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Password</Typography>
-              <PasswordField name="password" value={form.password} onChange={handleChange} error={Boolean(errors.password)} helperText={errors.password || ' '} />
+              <PasswordField name="password" value={form.password} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('password'))} helperText={showError('password') || ' '} />
+              <PasswordStrengthMeter password={form.password} />
             </Box>
           )}
 

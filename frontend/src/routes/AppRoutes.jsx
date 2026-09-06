@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import SignUpPage from '../pages/SignUpPage';
+import TermsPage from '../pages/TermsPage';
+import PrivacyPage from '../pages/PrivacyPage';
 import DashboardPage from '../pages/DashboardPage';
 import ProjectsPage from '../pages/ProjectsPage';
 import NewProjectPage from '../pages/NewProjectPage';
@@ -23,6 +25,7 @@ import AdminDashboardPage from '../admin/pages/AdminDashboardPage';
 import AdminUsersPage from '../admin/pages/AdminUsersPage';
 import AdminStoresPage from '../admin/pages/AdminStoresPage';
 import AdminMaterialsPage from '../admin/pages/AdminMaterialsPage';
+import AdminActivityLogPage from '../admin/pages/AdminActivityLogPage';
 import AdminSettingsPage from '../admin/pages/AdminSettingsPage';
 import { AdminStoresProvider } from '../admin/context/AdminStoresContext';
 import { AdminActivityProvider } from '../admin/context/AdminActivityContext';
@@ -35,6 +38,8 @@ function AppRoutes() {
       <Route path={ROUTES.HOME} element={<LandingPage />} />
       <Route path={ROUTES.LOGIN} element={<LoginPage />} />
       <Route path={ROUTES.SIGNUP} element={<SignUpPage />} />
+      <Route path={ROUTES.TERMS} element={<TermsPage />} />
+      <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
 
       {/* Layout route: DashboardLayout mounts once and persists (Sidebar
           open/closed state, etc.) across navigation between these child
@@ -42,16 +47,23 @@ function AppRoutes() {
           active project, and the in-progress "New project" draft all
           survive navigation across the whole authenticated app.
           DashboardActivityProvider tracks dashboard counters/activity the
-          same way. */}
+          same way. Gated by RequireRole exactly like the Admin Module
+          below — an unauthenticated session gets sent to Login, and an
+          admin session gets sent to its own dashboard instead of ever
+          rendering these pages (previously unguarded — reachable directly
+          by URL regardless of session, only failing later on the first API
+          call with a raw auth-header error). */}
       <Route
         element={
-          <DashboardActivityProvider>
-            <NotificationsProvider>
-              <ProjectsProvider>
-                <DashboardLayout />
-              </ProjectsProvider>
-            </NotificationsProvider>
-          </DashboardActivityProvider>
+          <RequireRole role="user" redirectTo={ADMIN_ROUTES.DASHBOARD}>
+            <DashboardActivityProvider>
+              <NotificationsProvider>
+                <ProjectsProvider>
+                  <DashboardLayout />
+                </ProjectsProvider>
+              </NotificationsProvider>
+            </DashboardActivityProvider>
+          </RequireRole>
         }
       >
         <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
@@ -93,6 +105,7 @@ function AppRoutes() {
         <Route path={ADMIN_ROUTES.USERS} element={<AdminUsersPage />} />
         <Route path={ADMIN_ROUTES.STORES} element={<AdminStoresPage />} />
         <Route path={ADMIN_ROUTES.MATERIALS} element={<AdminMaterialsPage />} />
+        <Route path={ADMIN_ROUTES.ACTIVITY_LOG} element={<AdminActivityLogPage />} />
         <Route path={ADMIN_ROUTES.SETTINGS} element={<AdminSettingsPage />} />
         <Route path={ADMIN_ROUTES.PROFILE} element={<ProfilePage />} />
       </Route>

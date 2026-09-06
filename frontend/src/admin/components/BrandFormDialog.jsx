@@ -14,6 +14,7 @@ import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import FormTextField from '../../components/FormTextField';
+import QuotationFilePicker from './QuotationFilePicker';
 import { isRequired } from '../../utils/validators';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
@@ -40,11 +41,13 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
   const isEdit = Boolean(brand);
   const [form, setForm] = useState(() => buildForm(brand, unit));
   const [errors, setErrors] = useState({});
+  const [quotationFile, setQuotationFile] = useState(null);
 
   useEffect(() => {
     if (open) {
       setForm(buildForm(brand, unit));
       setErrors({});
+      setQuotationFile(null);
     }
   }, [open, brand, unit]);
 
@@ -56,10 +59,16 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
 
   const handleSubmit = () => {
     const validationErrors = validate(form);
+    if (!quotationFile) {
+      validationErrors.quotationFile = 'A quotation is required to set or change this price';
+    }
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
-    onSubmit({ name: form.name.trim(), unit: form.unit, price: Number(form.price), available: form.available, stars: form.stars });
+    onSubmit(
+      { name: form.name.trim(), unit: form.unit, price: Number(form.price), available: form.available, stars: form.stars },
+      quotationFile,
+    );
   };
 
   return (
@@ -134,6 +143,15 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
               ))}
             </Stack>
           </Box>
+
+          <QuotationFilePicker
+            file={quotationFile}
+            onFileChange={(pickedFile) => {
+              setQuotationFile(pickedFile);
+              setErrors((prev) => ({ ...prev, quotationFile: undefined }));
+            }}
+            error={errors.quotationFile}
+          />
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>

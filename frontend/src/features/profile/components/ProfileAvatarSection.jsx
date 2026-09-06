@@ -14,7 +14,7 @@ const INVALID_FILE_MESSAGE = 'Only JPG, JPEG, and PNG image files are allowed.';
 /**
  * Profile page header: a big circular avatar (the uploaded photo, or
  * initials once a name is set — never a hardcoded placeholder identity),
- * the display name + "@username", and the Change/Remove Photo actions.
+ * the display name + "@employeeId", and the Change/Remove Photo actions.
  *
  * Unlike the rest of the Profile page's fields, avatar changes commit
  * immediately (via `onAvatarChange`, see ProfilePage) instead of waiting
@@ -27,11 +27,11 @@ const INVALID_FILE_MESSAGE = 'Only JPG, JPEG, and PNG image files are allowed.';
  *
  * @param {object} props
  * @param {string} props.fullName
- * @param {string} props.username
+ * @param {string} props.employeeId
  * @param {string|null} props.avatarUrl
  * @param {(url: string|null) => void} props.onAvatarChange
  */
-function ProfileAvatarSection({ fullName, username, avatarUrl, onAvatarChange }) {
+function ProfileAvatarSection({ fullName, employeeId, avatarUrl, onAvatarChange }) {
   const inputRef = useRef(null);
   const [fileError, setFileError] = useState('');
 
@@ -105,7 +105,7 @@ function ProfileAvatarSection({ fullName, username, avatarUrl, onAvatarChange })
       {fullName && (
         <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.2rem' }, color: 'text.primary', mt: 2 }}>{fullName}</Typography>
       )}
-      {username && <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.82rem', sm: '0.9rem' } }}>@{username}</Typography>}
+      {employeeId && <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.82rem', sm: '0.9rem' } }}>@{employeeId}</Typography>}
       <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mt: 0.5 }}>
         Manage your account information
       </Typography>

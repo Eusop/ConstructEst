@@ -117,7 +117,16 @@ function DashboardLayout() {
     ) : null;
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: colors.heroBackground }}>
+    // height (not minHeight) is what actually makes this a fixed-viewport
+    // shell — Sidebar already assumes one (its own desktop Box is
+    // `height: '100vh', position: sticky`, same as AdminSidebar). Without a
+    // hard ceiling here, the whole page grows past the viewport whenever a
+    // page's content needs more room, and any `flex: 1, minHeight: 0,
+    // overflow: 'auto'` panel further down never actually gets a bounded
+    // height to scroll *within* — the browser scrolls the whole page
+    // instead of that one panel (see the identical fix in AdminLayout.jsx,
+    // triggered by the Registered Stores list outgrowing its card there).
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -135,6 +144,12 @@ function DashboardLayout() {
             display: 'flex',
             flexDirection: 'column',
             p: { xs: 2, md: 3 },
+            // Safety net now that the shell above is a hard `overflow:
+            // hidden` viewport height: a page with its own internal scroll
+            // region still scrolls that region as intended, but a page
+            // that doesn't set one up would otherwise have extra content
+            // silently clipped and unreachable instead of just scrolling.
+            overflow: 'auto',
           }}
         >
           <Outlet />

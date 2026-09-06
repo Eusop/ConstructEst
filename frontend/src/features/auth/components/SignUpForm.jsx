@@ -4,25 +4,24 @@ import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Button from '@mui/material/Button';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import FormTextField from '../../../components/FormTextField';
 import PasswordField from '../../../components/PasswordField';
+import PasswordStrengthMeter from '../../../components/PasswordStrengthMeter';
 import { signUpRequest } from '../../../services/authService';
-import { useUser } from '../../../context/UserContext';
+import { useToast } from '../../../context/ToastContext';
 import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
-import { isRequired, minLength, passwordsMatch, isValidEmail } from '../../../utils/validators';
+import { isRequired, passwordsMatch, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword } from '../../../utils/validators';
 
 const INITIAL_FORM = {
   firstName: '',
   lastName: '',
-  userId: '',
+  employeeId: '',
   email: '',
-  prcLicense: '',
   password: '',
   confirmPassword: '',
 };
@@ -30,13 +29,22 @@ const INITIAL_FORM = {
 function validate(form) {
   const errors = {};
 
-  if (!isRequired(form.firstName)) errors.firstName = 'First name is required';
-  if (!isRequired(form.lastName)) errors.lastName = 'Last name is required';
+  if (!isRequired(form.firstName)) {
+    errors.firstName = 'First name is required';
+  } else if (!isValidName(form.firstName)) {
+    errors.firstName = 'Must start with a letter and be at least 2 characters';
+  }
 
-  if (!isRequired(form.userId)) {
-    errors.userId = 'User ID is required';
-  } else if (!minLength(form.userId, 3)) {
-    errors.userId = 'User ID must be at least 3 characters';
+  if (!isRequired(form.lastName)) {
+    errors.lastName = 'Last name is required';
+  } else if (!isValidName(form.lastName)) {
+    errors.lastName = 'Must start with a letter and be at least 2 characters';
+  }
+
+  if (!isRequired(form.employeeId)) {
+    errors.employeeId = 'Employee ID is required';
+  } else if (!isValidEmployeeId(form.employeeId)) {
+    errors.employeeId = getEmployeeIdHint(form.employeeId) ?? '3–20 characters: start with a letter, then letters, numbers, or _ . -';
   }
 
   if (!isRequired(form.email)) {
@@ -47,8 +55,8 @@ function validate(form) {
 
   if (!isRequired(form.password)) {
     errors.password = 'Password is required';
-  } else if (!minLength(form.password, 6)) {
-    errors.password = 'Password must be at least 6 characters';
+  } else if (!isStrongPassword(form.password)) {
+    errors.password = '8–16 characters with uppercase, lowercase, a number, and a special character';
   }
 
   if (!isRequired(form.confirmPassword)) {
@@ -61,45 +69,78 @@ function validate(form) {
 }
 
 /**
- * Sign up form: name / User ID / email / optional PRC license / password
- * fields, a Terms of Service & Privacy Policy agreement, and the primary
+ * Sign up form: name / Employee ID / email / password fields, a Terms of
+ * Service & Privacy Policy agreement, and the primary
  * Create account action.
  *
- * Frontend-only for now — submitting validates, calls the placeholder auth
- * service (see services/authService.js), and mock-navigates to the Dashboard
- * as if the account were created. No real account is created, so wiring up
- * a real backend later won't require changing this component.
+ * Validation is live, not just on submit: `errors` is recomputed from
+ * `validate(form)` on every render (not stored in state), so a field's
+ * message updates immediately as you keep typing. It's only *shown* once
+ * that field has been blurred at least once (`touched`) or a submit was
+ * attempted — matching the same pattern already used for the New Project
+ * form (see NewProjectPage.jsx) — so nothing turns red while you're still
+ * in the middle of typing it for the first time, but once shown, it stays
+ * live-updated rather than freezing until the next submit click.
+ *
+ * Backed by the real backend (see services/authService.js). Submitting
+ * creates the account, but doesn't log it in — new accounts start
+ * unverified/inactive until an admin approves them (see the Admin Module's
+ * User Management page), so this redirects to Login with an explanatory
+ * toast instead of the Dashboard.
  */
 function SignUpForm() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [agreeToTerms, setAgreeToTerms] = useState(true);
-  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [agreeError, setAgreeError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { setCurrentUser, updateProfile } = useUser();
+  const { showToast } = useToast();
+
+  const errors = validate(form);
+  // Shows the instant there's actual (invalid) content — not gated on blur
+  // alone, since a browser autofilling First/Last Name never fires a real
+  // blur event, which meant the error could never appear at all for an
+  // autofilled field even though the underlying state was correct. Still
+  // gated on touched/submitAttempted for the "still empty" case, so a
+  // fresh, untouched field doesn't show "required" the moment the page loads.
+  const showError = (field) => {
+    const hasContent = form[field]?.trim().length > 0;
+    return Boolean(errors[field]) && (hasContent || touched[field] || submitAttempted);
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleBlur = (event) => {
+    setTouched((prev) => ({ ...prev, [event.target.name]: true }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const validationErrors = validate(form);
+    setSubmitAttempted(true);
     const termsError = agreeToTerms ? '' : 'You must agree to continue';
-    setErrors(validationErrors);
     setAgreeError(termsError);
-    if (Object.keys(validationErrors).length > 0 || termsError) return;
+    if (Object.keys(errors).length > 0 || termsError) {
+      showToast('Please fix the highlighted fields before continuing.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      // No session is created here — the new account is unverified until an
+      // admin approves it (see backend/src/controllers/auth.controller.js's
+      // register), so there's nothing to log into yet. Send them to Login
+      // instead of the Dashboard, with a toast explaining why.
       await signUpRequest(form);
-      setCurrentUser(`${form.firstName} ${form.lastName}`.trim());
-      updateProfile({ username: form.userId, email: form.email });
-      navigate(ROUTES.DASHBOARD);
+      showToast('Account created — an admin will verify it before you can sign in.', 'success');
+      navigate(ROUTES.LOGIN);
+    } catch (error) {
+      showToast(error.message || 'Could not create your account. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -126,8 +167,9 @@ function SignUpForm() {
               autoComplete="given-name"
               value={form.firstName}
               onChange={handleChange}
-              error={Boolean(errors.firstName)}
-              helperText={errors.firstName || ' '}
+              onBlur={handleBlur}
+              error={Boolean(showError('firstName'))}
+              helperText={showError('firstName') || ' '}
             />
           </Box>
           <Box sx={{ flex: 1 }}>
@@ -140,8 +182,9 @@ function SignUpForm() {
               autoComplete="family-name"
               value={form.lastName}
               onChange={handleChange}
-              error={Boolean(errors.lastName)}
-              helperText={errors.lastName || ' '}
+              onBlur={handleBlur}
+              error={Boolean(showError('lastName'))}
+              helperText={showError('lastName') || ' '}
             />
           </Box>
         </Stack>
@@ -149,16 +192,17 @@ function SignUpForm() {
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
           <Box sx={{ flex: 1 }}>
             <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>
-              User ID
+              Employee ID
             </Typography>
             <FormTextField
-              name="userId"
+              name="employeeId"
               placeholder="mreyes"
               autoComplete="username"
-              value={form.userId}
+              value={form.employeeId}
               onChange={handleChange}
-              error={Boolean(errors.userId)}
-              helperText={errors.userId || ' '}
+              onBlur={handleBlur}
+              error={Boolean(showError('employeeId'))}
+              helperText={showError('employeeId') || ' '}
             />
           </Box>
           <Box sx={{ flex: 1 }}>
@@ -172,30 +216,12 @@ function SignUpForm() {
               autoComplete="email"
               value={form.email}
               onChange={handleChange}
-              error={Boolean(errors.email)}
-              helperText={errors.email || ' '}
+              onBlur={handleBlur}
+              error={Boolean(showError('email'))}
+              helperText={showError('email') || ' '}
             />
           </Box>
         </Stack>
-
-        <Box>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.75 }}>
-            <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
-              PRC license no.
-            </Typography>
-            <Chip
-              label="Optional"
-              size="small"
-              sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'grey.100', color: 'text.secondary' }}
-            />
-          </Stack>
-          <FormTextField
-            name="prcLicense"
-            placeholder="CE-0092451"
-            value={form.prcLicense}
-            onChange={handleChange}
-          />
-        </Box>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
           <Box sx={{ flex: 1 }}>
@@ -209,9 +235,11 @@ function SignUpForm() {
               icon={<LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
               value={form.password}
               onChange={handleChange}
-              error={Boolean(errors.password)}
-              helperText={errors.password || ' '}
+              onBlur={handleBlur}
+              error={Boolean(showError('password'))}
+              helperText={showError('password') || ' '}
             />
+            <PasswordStrengthMeter password={form.password} />
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>
@@ -224,8 +252,9 @@ function SignUpForm() {
               icon={<LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
               value={form.confirmPassword}
               onChange={handleChange}
-              error={Boolean(errors.confirmPassword)}
-              helperText={errors.confirmPassword || ' '}
+              onBlur={handleBlur}
+              error={Boolean(showError('confirmPassword'))}
+              helperText={showError('confirmPassword') || ' '}
             />
           </Box>
         </Stack>
@@ -245,11 +274,13 @@ function SignUpForm() {
             label={
               <Typography sx={{ fontSize: '0.9rem', color: 'text.primary' }}>
                 I agree to the{' '}
-                <Link href="#" underline="none" sx={{ color: 'primary.main', fontWeight: 600 }}>
+                {/* Plain href (new tab), not a router Link — this shouldn't
+                    navigate away from (and lose) an in-progress sign-up form. */}
+                <Link href={ROUTES.TERMS} target="_blank" rel="noopener noreferrer" underline="none" sx={{ color: 'primary.main', fontWeight: 600 }}>
                   Terms of Service
                 </Link>{' '}
                 and{' '}
-                <Link href="#" underline="none" sx={{ color: 'primary.main', fontWeight: 600 }}>
+                <Link href={ROUTES.PRIVACY} target="_blank" rel="noopener noreferrer" underline="none" sx={{ color: 'primary.main', fontWeight: 600 }}>
                   Privacy Policy
                 </Link>
                 .

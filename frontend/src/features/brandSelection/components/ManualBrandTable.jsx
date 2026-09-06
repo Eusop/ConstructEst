@@ -149,7 +149,12 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems }) {
         borderRadius: 3,
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        overflow: 'hidden',
+        // 'auto' rather than 'hidden' — still clips to the rounded corners,
+        // but scrolls internally when the material list is taller than the
+        // card's flex-computed height, instead of silently clipping rows
+        // off the bottom (see the identical fix in QuantityTakeoffTable.jsx
+        // for the full explanation — same Paper shape, same risk).
+        overflow: 'auto',
         flex: 1,
         minWidth: 0,
         minHeight: { xs: 0, md: 320 },

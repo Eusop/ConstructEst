@@ -14,14 +14,19 @@ export async function loginRequest({ identifier, password, keepSignedIn }) {
   return user;
 }
 
+// Registration no longer creates a usable session — the new account is
+// unverified/inactive until an admin approves it (see admin.controller.js's
+// verifyUser), so the backend deliberately doesn't return a token here.
+// Only set one if a future response ever does include it, rather than
+// assuming it always will.
 export async function signUpRequest(details) {
-  const { firstName, lastName, userId, email, prcLicense, password } = details;
-  const { token, user } = await apiRequest('/auth/register', {
+  const { firstName, lastName, employeeId, email, password } = details;
+  const response = await apiRequest('/auth/register', {
     method: 'POST',
-    body: { firstName, lastName, userId, email, prcLicense: prcLicense || undefined, password },
+    body: { firstName, lastName, employeeId, email, password },
   });
-  setAuthToken(token, true);
-  return user;
+  if (response.token) setAuthToken(response.token, true);
+  return response;
 }
 
 export function logout() {
