@@ -91,11 +91,20 @@ function LoginForm() {
       updateProfile({ id: user.id, employeeId: user.employeeId, email: user.email, avatarUrl: user.avatarUrl });
       navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
     } catch (error) {
-      // Pending approval gets its own overlay, not the usual toast — it's
-      // not really "wrong credentials" (the toast's implication), and it's
-      // worth more than a few seconds on screen since it explains why
-      // nothing else the user tries here will work yet.
-      if (error.code === 'PENDING_VERIFICATION') {
+      // Email confirmation is the earlier of the two gates (see
+      // auth.controller.js's login — it checks email_verified_at before
+      // is_verified), so it's checked first here too: sent straight to
+      // Verify Email with the account's real address (error.email — not
+      // necessarily what was typed here, since the identifier field accepts
+      // either the email or the Employee ID) rather than a toast, since
+      // nothing else on this page can fix it. Pending approval instead gets
+      // its own overlay, not the usual toast — it's not really "wrong
+      // credentials" (the toast's implication), and it's worth more than a
+      // few seconds on screen since it explains why nothing else here will
+      // work yet.
+      if (error.code === 'EMAIL_NOT_VERIFIED') {
+        navigate(ROUTES.VERIFY_EMAIL, { state: { email: error.email || form.identifier } });
+      } else if (error.code === 'PENDING_VERIFICATION') {
         setPendingApprovalOpen(true);
       } else {
         showToast(error.message || 'Could not sign in. Please try again.');

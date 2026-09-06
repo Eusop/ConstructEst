@@ -23,6 +23,16 @@ CREATE TABLE users (
   -- explicitly); admin-created accounts and every pre-existing row take the
   -- column default (1) — see db/migrations/008_users_is_verified.sql.
   is_verified TINYINT(1) NOT NULL DEFAULT 1,
+  -- Independent of is_verified above: confirms the *email address itself*
+  -- was proven real by the owner typing back a code sent to it. NULL until
+  -- confirmed, then set once and never cleared. See
+  -- db/migrations/012_users_email_verification.sql and auth.controller.js's
+  -- register/verifyEmail/resendVerificationCode.
+  email_verified_at TIMESTAMP NULL,
+  email_verification_code CHAR(6) NULL,
+  email_verification_expires_at TIMESTAMP NULL,
+  email_verification_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  email_verification_last_sent_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

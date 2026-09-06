@@ -39,16 +39,24 @@ export function errorHandler(err, req, res, next) {
   // an unrelated system error code (e.g. 'ECONNREFUSED') that has no
   // business leaking into a response body.
   if (err.code && status !== 500) body.code = err.code;
+  // Only ever set alongside a specific code (see login's EMAIL_NOT_VERIFIED)
+  // — lets the frontend redirect to /verify-email with the account's real
+  // address even when the user typed their Employee ID as the identifier,
+  // without echoing it back on every other error.
+  if (err.email && status !== 500) body.email = err.email;
   return res.status(status).json(body);
 }
 
 /** Small helper for controllers: `throw new HttpError(400, 'message')` —
  * or `throw new HttpError(403, 'message', 'SOME_CODE')` when the frontend
- * needs to branch on this specific error rather than just display it. */
+ * needs to branch on this specific error rather than just display it, or
+ * `throw new HttpError(403, 'message', 'SOME_CODE', user.email)` when it
+ * also needs a value alongside the code (see login's EMAIL_NOT_VERIFIED). */
 export class HttpError extends Error {
-  constructor(status, message, code) {
+  constructor(status, message, code, email) {
     super(message);
     this.status = status;
     this.code = code;
+    this.email = email;
   }
 }

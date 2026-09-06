@@ -36,7 +36,7 @@ function validate(form, isEdit) {
   else if (!isValidEmail(form.email)) errors.email = 'Enter a valid email address';
   if (!isEdit) {
     if (!isRequired(form.password)) errors.password = 'Password is required';
-    else if (!isStrongPassword(form.password)) errors.password = '8–16 characters with uppercase, lowercase, a number, and a special character';
+    else if (!isStrongPassword(form.password)) errors.password = 'Must be at least 6 characters';
   }
   return errors;
 }

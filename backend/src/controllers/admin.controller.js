@@ -67,9 +67,16 @@ export const createUser = asyncHandler(async (req, res) => {
   if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
 
   const passwordHash = bcrypt.hashSync(password, 10);
+  // email_verified_at is set immediately (unlike self-registration in
+  // auth.controller.js's register) — that column exists to make a stranger
+  // prove they own the email they typed; an admin typing this form in
+  // directly is already the trust signal, and there's no code-entry step
+  // for this flow to gate on anyway (see the identical fix applied
+  // retroactively to every pre-existing row in
+  // db/migrations/013_backfill_email_verified_at.sql).
   const result = await query(
-    `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, email_verified_at)
+     VALUES (?, ?, ?, ?, ?, ?, NOW())`,
     [firstName, lastName, employeeId, email, passwordHash, accessRole],
   );
   const [user] = await query('SELECT * FROM users WHERE id = ?', [result.insertId]);

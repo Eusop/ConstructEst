@@ -29,6 +29,29 @@ export async function signUpRequest(details) {
   return response;
 }
 
+// Neither of these creates a session (no token involved) — email
+// verification is the first of two gates a new account has to clear before
+// it can log in at all (see auth.controller.js's login: it checks
+// email_verified_at before is_verified/is_active).
+export async function verifyEmailRequest({ email, code }) {
+  return apiRequest('/auth/verify-email', { method: 'POST', body: { email, code } });
+}
+
+export async function resendCodeRequest({ email }) {
+  return apiRequest('/auth/resend-verification-code', { method: 'POST', body: { email } });
+}
+
+/** Live pre-submit duplicate check (see SignUpForm.jsx's debounced effects)
+ * — reveals nothing register() doesn't already reveal via a duplicate-entry
+ * error at submit time; this just surfaces it earlier, as the user types.
+ * @param {'email'|'employeeId'} field
+ * @param {string} value
+ */
+export async function checkAvailability(field, value) {
+  const query = new URLSearchParams({ field, value }).toString();
+  return apiRequest(`/auth/check-availability?${query}`);
+}
+
 export function logout() {
   clearAuthToken();
 }
