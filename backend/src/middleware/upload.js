@@ -10,10 +10,8 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
     const safeBase = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^\w-]/g, '_');
-    // The random suffix matters now that a request can carry two files
-    // (dxfFile + secondFloorDxfFile) — without it, two same-named files
-    // processed within the same millisecond would collide and one would
-    // silently overwrite the other on disk.
+    // Random suffix so two same-named files uploaded at once (dxfFile +
+    // secondFloorDxfFile) don't overwrite each other.
     const unique = Math.random().toString(36).slice(2, 8);
     cb(null, `${Date.now()}-${unique}-${safeBase}.dxf`);
   },
@@ -26,10 +24,8 @@ function fileFilter(req, file, cb) {
   return cb(null, true);
 }
 
-// .fields() rather than .single() — a 2-storey project may optionally
-// upload a second, separate DXF for the second floor (see
-// projects.controller.js createProject) instead of the engine reusing the
-// ground floor's footprint scaled by storeys.
+// Using .fields() instead of .single() since a 2-storey project can
+// optionally upload a second DXF for the second floor.
 export const uploadDxf = multer({
   storage,
   fileFilter,
@@ -39,11 +35,8 @@ export const uploadDxf = multer({
   { name: 'secondFloorDxfFile', maxCount: 1 },
 ]);
 
-// The documentary proof (a supplier quote) an admin must attach whenever
-// they set or change a store's material price — see admin.controller.js's
-// upsertStoreMaterialPrice. Keeps the file's real extension (unlike
-// uploadDxf above, which forces `.dxf`) since a quotation is opened/
-// downloaded as whatever format it actually is.
+// For the quotation file admins attach as proof when changing a price.
+// Keeps the real file extension, unlike uploadDxf which forces .dxf.
 const QUOTATION_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx']);
 
 const quotationStorage = multer.diskStorage({

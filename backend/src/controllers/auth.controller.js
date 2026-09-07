@@ -11,13 +11,9 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value ?? '');
 }
 
-// Email-ownership verification (new, independent from is_verified/is_active
-// below — see db/migrations/012_users_email_verification.sql). 10 minutes
-// is long enough for a tester on a different device to switch to their mail
-// app and type the code back in; 45s stops an impatient double-click on
-// "Resend" from hammering Gmail's own per-App-Password sending rate; 5
-// wrong guesses invalidates the code (forcing a fresh resend) rather than a
-// permanent lockout, since resend already solves "I mistyped it" for free.
+// Email verification settings. 10 min is enough time to check your inbox
+// and type the code back in. 45s cooldown stops spamming "Resend". After 5
+// wrong tries the code gets invalidated so you have to request a new one.
 const CODE_EXPIRY_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 45;
 const MAX_CODE_ATTEMPTS = 5;
@@ -41,15 +37,9 @@ export const register = asyncHandler(async (req, res) => {
   const passwordHash = bcrypt.hashSync(password, 10);
   const code = generateVerificationCode();
 
-  // New self-registered accounts start unverified and inactive — an admin
-  // must verify them (see admin.controller.js's verifyUser) before they can
-  // sign in at all. No token is issued here: `login` already filters on
-  // `is_active = 1`, but a token handed out at registration would still
-  // work against every other `requireAuth`-gated route (it only checks the
-  // token's signature, not the account's current is_active/is_verified
-  // state) — so the account simply can't get a session until verified.
-  // Also seeded with a fresh email-verification code — that's the actual
-  // first gate now (see login below), ahead of admin approval.
+  // New accounts start inactive and unverified, admin has to approve them
+  // later (see verifyUser). No token given here so they can't log in yet.
+  // Also saves a verification code right away since that's checked first.
   const insertResult = await query(
     `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, is_active, is_verified,
                          email_verification_code, email_verification_expires_at, email_verification_last_sent_at)
@@ -60,12 +50,9 @@ export const register = asyncHandler(async (req, res) => {
   try {
     await sendVerificationCodeEmail(email, code);
   } catch (err) {
-    // Roll back the row rather than leaving it stranded: email/employee_id
-    // are UNIQUE, so a left-behind unverifiable row would permanently squat
-    // both, with no account to log into to even request a resend. The
-    // trade-off (a transient Gmail hiccup wrongly failing an otherwise-good
-    // registration, forcing a harmless retry) is accepted as strictly
-    // better than that dead end.
+    // If the email fails to send, delete the row instead of leaving a
+    // dead account behind (email/employeeId are unique, so it would block
+    // that person from ever registering again). Worst case they just retry.
     await query('DELETE FROM users WHERE id = ?', [insertResult.insertId]);
     console.error('Failed to send verification email:', err);
     throw new HttpError(400, "We couldn't send a verification email to that address. Double-check it and try again.", 'EMAIL_SEND_FAILED');
@@ -77,15 +64,11 @@ export const register = asyncHandler(async (req, res) => {
   });
 });
 
-// Column names come only from this fixed map, never interpolated from the
-// request directly — safe against injection despite the raw SQL below.
+// Only these two columns are allowed, never taken directly from the request.
 const AVAILABILITY_FIELDS = { email: 'email', employeeId: 'employee_id' };
 
-// Live pre-submit check for SignUpForm.jsx's debounced "is this email/
-// Employee ID already taken" indicator — reveals nothing register's own
-// ER_DUP_ENTRY handling (see errorHandler.js's describeDuplicateEntry)
-// doesn't already reveal at submit time; this just surfaces it earlier, as
-// the user types, instead of only after a full submit attempt.
+// Used by the sign up form to check live if an email/Employee ID is
+// already taken, before the user even submits.
 export const checkAvailability = asyncHandler(async (req, res) => {
   const { field, value } = req.query;
   const column = AVAILABILITY_FIELDS[field];
@@ -100,12 +83,9 @@ export const login = asyncHandler(async (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier || !password) throw new HttpError(400, 'Email/Employee ID and password are required.');
 
-  // No `is_active` filter here (unlike before) — a pending/deactivated
-  // account still needs to be fetched so a *correct* password can be told
-  // apart from a *wrong* one below. Only after the password checks out do
-  // we look at is_verified/is_active, so a wrong password on a pending or
-  // deactivated account still gets the generic message, never a hint that
-  // the identifier exists.
+  // Still fetch the user even if they're pending/deactivated, so a wrong
+  // password gives the same generic error either way (no hinting whether
+  // the account exists).
   const [user] = await query(
     'SELECT * FROM users WHERE (email = ? OR employee_id = ?)',
     [identifier, identifier],
@@ -115,13 +95,9 @@ export const login = asyncHandler(async (req, res) => {
     throw new HttpError(401, 'Incorrect email/Employee ID or password.');
   }
 
-  // Checked first, ahead of is_verified/is_active — email confirmation is
-  // the causally-first step in the pipeline (register -> confirm email ->
-  // admin review -> active), so it's the one thing a not-yet-verified user
-  // should always be told first, regardless of whatever an admin has
-  // already done (an admin *can* approve an email-unconfirmed account —
-  // see admin.controller.js's verifyUser — this check re-gates login
-  // independently either way).
+  // Check email verification first since that's the earliest step. An
+  // admin could technically approve an account before its email is
+  // verified, so login still needs to block on it separately.
   if (!user.email_verified_at) {
     throw new HttpError(403, 'Please verify your email before signing in.', 'EMAIL_NOT_VERIFIED', user.email);
   }
@@ -145,8 +121,8 @@ export const verifyEmail = asyncHandler(async (req, res) => {
   if (!user) throw new HttpError(404, 'No account found for that email.', 'ACCOUNT_NOT_FOUND');
   if (user.email_verified_at) throw new HttpError(400, 'This email is already verified.', 'ALREADY_VERIFIED');
 
-  // NULL/expired/invalidated-after-5-attempts all read the same to the user
-  // ("request a new one"), so one error code covers all three uniformly.
+  // Treat "no code", "expired", and "too many attempts" the same way,
+  // since the fix is the same either way: request a new code.
   const expired = !user.email_verification_code
     || !user.email_verification_expires_at
     || new Date(user.email_verification_expires_at).getTime() < Date.now();
@@ -191,9 +167,8 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
   }
 
   const code = generateVerificationCode();
-  // Sent before it's persisted: a failed send leaves the previous code/
-  // expiry/cooldown untouched (a still-valid earlier code keeps working)
-  // rather than silently invalidating it on a transient Gmail hiccup.
+  // Send first, save after. If sending fails, the old code still works
+  // instead of getting wiped out for nothing.
   try {
     await sendVerificationCodeEmail(email, code);
   } catch (err) {

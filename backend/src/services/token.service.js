@@ -1,10 +1,7 @@
 import jwt from 'jsonwebtoken';
 
-/**
- * The JWT payload carries only the derived, 2-level access role — never a
- * raw user "type" — so middleware never has to re-derive or trust anything
- * from the request itself.
- */
+/** JWT payload just carries the access role (user/admin), nothing that
+ * needs to be re-derived or trusted from elsewhere. */
 export function signToken(user) {
   return jwt.sign(
     { sub: user.id, employeeId: user.employee_id, accessRole: user.access_role },

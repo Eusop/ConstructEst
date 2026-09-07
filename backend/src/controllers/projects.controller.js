@@ -32,9 +32,8 @@ async function loadCurrentEstimation(projectId) {
   );
   if (!estimation) return null;
 
-  // The cheapest catalog price per material gives the Quantity Take-off
-  // table an indicative unit/total cost before a store is even chosen —
-  // final pricing comes from the store + brand selection made later.
+  // Uses the cheapest catalog price per material as a rough estimate
+  // before a store is picked. Real pricing comes later from brand selection.
   const lineItems = await query(
     `SELECT eli.material_key AS \`key\`, eli.name, eli.quantity, eli.unit, eli.basis, eli.source_breakdown,
             COALESCE((SELECT MIN(base_price) FROM material_brands WHERE material_key = eli.material_key), 0) AS unitCost
@@ -68,9 +67,8 @@ async function loadCurrentEstimation(projectId) {
       quantity: Number(item.quantity),
       unitCost: Number(item.unitCost),
       totalCost: Math.round(Number(item.quantity) * Number(item.unitCost) * 100) / 100,
-      // mysql2 auto-parses a JSON column into a JS object already; the
-      // typeof guard just protects against a raw string if that driver
-      // behavior ever changes.
+      // mysql2 usually auto-parses JSON columns already, the typeof check
+      // is just a safety net in case it ever comes back as a raw string.
       sourceBreakdown: typeof source_breakdown === 'string' ? JSON.parse(source_breakdown) : source_breakdown,
     })),
   };
@@ -112,9 +110,8 @@ export const createProject = asyncHandler(async (req, res) => {
   if (!Number.isFinite(budgetCeiling) || budgetCeiling <= 0) throw new HttpError(400, 'Budget ceiling must be greater than 0.');
   const primaryFile = req.files?.dxfFile?.[0];
   if (!primaryFile) throw new HttpError(400, 'A .dxf floor plan file is required.');
-  // Optional second-floor DXF (2-storey projects only) — lets the engine
-  // use each floor's own real geometry instead of scaling the ground
-  // floor's footprint by storeys. See engine/formulas.py's geometry2 param.
+  // Optional second-floor DXF for 2-storey projects, lets the engine use
+  // each floor's real geometry instead of just scaling the ground floor.
   const secondFloorFile = req.files?.secondFloorDxfFile?.[0] ?? null;
 
   const insertResult = await query(
@@ -161,10 +158,8 @@ export const createProject = asyncHandler(async (req, res) => {
   res.status(201).json({ project: toPublicProject(project), estimation, parseError: null });
 });
 
-/** Marks any prior estimation as no longer current, then inserts a fresh
- * estimation_results + estimation_line_items run — used by both initial
- * project creation and the Recalculate action (design-overrides / constants
- * changes never overwrite a past run, matching FR-9/FR-17). */
+/** Marks the old estimation as not current, then saves a fresh one. Used by
+ * both project creation and Recalculate, never overwrites a past run. */
 async function persistEstimation(projectId, engineResult) {
   await query('UPDATE estimation_results SET is_current = 0 WHERE project_id = ? AND is_current = 1', [projectId]);
 
@@ -224,15 +219,10 @@ export const putProjectDesignOverrides = asyncHandler(async (req, res) => {
   res.json({ overrides });
 });
 
-/** Re-runs the DXF engine against the project's already-uploaded file with
- * its current calibration constants + design overrides — used after the
- * user tweaks either on the Material Estimation page, without re-uploading.
- *
- * Also accepts an optional `includeRoofing` override in the body — lets the
- * user flip Roofing on/off after seeing the parsed take-off (e.g. a real
- * DXF with no ROOF layer at all), rather than that only ever being settable
- * at upload time. When present it's persisted back onto the project so the
- * next recompute, store comparison, and PDF BOM all stay consistent with it. */
+/** Re-runs the DXF engine on the already-uploaded file with the current
+ * constants/overrides, used after tweaking those without re-uploading.
+ * Also takes an optional `includeRoofing` to flip that on/off after the
+ * fact, saved back onto the project so later recomputes stay consistent. */
 export const recomputeEstimation = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
@@ -274,9 +264,8 @@ export const recomputeEstimation = asyncHandler(async (req, res) => {
   res.json({ project: toPublicProject(updatedProject), estimation });
 });
 
-/** Rough project-level cost using each material's cheapest brand — the real
- * per-store optimized total comes from GET /api/projects/:id/stores once a
- * store is chosen; this just seeds `estimated_cost` for the dashboard/list. */
+/** Rough total using each material's cheapest brand, just for the
+ * dashboard/list. Real optimized pricing comes from the stores endpoint. */
 async function estimateTotalCost(materials) {
   let total = 0;
   for (const material of materials) {
@@ -321,7 +310,7 @@ export const getProjectBom = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
   const storeId = Number(req.query.storeId ?? project.selected_store_id);
-  if (!storeId) throw new HttpError(400, 'No store selected yet — pass storeId or save a brand selection first.');
+  if (!storeId) throw new HttpError(400, 'No store selected yet, pass storeId or save a brand selection first.');
   const bom = await computeBom(project.id, storeId);
   res.json(bom);
 });

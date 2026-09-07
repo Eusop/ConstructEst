@@ -10,11 +10,10 @@ import { getDesignOverrides, saveDesignOverrides } from '../services/designOverr
 import { UPLOAD_DIR } from '../middleware/upload.js';
 
 // --- Admin activity backlog -------------------------------------------------
-// Persisted, append-only audit trail for Admin Module actions — categorized
-// into 'user_management' / 'store_management' (see the Admin Activity Log
-// page). Called after each mutation below succeeds. Deliberately no
-// UPDATE/DELETE route is ever exposed for admin_activity_log — immutability,
-// even to the admin, is structural, not just a missing UI button.
+// Permanent log of admin actions, split into 'user_management' and
+// 'store_management' categories. Called after each mutation succeeds.
+// There's no update/delete route for this table on purpose, not even
+// admins can edit or remove log entries.
 async function logAdminActivity(adminUserId, category, action, message, metadata = null) {
   await query(
     `INSERT INTO admin_activity_log (admin_user_id, category, action, message, metadata) VALUES (?, ?, ?, ?, ?)`,
@@ -67,13 +66,9 @@ export const createUser = asyncHandler(async (req, res) => {
   if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
 
   const passwordHash = bcrypt.hashSync(password, 10);
-  // email_verified_at is set immediately (unlike self-registration in
-  // auth.controller.js's register) — that column exists to make a stranger
-  // prove they own the email they typed; an admin typing this form in
-  // directly is already the trust signal, and there's no code-entry step
-  // for this flow to gate on anyway (see the identical fix applied
-  // retroactively to every pre-existing row in
-  // db/migrations/013_backfill_email_verified_at.sql).
+  // Set email_verified_at right away, unlike self-registration. An admin
+  // creating the account directly is already trustworthy, no need to
+  // verify email ownership for this path.
   const result = await query(
     `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, email_verified_at)
      VALUES (?, ?, ?, ?, ?, ?, NOW())`,
@@ -220,10 +215,9 @@ export const deleteStore = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-// Deactivate/reactivate is the reversible alternative to deleteStore above —
-// a deactivated store drops out of the Store Locator comparison (see
-// optimization.service.js's getStoreOptimization) but stays in the Admin
-// Module, still editable, ready to reactivate. Mirrors setUserActive.
+// Deactivate/reactivate a store instead of deleting it. Deactivated stores
+// drop out of Store Locator comparisons but stay editable in the Admin
+// Module. Same idea as setUserActive above.
 export const setStoreActive = asyncHandler(async (req, res) => {
   const { isActive } = req.body;
   const [target] = await query('SELECT name FROM stores WHERE id = ?', [req.params.id]);
@@ -238,12 +232,10 @@ export const setStoreActive = asyncHandler(async (req, res) => {
   res.json({ message: isActive ? 'Store reactivated.' : 'Store deactivated.' });
 });
 
-/** The full global material_brands catalog, left-joined against this
- * store's own store_material_prices rows — `storePrice`/`inStock` are null
- * for a brand this store hasn't priced yet, which is how the frontend
- * (AdminStoresContext) tells "available to add" apart from "already
- * stocked". Grouped by material_key so the admin UI can render one section
- * per material. */
+/** All global brands, left-joined with this store's own prices. `storePrice`/
+ * `inStock` are null if this store hasn't priced that brand yet, that's how
+ * the frontend tells "not stocked" apart from "already stocked". Grouped by
+ * material key for the admin UI. */
 export const getStoreCatalog = asyncHandler(async (req, res) => {
   const rows = await query(
     `SELECT mb.id AS material_brand_id, mb.material_key, mb.material_name, mb.unit, mb.brand, mb.spec,
@@ -286,15 +278,11 @@ function truthy(value, fallback) {
   return value === true || value === 'true';
 }
 
-// A price change needs a quotation file (PDF/Word/Excel, see uploadQuotation
-// in middleware/upload.js) as documentary proof of why the price is what it
-// is — every real "someone decided this price" path (Add/Edit Brand,
-// Bulk Material's price editor) goes through here with one attached. The
-// one exception is `usesCatalogPrice`: "Add materials to store" carries a
-// brand's *existing* global catalog price into a store's first stocking of
-// it verbatim — nothing was actually decided, so there's nothing to justify
-// (see AdminStoresContext.jsx's addMaterialsToStore, the only caller that
-// sets this flag).
+// Setting or changing a price needs a quotation file attached as proof
+// (PDF/Word/Excel, see uploadQuotation in middleware/upload.js). The one
+// exception is `usesCatalogPrice`, used when "Add materials to store" just
+// copies a brand's existing catalog price, nothing was actually decided so
+// there's nothing to prove.
 export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { storeId, materialBrandId } = req.params;
   const { price, inStock } = req.body;
@@ -349,13 +337,10 @@ export const removeStoreMaterialPrice = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-// Serves a quotation file a price change was justified with (see
-// upsertStoreMaterialPrice's `quotationStoredName` metadata, rendered as a
-// download link on the Activity Log's price-change entries). `storedName`
-// is always one of multer's own generated filenames (see uploadQuotation in
-// middleware/upload.js) — never client-supplied free text — but this still
-// rejects anything containing a path separator as a defensive measure
-// against ever reading outside UPLOAD_DIR.
+// Lets an admin download a quotation file from the Activity Log.
+// `storedName` should always be a multer-generated filename, but we still
+// block path separators just in case, so nobody can read files outside
+// UPLOAD_DIR.
 export const downloadQuotation = asyncHandler(async (req, res) => {
   const { storedName } = req.params;
   if (!storedName || /[/\\]/.test(storedName)) throw new HttpError(400, 'Invalid file name.');
@@ -386,8 +371,8 @@ export const updateGlobalDesignOverrides = asyncHandler(async (req, res) => {
 export const updateGlobalConstants = asyncHandler(async (req, res) => {
   const { cementFactor, steelFactor, roofingFactor, wastagePercent } = req.body;
 
-  // MySQL unique indexes treat every NULL as distinct, so `ON DUPLICATE KEY
-  // UPDATE` never matches the project_id IS NULL row — upsert explicitly.
+  // ON DUPLICATE KEY UPDATE won't match a NULL project_id row (MySQL treats
+  // every NULL as different), so we upsert manually here instead.
   const [existing] = await query('SELECT id FROM estimation_constants WHERE project_id IS NULL');
   if (existing) {
     await query(

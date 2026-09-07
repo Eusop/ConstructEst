@@ -25,20 +25,16 @@ function badgeColorFor(store) {
   return store.isCheapest ? colors.iconGreenFg : colors.orange;
 }
 
-// Synthetic marker id for the user's own position — never a real store, so
-// it's excluded from selection/info-window logic below rather than being
-// looked up in STORES (which would find nothing and silently no-op, or
-// worse, get treated as a valid-but-unrecognized store id).
+// Fake marker id for the user's own position, not a real store, so it's
+// excluded from the selection/info-window logic below instead of being
+// looked up in STORES.
 const USER_LOCATION_MARKER_ID = 'user-location';
 
 /**
- * Store Locator: compares canvassed hardware stores' Bill of Materials
- * cost and distance on an interactive Google Map plus a synced list.
- * Selecting a store either way (marker click or list click) highlights it
- * in both places and centers the map on it. Fetches the real per-store
- * cost optimization (GET /api/projects/:id/stores — Table 20's logic) once
- * per active project and feeds it into storesMock, which STORES/CITY_LOCATION
- * below and StoreListCard both read.
+ * Store Locator: compares each store's BOM cost and distance on a map
+ * plus a synced list. Selecting a store (either way) highlights it in
+ * both and centers the map. Fetches the real per-store cost optimization
+ * once per active project.
  */
 function StoreLocatorPage() {
   const { activeProject, updateActiveProject } = useProjects();
@@ -48,20 +44,16 @@ function StoreLocatorPage() {
   const [loadedForId, setLoadedForId] = useState(null);
   const [loadError, setLoadError] = useState('');
   const { location: userLocation, status: geoStatus, refetch: refetchLocation } = useUserLocation();
-  // True once geolocation has settled at least once — stays true after
-  // that, even while a later "locate me" refetch briefly puts geoStatus
-  // back to 'loading', so clicking that button doesn't re-blank the whole
-  // page behind the big spinner below (only the button itself shows a
-  // small spinner for that — see MapView's isLocating prop).
+  // Stays true once geolocation settles once, so a later "locate me"
+  // click doesn't re-blank the whole page behind the big spinner (just
+  // the button itself shows a small spinner for that).
   const [hasSettledLocationOnce, setHasSettledLocationOnce] = useState(false);
   useEffect(() => {
     if (geoStatus === 'loading' || hasSettledLocationOnce) return;
     queueMicrotask(() => setHasSettledLocationOnce(true));
   }, [geoStatus, hasSettledLocationOnce]);
-  // Waits on both the store fetch and the *first* geolocation attempt
-  // settling (granted or not) before computing anything — avoids ever
-  // showing a distance from the wrong origin and then silently swapping it
-  // once geolocation resolves a moment later.
+  // Waits on both the store fetch and the first geolocation attempt, so
+  // it never shows a distance from the wrong origin and then swaps it.
   const ready = loadedForId === activeProject?.id && (geoStatus !== 'loading' || hasSettledLocationOnce);
 
   useEffect(() => {
@@ -100,18 +92,12 @@ function StoreLocatorPage() {
   }, [rawStores, userLocation, geoStatus, activeProject?.id]);
 
   const selectedStoreId = activeProject?.selectedStoreId ?? null;
-  // Whether the map should currently be centered on the user's own
-  // position rather than the selected store — set by the locate button,
-  // cleared the moment a store is (re-)selected, so that always wins back
-  // as the obvious next thing to look at. Without this, a selected store's
-  // position unconditionally out-prioritized the user's, which made the
-  // locate button silently do nothing whenever a store was selected.
+  // Centers the map on the user instead of the selected store when true,
+  // set by the locate button, cleared once a store is picked again.
   const [focusOnUser, setFocusOnUser] = useState(false);
-  // Guarded centrally here rather than in each caller (list card + map
-  // marker both funnel through this one function) — an out-of-stock store
-  // can't actually fulfil the project, so Brand Selection was never built
-  // to handle one being chosen; explain why instead of silently selecting
-  // it (or silently doing nothing).
+  // Centralized here since both the list and map marker call this. An
+  // out-of-stock store can't be picked, explain why instead of just
+  // silently doing nothing.
   const setSelectedStoreId = (id) => {
     if (id === USER_LOCATION_MARKER_ID) return;
     const target = STORES.find((store) => store.id === id);
@@ -135,10 +121,7 @@ function StoreLocatorPage() {
   const selectedStore = STORES.find((store) => store.id === selectedStoreId) ?? null;
   const focusedOnUser = focusOnUser && userLocation;
   const mapCenter = focusedOnUser ? userLocation : selectedStore?.position ?? userLocation ?? CITY_LOCATION;
-  // Wider overview by default; zooms in closer once something specific is
-  // being looked at (a selected store, or "locate me") — MapView animates
-  // the transition (flyTo), so this reads as zooming in on it, not a flat
-  // recenter at the same level as the overview.
+  // Wider zoom by default, closer once something specific is selected.
   const mapZoom = selectedStore || focusedOnUser ? 16 : 14;
 
   const markers = useMemo(() => {
@@ -185,7 +168,7 @@ function StoreLocatorPage() {
         </Typography>
         {!DISTANCE_IS_FROM_USER && (
           <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25, fontStyle: 'italic' }}>
-            Location access unavailable — distances approximated from Tarlac City center.
+            Location access unavailable, distances approximated from Tarlac City center.
           </Typography>
         )}
         {loadError && (
@@ -234,14 +217,9 @@ function StoreLocatorPage() {
               p: 1.5,
               flex: 1,
               minHeight: { xs: 260, md: 420 },
-              // Without its own bounded height + scroll, this list had no
-              // ceiling and just grew past its row's actual height — the
-              // "Continue to Brand Selection" button below (rendered right
-              // after that row ends, per its own determined height) then
-              // visually landed on top of whichever cards were still
-              // overflowing past that boundary. Matches the map's own
-              // Paper treatment on the left, so the two columns now behave
-              // (and look) the same way instead of only one being a card.
+              // Without a bounded height + scroll, this list grew past its
+              // row and the button below landed on top of it. Matches the
+              // map's Paper on the left so both columns behave the same.
               overflow: 'auto',
             }}
           >

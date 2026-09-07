@@ -13,8 +13,8 @@ const pool = mysql.createPool({
 
 /**
  * Runs a parameterized query and returns just the rows (unwraps mysql2's
- * `[rows, fields]` tuple) — every call site uses `?` placeholders, never
- * string concatenation.
+ * `[rows, fields]` tuple). Always use `?` placeholders, never string
+ * concatenation.
  */
 export async function query(sql, params = []) {
   const [rows] = await pool.query(sql, params);

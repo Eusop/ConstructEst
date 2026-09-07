@@ -35,11 +35,9 @@ function buildForm(profile) {
   };
 }
 
-// The backend/DB store first/last name separately; Profile's own form only
-// ever shows one combined field, so this splits at save time — first word
-// is the first name, everything else the last name, falling back to
-// reusing the first word if only one was typed (last_name is NOT NULL, so
-// this never sends an empty string for it).
+// DB stores first/last name separately but the form only has one Full
+// Name field, so split it here. Falls back to reusing the first word if
+// only one was typed, since last_name can't be empty.
 function splitFullName(fullName) {
   const parts = fullName.trim().split(/\s+/);
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') || parts[0] };
@@ -56,8 +54,7 @@ function validate(form) {
     errors.email = 'Enter a valid email address';
   }
 
-  // Changing the password is optional — only validate the password fields
-  // at all once the user has actually started filling one of them in.
+  // Password is optional, only validate it once the user starts typing.
   const isChangingPassword = isRequired(form.currentPassword) || isRequired(form.newPassword) || isRequired(form.confirmPassword);
   if (isChangingPassword) {
     if (!isRequired(form.currentPassword)) errors.currentPassword = 'Current password is required';
@@ -79,25 +76,13 @@ function validate(form) {
 }
 
 /**
- * Profile: the signed-in user's editable identity (name, email, avatar —
- * Employee ID is shown but read-only, matching Admin's own Edit User dialog)
- * plus a password-change form. Backed by the real backend
- * (services/usersService.js): "Save changes" calls `PUT /users/me` and,
- * only if any password field was touched, `PUT /users/me/password`
- * (independent calls — a failed password change doesn't undo an already-
- * saved name/email change), then reflects the result into UserContext (so
- * e.g. the Dashboard greeting picks up a new name immediately) — the server
- * response is the source of truth, this just avoids a refetch. "Cancel"
- * discards the draft back to whatever's currently saved there. Follows the
- * same draft/saved `useState` pair and Save/Cancel button styling as the
- * Settings (Calibration) page.
- *
- * The avatar is the one exception to the draft/Save flow — selecting or
- * removing a photo commits to UserContext immediately (see
- * `handleAvatarChange`), since it needs to show up in the header avatar
- * right away rather than waiting for Save. (Note: avatar upload isn't
- * itself persisted to the backend yet — a pre-existing gap, out of scope
- * here.)
+ * Profile page: name, email, avatar, and password change. Employee ID is
+ * shown but read-only. Save calls PUT /users/me, and PUT /users/me/password
+ * too if a password field was touched (separate calls, so a failed
+ * password change doesn't undo an already-saved name/email change).
+ * Cancel just resets the form. Avatar changes save immediately instead of
+ * waiting for Save (note: avatar upload itself isn't persisted to the
+ * backend yet).
  */
 function ProfilePage() {
   const profile = useUser();
@@ -111,9 +96,8 @@ function ProfilePage() {
   const [touched, setTouched] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Derived fresh from `form` on every render (not stored in its own
-  // state) — this is what makes blur-triggered validation actually work:
-  // `touched` just decides which of these already-current errors to show.
+  // Recomputed from `form` every render, `touched` just decides which of
+  // these to actually show.
   const errors = validate(form);
 
   const updateField = (field, value) => {
@@ -154,16 +138,12 @@ function ProfilePage() {
     try {
       const { firstName, lastName } = splitFullName(form.fullName);
       const user = await updateProfileRequest({ firstName, lastName, email: form.email });
-      // Server is still the source of truth (`user` is its response) — this
-      // just reflects it into UserContext immediately so e.g. the header
-      // avatar/greeting picks it up without a refetch.
+      // Reflects the server response into UserContext right away, so the
+      // header picks up the new name without a refetch.
       updateProfile({ userName: user.userName, email: user.email });
 
-      // A separate, independent backend call — if this fails (e.g. wrong
-      // current password), the name/email change above already genuinely
-      // succeeded and stays committed; only the password portion reports
-      // its own error below, rather than pretending this was one atomic
-      // save.
+      // Separate call, if this fails the name/email change above already
+      // succeeded and stays, only the password part reports its own error.
       if (isChangingPassword) {
         await changePasswordRequest({ currentPassword: form.currentPassword, newPassword: form.newPassword });
       }
@@ -187,11 +167,8 @@ function ProfilePage() {
   };
 
   return (
-    // Mobile: no longer forced to stretch and fill the viewport (`flex:1`)
-    // — with both accordions now closed by default, that forced stretch
-    // left a large empty gap below the collapsed sections instead of the
-    // card simply ending at its natural (shorter) height. sm+ keeps the
-    // original flex:1 behavior unchanged.
+    // Mobile doesn't stretch to fill the viewport, both accordions are
+    // closed by default so that just left an empty gap. sm+ unchanged.
     <Stack spacing={2.5} sx={{ width: '100%', flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
       <Paper
         elevation={0}
@@ -199,12 +176,8 @@ function ProfilePage() {
           borderRadius: 3,
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-          // 'auto' rather than 'hidden' — this card's flex-computed height
-          // can end up shorter than its actual content (Personal
-          // Information + Change Password, both open), which was silently
-          // clipping the bottom of the page with no way to scroll to it.
-          // Same fix as QuantityTakeoffTable.jsx/ManualBrandTable.jsx/
-          // BillOfMaterialsPage.jsx's identical Paper shape.
+          // 'auto' not 'hidden', this card can be shorter than its content
+          // and was silently clipping the bottom of the page.
           overflow: 'auto',
           flex: { xs: 'unset', sm: 1 },
           minHeight: { xs: 'auto', sm: 0 },

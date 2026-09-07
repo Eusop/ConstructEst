@@ -1,8 +1,7 @@
 import { query } from '../config/db.js';
 
-// [apiKey, dbColumn] — apiKey is what the frontend/engine use (camelCase,
-// matches engine/formulas.py's `overrides.get("columnWidth", ...)` calls),
-// dbColumn is the project_design_overrides column it's stored in.
+// [apiKey, dbColumn] pairs. apiKey is the camelCase name used by the
+// frontend/engine, dbColumn is the actual column name in the table.
 const FIELDS = [
   ['columnWidth', 'column_width'],
   ['columnDepth', 'column_depth'],
@@ -36,21 +35,17 @@ async function fetchRow(projectId) {
   return rows[0];
 }
 
-/** Every field defaults to null ("use the engine's built-in default") when
- * this project (or, for `projectId === null`, the admin) has never saved
- * overrides. Used as-is by the project-level GET/PUT endpoints, which
- * intentionally show only what's explicitly set for that project (see
- * DesignParametersCard's "Auto" placeholder) — the global default is kept
- * out of this so it doesn't look like a project-specific choice. */
+/** Every field is null if this project (or the admin, for projectId ===
+ * null) never saved overrides for it. Only shows what's explicitly set for
+ * that project, doesn't mix in the global default (see the "Auto"
+ * placeholder in DesignParametersCard). */
 export async function getDesignOverrides(projectId) {
   return toApiShape(await fetchRow(projectId));
 }
 
-/** Resolves what the engine should actually use for a project: each of the
- * 13 fields independently falls back project -> admin global default ->
- * (left null, letting formulas.py's own hardcoded default apply). Used
- * only when actually running the engine (createProject/recomputeEstimation),
- * never for display. */
+/** Figures out what the engine should actually use, each field falls back
+ * from project override to global default to formulas.py's own hardcoded
+ * default. Only used when actually running the engine, not for display. */
 export async function getEffectiveDesignOverrides(projectId) {
   const [projectRow, globalRow] = await Promise.all([fetchRow(projectId), fetchRow(null)]);
   const project = toApiShape(projectRow);
@@ -62,13 +57,10 @@ export async function getEffectiveDesignOverrides(projectId) {
   return effective;
 }
 
-/** Upserts the full override set for a project, or (projectId === null) the
- * admin's global default row. Project rows use a plain ON DUPLICATE KEY
- * UPDATE (project_id is a real, unique, non-null value there); the global
- * row can't — MySQL's unique indexes treat every NULL as distinct, so
- * ON DUPLICATE KEY UPDATE would never match an existing project_id IS NULL
- * row — so that path upserts explicitly instead (same gotcha as
- * admin.controller.js's updateGlobalConstants). */
+/** Saves the override set for a project, or the admin's global default row
+ * if projectId is null. Project rows can use ON DUPLICATE KEY UPDATE
+ * normally, but the global row can't (MySQL treats every NULL as unique),
+ * so that one's upserted by hand instead. */
 export async function saveDesignOverrides(projectId, overrides) {
   const columns = FIELDS.map(([, dbColumn]) => dbColumn);
   const values = FIELDS.map(([apiKey]) => {
@@ -103,9 +95,8 @@ export async function saveDesignOverrides(projectId, overrides) {
   return getDesignOverrides(projectId);
 }
 
-/** Strips null fields so the Python engine only sees keys that resolved to
- * a real value — everything else falls through to formulas.py's own
- * hardcoded defaults. */
+/** Strips out null fields so the Python engine only gets keys with a real
+ * value, everything else falls back to formulas.py's own defaults. */
 export function toEngineOverrides(apiShapeOverrides) {
   const engineOverrides = {};
   for (const [apiKey] of FIELDS) {

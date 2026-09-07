@@ -1,9 +1,9 @@
 import { verifyToken } from '../services/token.service.js';
 
 /**
- * Reads and verifies the Bearer token, attaches `{ id, employeeId, accessRole }`
- * as `req.user`. The access role always comes from the verified token's
- * claims, never from a header/body the client could set directly.
+ * Verifies the Bearer token and attaches `{ id, employeeId, accessRole }`
+ * as `req.user`. Access role always comes from the token, never trusted
+ * from the request body.
  */
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
