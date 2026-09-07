@@ -4,6 +4,7 @@ import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -19,6 +20,7 @@ import { useNotifications } from '../context/NotificationsContext';
 import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
+import { updateProfileRequest, changePasswordRequest } from '../services/usersService';
 import { colors } from '../theme/palette';
 
 const EMPTY_PASSWORD_FIELDS = { currentPassword: '', newPassword: '', confirmPassword: '' };
@@ -33,11 +35,18 @@ function buildForm(profile) {
   };
 }
 
+// DB stores first/last name separately but the form only has one Full
+// Name field, so split it here. Falls back to reusing the first word if
+// only one was typed, since last_name can't be empty.
+function splitFullName(fullName) {
+  const parts = fullName.trim().split(/\s+/);
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') || parts[0] };
+}
+
 function validate(form) {
   const errors = {};
 
   if (!isRequired(form.fullName)) errors.fullName = 'Full name is required';
-  if (!isRequired(form.employeeId)) errors.employeeId = 'Employee ID is required';
 
   if (!isRequired(form.email)) {
     errors.email = 'Email is required';
@@ -45,8 +54,7 @@ function validate(form) {
     errors.email = 'Enter a valid email address';
   }
 
-  // Changing the password is optional — only validate the password fields
-  // at all once the user has actually started filling one of them in.
+  // Password is optional, only validate it once the user starts typing.
   const isChangingPassword = isRequired(form.currentPassword) || isRequired(form.newPassword) || isRequired(form.confirmPassword);
   if (isChangingPassword) {
     if (!isRequired(form.currentPassword)) errors.currentPassword = 'Current password is required';
@@ -54,7 +62,7 @@ function validate(form) {
     if (!isRequired(form.newPassword)) {
       errors.newPassword = 'New password is required';
     } else if (!isStrongPassword(form.newPassword)) {
-      errors.newPassword = '8–16 characters with uppercase, lowercase, a number, and a special character';
+      errors.newPassword = 'Must be at least 6 characters';
     }
 
     if (!isRequired(form.confirmPassword)) {
@@ -68,17 +76,13 @@ function validate(form) {
 }
 
 /**
- * Profile: the signed-in user's editable identity (name, employee ID, email,
- * avatar) plus a password-change form. Frontend-only — "Save changes"
- * commits into UserContext (so e.g. the Dashboard greeting picks up a new
- * name immediately), "Cancel" discards the draft back to whatever's
- * currently saved there. Follows the same draft/saved `useState` pair and
- * Save/Cancel button styling as the Settings (Calibration) page.
- *
- * The avatar is the one exception to the draft/Save flow — selecting or
- * removing a photo commits to UserContext immediately (see
- * `handleAvatarChange`), since it needs to show up in the header avatar
- * right away rather than waiting for Save.
+ * Profile page: name, email, avatar, and password change. Employee ID is
+ * shown but read-only. Save calls PUT /users/me, and PUT /users/me/password
+ * too if a password field was touched (separate calls, so a failed
+ * password change doesn't undo an already-saved name/email change).
+ * Cancel just resets the form. Avatar changes save immediately instead of
+ * waiting for Save (note: avatar upload itself isn't persisted to the
+ * backend yet).
  */
 function ProfilePage() {
   const profile = useUser();
@@ -90,10 +94,10 @@ function ProfilePage() {
   const [savedForm, setSavedForm] = useState(() => buildForm(profile));
   const [form, setForm] = useState(() => buildForm(profile));
   const [touched, setTouched] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Derived fresh from `form` on every render (not stored in its own
-  // state) — this is what makes blur-triggered validation actually work:
-  // `touched` just decides which of these already-current errors to show.
+  // Recomputed from `form` every render, `touched` just decides which of
+  // these to actually show.
   const errors = validate(form);
 
   const updateField = (field, value) => {
@@ -115,10 +119,9 @@ function ProfilePage() {
     setTouched({});
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setTouched({
       fullName: true,
-      employeeId: true,
       email: true,
       currentPassword: true,
       newPassword: true,
@@ -129,25 +132,43 @@ function ProfilePage() {
       return;
     }
 
-    updateProfile({ userName: form.fullName, employeeId: form.employeeId, email: form.email });
-    addNotification({
-      type: 'profile_updated',
-      title: 'Profile updated',
-      description: 'Your profile details were updated.',
-    });
+    const isChangingPassword = isRequired(form.currentPassword) || isRequired(form.newPassword) || isRequired(form.confirmPassword);
 
-    const committed = { ...form, ...EMPTY_PASSWORD_FIELDS };
-    setSavedForm(committed);
-    setForm(committed);
-    setTouched({});
+    setIsSaving(true);
+    try {
+      const { firstName, lastName } = splitFullName(form.fullName);
+      const user = await updateProfileRequest({ firstName, lastName, email: form.email });
+      // Reflects the server response into UserContext right away, so the
+      // header picks up the new name without a refetch.
+      updateProfile({ userName: user.userName, email: user.email });
+
+      // Separate call, if this fails the name/email change above already
+      // succeeded and stays, only the password part reports its own error.
+      if (isChangingPassword) {
+        await changePasswordRequest({ currentPassword: form.currentPassword, newPassword: form.newPassword });
+      }
+
+      addNotification({
+        type: 'profile_updated',
+        title: 'Profile updated',
+        description: 'Your profile details were updated.',
+      });
+      showToast('Profile updated', 'success');
+
+      const committed = { ...form, ...EMPTY_PASSWORD_FIELDS };
+      setSavedForm(committed);
+      setForm(committed);
+      setTouched({});
+    } catch (error) {
+      showToast(error.message || 'Could not save your changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    // Mobile: no longer forced to stretch and fill the viewport (`flex:1`)
-    // — with both accordions now closed by default, that forced stretch
-    // left a large empty gap below the collapsed sections instead of the
-    // card simply ending at its natural (shorter) height. sm+ keeps the
-    // original flex:1 behavior unchanged.
+    // Mobile doesn't stretch to fill the viewport, both accordions are
+    // closed by default so that just left an empty gap. sm+ unchanged.
     <Stack spacing={2.5} sx={{ width: '100%', flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
       <Paper
         elevation={0}
@@ -155,7 +176,9 @@ function ProfilePage() {
           borderRadius: 3,
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-          overflow: 'hidden',
+          // 'auto' not 'hidden', this card can be shorter than its content
+          // and was silently clipping the bottom of the page.
+          overflow: 'auto',
           flex: { xs: 'unset', sm: 1 },
           minHeight: { xs: 'auto', sm: 0 },
         }}
@@ -264,6 +287,7 @@ function ProfilePage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
               <Button
                 onClick={handleCancel}
+                disabled={isSaving}
                 sx={{
                   bgcolor: 'common.white',
                   color: 'text.primary',
@@ -278,9 +302,11 @@ function ProfilePage() {
                 onClick={handleSave}
                 variant="contained"
                 disableElevation
+                disabled={isSaving}
+                startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
                 sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
               >
-                Save changes
+                {isSaving ? 'Saving…' : 'Save changes'}
               </Button>
             </Stack>
           </Box>

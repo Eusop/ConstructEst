@@ -5,9 +5,8 @@ import { HttpError } from '../middleware/errorHandler.js';
 const ENGINE_SCRIPT = path.resolve('engine/engine.py');
 
 /**
- * Runs the Python rule-based engine as a one-shot subprocess: writes the
- * request JSON to its stdin, reads one JSON object back from stdout. See
- * engine/engine.py for the exact contract.
+ * Runs the Python engine as a subprocess, writes the request as JSON to
+ * stdin and reads one JSON object back from stdout.
  *
  * @param {{ dxfPath: string, storeys: number, includeRoofing: boolean,
  *   constants: object, overrides?: object }} request

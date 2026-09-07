@@ -29,7 +29,7 @@ export function AdminToastProvider({ children }) {
         open={toast.open}
         autoHideDuration={2600}
         onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert onClose={handleClose} severity={toast.severity} variant="filled" sx={{ fontWeight: 600 }}>
           {toast.message}

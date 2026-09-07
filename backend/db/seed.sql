@@ -14,9 +14,15 @@ USE constructest;
 -- No admin UI/signup path exists, so this is the only way in; change the
 -- password via PUT /api/users/me/password once you've logged in.
 -- ---------------------------------------------------------------------------
-INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role)
+-- email_verified_at is set at seed time (not left NULL) — that column only
+-- means "did a self-registered user prove they own this email"; an admin
+-- account created directly here never went through that flow and shouldn't
+-- be blocked by login()'s check for it (see
+-- db/migrations/013_backfill_email_verified_at.sql for the same fix applied
+-- retroactively to an already-existing database).
+INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, email_verified_at)
 VALUES ('System', 'Admin', 'admin', 'admin@constructest.local',
-        '$2a$10$tsAJhcupRMJt1XVsmBIiQe1M4qMcXQ6JaBs6JUcnEQRJjdpWZcUqq', 'admin');
+        '$2a$10$tsAJhcupRMJt1XVsmBIiQe1M4qMcXQ6JaBs6JUcnEQRJjdpWZcUqq', 'admin', NOW());
 
 -- ---------------------------------------------------------------------------
 -- Material catalog: 14 brand-selectable materials x 3 brands, plus the 2

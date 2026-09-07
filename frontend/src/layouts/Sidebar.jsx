@@ -51,11 +51,9 @@ const UTILITY_ITEMS = [
   { label: 'Help', icon: HelpOutlineRoundedIcon, href: '#' },
 ];
 
-// Icon size never varies with `open` (or between the parent "Projects" row
-// and its 4 nested children) — only the label's opacity/max-width animate.
-// That's deliberate: keeping every icon a fixed, unchanging size is what
-// lets the label transition read as a smooth reveal instead of the row
-// "popping" to a different size when the sidebar toggles.
+// Icon size stays fixed regardless of `open`, only the label's opacity/
+// width animate. Keeps the transition feeling like a smooth reveal instead
+// of the row popping to a different size.
 function RowContent({ item, open, active, trailing }) {
   const Icon = item.icon;
   return (
@@ -91,11 +89,9 @@ function RowContent({ item, open, active, trailing }) {
   );
 }
 
-// `onNavigate`, when supplied, fires alongside the row's own click handling
-// (if any) — it's how the mobile/tablet overlay closes itself once the user
-// actually picks a destination. Desktop's permanent sidebar never passes
-// it, so there `onNavigate` is undefined and this is a no-op, leaving
-// desktop's behavior exactly as it was.
+// `onNavigate`, if given, fires after the row's own click, that's how the
+// mobile overlay closes itself after picking a page. Desktop never passes
+// it, so it's a no-op there.
 function NavRow({ item, open, active, onNavigate }) {
   const handleClick = (event) => {
     item.onClick?.(event);
@@ -106,9 +102,8 @@ function NavRow({ item, open, active, onNavigate }) {
     : { component: 'a', href: item.href, onClick: handleClick };
 
   return (
-    // Tooltip stays mounted at all times (only its content toggles) so the
-    // row underneath never remounts — that's what let the label's own
-    // opacity/width transition actually play instead of popping instantly.
+    // Tooltip stays mounted, only its content toggles, so the row
+    // underneath never remounts and the label transition can actually play.
     <Tooltip title={open ? '' : item.label} placement="right">
       <Stack
         direction="row"
@@ -133,27 +128,14 @@ function NavRow({ item, open, active, onNavigate }) {
 }
 
 /**
- * Expandable "Projects" row — one continuously-mounted structure for both
- * sidebar states, not a branch swap between them. That's what makes the
- * transition smooth: the same icon/label/child elements stay in the DOM as
- * `open` flips, so their own opacity/max-width/padding CSS transitions can
- * actually animate instead of instantly popping in at a different size.
+ * Expandable "Projects" row, same DOM structure stays mounted for both
+ * sidebar states so the CSS transitions can animate instead of popping.
  *
- * Expanded sidebar: the row navigates to /projects *and* opens the children
- * if they aren't already open (never collapses them); a separate chevron
- * (stopping propagation) still toggles the children's visibility
- * independently for anyone who wants to close it again. Collapsed sidebar:
- * there's no room for a separate chevron, so clicking the row does both at
- * once — it navigates to /projects *and* toggles the children, every time
- * (toggling doesn't suppress the navigation, and vice versa). Either way
- * `expanded`/`onToggle` is the one state Sidebar owns — toggling the
- * sidebar's own open/closed state never resets or desyncs it.
- *
- * Defaults to expanded whenever the current route is /projects or one of
- * its children, and stays manually toggle-able afterward. `onNavigate` (see
- * NavRow) closes the mobile/tablet overlay after either the row itself or
- * one of its children is clicked; it's undefined on desktop, so it's a
- * no-op there.
+ * Expanded sidebar: clicking navigates to /projects and opens the children
+ * (never collapses them); a separate chevron toggles them independently.
+ * Collapsed sidebar: no room for a chevron, so one click does both. Starts
+ * expanded if the current route is under /projects, stays manually
+ * toggleable after that.
  */
 function NavGroup({ item, open, active, expanded, onToggle, onNavigate }) {
   const location = useLocation();
@@ -161,19 +143,12 @@ function NavGroup({ item, open, active, expanded, onToggle, onNavigate }) {
 
   const handleRowClick = () => {
     if (!open) {
-      // Collapsed: there's no separate chevron to live beside the icon, so
-      // a single click does both jobs at once — navigation is handled by
-      // the underlying RouterLink itself (nothing here prevents it), and
-      // this just additionally toggles the children open/closed, exactly
-      // like clicking "Projects" in the expanded sidebar navigates while
-      // the chevron independently toggles.
+      // Collapsed, no room for a separate chevron, so one click both
+      // navigates (RouterLink handles that) and toggles the children.
       onToggle();
     } else if (!expanded) {
-      // Expanded: navigation is handled by the underlying RouterLink itself
-      // (nothing here prevents it); additionally open the children if they
-      // aren't already open, so the user never has to click the chevron
-      // separately. Only opens — never collapses an already-open list, so
-      // clicking "Projects" again while browsing a child page doesn't hide it.
+      // Expanded, navigation still comes from RouterLink. This only opens
+      // the children if closed, never collapses an already-open list.
       onToggle();
     }
     onNavigate?.();
@@ -191,8 +166,7 @@ function NavGroup({ item, open, active, expanded, onToggle, onNavigate }) {
           onKeyDown={(event) => {
             if (!open && event.key === ' ') {
               // Space doesn't trigger link navigation natively (Enter
-              // already does) — toggle and navigate explicitly so Space
-              // matches a click.
+              // does), so handle it manually here.
               event.preventDefault();
               onToggle();
               navigate(item.to);
@@ -274,27 +248,17 @@ function NavGroup({ item, open, active, expanded, onToggle, onNavigate }) {
 }
 
 /**
- * Collapsible app sidebar: brand mark, primary "workspace" navigation,
- * utility links, and logout. Width animates between collapsed (icon-only)
- * and expanded (icon + label) states using MUI's own drawer-style
- * transition; icons stay in a fixed position and labels fade/slide in
- * place rather than mounting or jumping. The "Projects" item is a
- * collapsible group (see NavGroup) so its 4 workspace pages live as a
- * submenu instead of flat top-level items.
+ * Collapsible app sidebar: brand mark, workspace nav, utility links,
+ * logout. Width animates between icon-only and icon+label. "Projects" is
+ * a collapsible group (see NavGroup) holding its 4 sub-pages.
  *
- * Desktop (`md` and up) renders exactly as before: a normal flex sibling
- * that's always visible and pushes the page content over as it widens.
- * Below `md`, the same nav content instead renders inside a MUI `Drawer`
- * (`variant="temporary"`) — a fixed-position overlay with its own backdrop,
- * shown only while `open`, that never reserves layout space and never
- * moves the page underneath. Both branches render the exact same nav item
- * list/labels/icons/animation; only the outer container and how `open` is
- * interpreted differ, so "desktop behavior" and "mobile/tablet behavior"
- * can't drift apart from each other by accident.
+ * Desktop (md+): normal flex sidebar, always visible. Below md: same nav
+ * content, but rendered as a temporary Drawer overlay instead so it
+ * doesn't push the page content.
  *
  * @param {object} props
- * @param {boolean} props.open Desktop: expanded vs icon-only. Mobile/tablet: overlay shown vs hidden.
- * @param {() => void} [props.onClose] Mobile/tablet only — closes the overlay (backdrop click, Escape, or picking a nav item).
+ * @param {boolean} props.open Desktop: expanded vs icon-only. Mobile: overlay shown vs hidden.
+ * @param {() => void} [props.onClose] Mobile only, closes the overlay.
  */
 function Sidebar({ open, onClose }) {
   const theme = useTheme();
@@ -308,15 +272,11 @@ function Sidebar({ open, onClose }) {
     item.label === 'Notifications' ? { ...item, badge: unreadCount || undefined } : item,
   );
 
-  // A nav item stays highlighted for its own nested routes too (e.g. "Projects"
-  // stays active on /projects/new), not just on an exact pathname match.
+  // Keeps a nav item highlighted on its nested routes too, not just exact matches.
   const isActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`);
 
-  // On desktop the sidebar is always visible and `open` picks its width
-  // (icon-only vs labeled). On the mobile/tablet overlay there's no
-  // icon-only state — it's either shown fully labeled, or not shown at
-  // all — and picking a destination should close it, the way any mobile
-  // nav drawer does.
+  // Desktop: `open` picks icon-only vs labeled width. Mobile: no icon-only
+  // state, it's either shown fully labeled or hidden, and closes on pick.
   const contentOpen = isDesktop ? open : true;
   const onNavigate = isDesktop ? undefined : onClose;
 
@@ -433,12 +393,9 @@ function Sidebar({ open, onClose }) {
     );
   }
 
-  // Mobile/small tablet: a temporary Drawer overlay instead of a permanent
-  // flex sibling — it's rendered in a portal above the page (so the page
-  // never resizes to make room for it), pinned to the viewport with its own
-  // scroll, and paired with a backdrop the page stays visible (and, per
-  // `disableScrollLock`, scrollable) behind. `keepMounted` matches MUI's own
-  // guidance for mobile drawers (better open transition performance).
+  // Mobile/tablet: a temporary Drawer overlay instead of a flex sibling,
+  // rendered in a portal so the page never resizes for it. `keepMounted`
+  // is MUI's own recommendation for a smoother open transition.
   return (
     <Drawer
       variant="temporary"

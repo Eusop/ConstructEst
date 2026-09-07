@@ -1,23 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-// A fix coarser than this isn't just "a bit off" — it's the classic
-// symptom of the OS/browser falling back to IP-based geolocation (which
-// can misplace a user by hundreds or thousands of km, sometimes in a
-// different country entirely) rather than a real GPS/Wi-Fi-based reading.
-// enableHighAccuracy asks for better, but can't force the OS to actually
-// have it — this is the only way to tell after the fact that what came
-// back isn't trustworthy enough to confidently label "your location".
+// A fix worse than this usually means the browser fell back to IP-based
+// geolocation instead of real GPS/Wi-Fi, which can be off by hundreds of
+// km. enableHighAccuracy asks for better but can't force it, so we check
+// the reported accuracy after the fact instead.
 const MAX_ACCEPTABLE_ACCURACY_M = 50_000;
 
-// This app's entire service area is Tarlac City (every seeded hardware
-// store, the paper's case study, all of it) — a fix landing much further
-// than this from it is more likely IP-geolocation confidently reporting
-// the wrong place (observed: a fix ~94km off with a small self-reported
-// accuracy — the accuracy check above doesn't catch a *confidently* wrong
-// fix, only ones that admit they're coarse) than a genuine user testing
-// from somewhere distant. Trade-off worth knowing: a real user genuinely
-// far from Tarlac would also get the fallback here — acceptable for a
-// tool this narrowly scoped, revisit if that scope ever changes.
+// This app's whole service area is Tarlac City. A fix landing way outside
+// this radius is more likely a confidently-wrong IP geolocation (we saw a
+// real case ~94km off with a small reported accuracy) than an actual user
+// testing from far away, so we reject it too. Trade-off: a real user
+// genuinely far from Tarlac also gets rejected here, fine for how narrow
+// this app's scope is.
 const TARLAC_CITY_CENTER = { lat: 15.4802, lng: 120.5979 };
 const MAX_PLAUSIBLE_DISTANCE_KM = 100;
 
@@ -32,39 +26,24 @@ function haversineKm(a, b) {
 }
 
 /**
- * Wraps the browser Geolocation API for a real "distance from you" figure
- * (see features/storeLocator/data/storesMock.js's loadStores) instead of
- * the previous fixed Tarlac City reference point every user's distance was
- * silently measured from. Fetches once on mount, and exposes `refetch` for
- * an explicit "locate me" button (see MapView.jsx's locate control) — e.g.
- * if the first fix was coarse (common on desktop without GPS) or the user
- * has moved since.
+ * Wraps the browser Geolocation API to get a real distance-from-you figure
+ * for the store list, instead of always measuring from a fixed city point.
+ * Fetches once on mount, `refetch` re-triggers it for a "locate me" button.
  *
- * Settles to `status: 'unavailable'` (never hangs) on: the API not existing
- * (non-secure context, unsupported browser), the user denying/dismissing
- * the permission prompt, a real position fetch failure, a "successful" fix
- * too coarse to trust (see MAX_ACCEPTABLE_ACCURACY_M — the classic symptom
- * of IP-based geolocation landing in the wrong country), a "successful" fix
- * that's *confidently* wrong — small reported accuracy, but implausibly far
- * from this app's Tarlac City service area (see MAX_PLAUSIBLE_DISTANCE_KM,
- * which the accuracy check alone can't catch) — or a manual 10s failsafe
- * timeout in case the browser's own `timeout` option doesn't fire while a
- * permission decision is still pending — callers always have a sensible
- * default (the city reference point) to fall back to instead of blocking
- * forever on a prompt nobody answers, or trusting a wildly wrong fix.
- *
- * `enableHighAccuracy: true` asks for GPS/precise Wi-Fi positioning rather
- * than the browser's fast default (coarse IP/cell-tower lookup, which on
- * desktop can be off by tens of km); `maximumAge: 0` never reuses a stale
- * cached fix, so a `refetch` always attempts a genuinely new reading.
+ * Falls back to `status: 'unavailable'` (never hangs) if: geolocation isn't
+ * supported, permission is denied, the fetch fails, the fix is too coarse
+ * to trust (see MAX_ACCEPTABLE_ACCURACY_M), the fix is confidently wrong
+ * (small reported accuracy but way outside Tarlac, see
+ * MAX_PLAUSIBLE_DISTANCE_KM), or a 10s failsafe timeout fires while a
+ * permission prompt is still pending.
  *
  * @returns {{ location: {lat:number,lng:number}|null, status: 'loading'|'granted'|'unavailable', refetch: () => void }}
  */
 export function useUserLocation() {
   const [state, setState] = useState({ location: null, status: 'loading' });
-  // Bumped on every locate() call so a slow, superseded earlier request
-  // (e.g. the initial mount fetch still pending when a "locate me" click
-  // fires a fresh one) can't clobber a newer result once it finally settles.
+  // Bumped on every locate() call so a slow, superseded request (mount
+  // fetch still pending when "locate me" fires a new one) can't overwrite
+  // a newer result.
   const requestIdRef = useRef(0);
 
   const locate = useCallback(() => {
@@ -72,9 +51,8 @@ export function useUserLocation() {
     const setIfCurrent = (next) => {
       if (requestId === requestIdRef.current) setState(next);
     };
-    // Deferred a tick rather than called synchronously — avoids the
-    // cascading-render lint rule when this runs from the mount effect;
-    // harmless (and imperceptible) when called from a button click instead.
+    // Deferred so this isn't a synchronous setState when called from the
+    // mount effect.
     queueMicrotask(() => setIfCurrent((prev) => ({ ...prev, status: 'loading' })));
 
     if (!navigator.geolocation) {
@@ -95,27 +73,21 @@ export function useUserLocation() {
       (position) => {
         clearTimeout(failsafe);
         const { latitude, longitude, accuracy } = position.coords;
-        // Defensive: a well-behaved browser never hands back a non-finite
-        // coordinate here, but this has been observed from odd browser/
-        // extension/emulation states — treat it the same as "couldn't get
-        // a location" rather than passing garbage on to the map, which
-        // would otherwise throw deep inside Leaflet and crash the page.
+        // Shouldn't happen from a normal browser, but seen from weird
+        // extension/emulator setups. Treat it as unavailable instead of
+        // passing garbage to the map (which would crash on it).
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
           settle({ location: null, status: 'unavailable' });
           return;
         }
-        // A "successful" fix that's off by tens/hundreds of km is worse
-        // than admitting we don't know — it gets labeled "your location"
-        // and trusted for real distance figures otherwise. Reject it the
-        // same as a failed fetch rather than confidently show a wrong
-        // country as "You".
+        // Too coarse to trust as "your location".
         if (Number.isFinite(accuracy) && accuracy > MAX_ACCEPTABLE_ACCURACY_M) {
           settle({ location: null, status: 'unavailable' });
           return;
         }
-        // Catches a fix that's confidently wrong (small reported accuracy,
-        // but nowhere near where this app's users actually are) — the
-        // accuracy check above only catches ones that admit they're coarse.
+        // Confidently wrong: small reported accuracy but nowhere near
+        // Tarlac. The accuracy check above only catches fixes that admit
+        // they're coarse, not this.
         if (haversineKm(TARLAC_CITY_CENTER, { lat: latitude, lng: longitude }) > MAX_PLAUSIBLE_DISTANCE_KM) {
           settle({ location: null, status: 'unavailable' });
           return;

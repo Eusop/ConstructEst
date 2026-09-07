@@ -22,10 +22,8 @@ router.put('/users/:id', updateUser);
 router.patch('/users/:id/status', setUserActive);
 router.patch('/users/:id/verify', verifyUser);
 
-// Read-only — no POST/PUT/DELETE is ever exposed for this resource.
-// Entries are written server-side as a side effect of the actual mutating
-// admin actions above (see admin.controller.js's logAdminActivity), never
-// supplied directly by the client, so the log can't be spoofed or edited.
+// Read-only, no create/update/delete route for this. Entries only get
+// written as a side effect of the admin actions above.
 router.get('/activity-log', listAdminActivity);
 
 router.get('/materials', listMaterials);

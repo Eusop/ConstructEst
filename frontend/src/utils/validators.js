@@ -58,22 +58,23 @@ export function getEmployeeIdHint(value) {
   return missing.length > 0 ? `Needs to ${missing.join(', ')}` : null;
 }
 
-// Every condition below is required (&&, not ||) — a password missing just
-// one category (e.g. "password123": lowercase + digits, no uppercase, no
-// symbol) still fails, not just ones missing everything.
+// Just a minimum length — matches the backend's actual requirement
+// (auth.controller.js's register only checks `password.length < 6`, no
+// composition rule at all). Used to require 8-16 chars plus upper/lower/
+// number/symbol, which was stricter than the backend and blocked simple
+// passwords the account with real access control (bcrypt + a real DB row)
+// doesn't actually need.
 export function isStrongPassword(value) {
-  const hasUpper = /[A-Z]/.test(value);
-  const hasLower = /[a-z]/.test(value);
-  const hasNumber = /[0-9]/.test(value);
-  const hasSymbol = /[^A-Za-z0-9]/.test(value);
-  return value.length >= 8 && value.length <= 16 && hasUpper && hasLower && hasNumber && hasSymbol;
+  return value.length >= 6;
 }
 
 /**
- * Live strength rating for a password-in-progress — same 5 criteria
- * `isStrongPassword` requires, but broken out per-criterion (for a
- * checklist UI) plus a 0-5 score and Weak/Fair/Strong label, so a
- * password field can show *how close* it is rather than just pass/fail.
+ * Live strength rating for a password-in-progress — still checks the same
+ * 5 criteria (broken out per-criterion for a checklist UI, plus a 0-5 score
+ * and Weak/Fair/Strong label) even though only `length` is actually
+ * required to pass (see isStrongPassword above) — this is guidance, not a
+ * gate, so a password field can nudge toward something stronger without
+ * blocking a simple one that already meets the real minimum.
  *
  * @param {string} value
  * @returns {{ criteria: {length:boolean, upper:boolean, lower:boolean, number:boolean, symbol:boolean},
@@ -81,7 +82,7 @@ export function isStrongPassword(value) {
  */
 export function getPasswordStrength(value) {
   const criteria = {
-    length: value.length >= 8 && value.length <= 16,
+    length: value.length >= 6,
     upper: /[A-Z]/.test(value),
     lower: /[a-z]/.test(value),
     number: /[0-9]/.test(value),

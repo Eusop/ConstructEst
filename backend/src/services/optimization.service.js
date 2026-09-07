@@ -16,18 +16,15 @@ async function getQuantityTakeoff(projectId) {
 }
 
 /**
- * Table 20's per-store cost optimization: for each store, the cheapest
- * available brand per material is picked independently (no mixing brands
- * across stores) and summed. A material the store doesn't carry marks that
- * store as short one item and names an alternative store that has it —
- * matching FR-11's unavailability notification.
+ * For each store, picks the cheapest available brand per material and
+ * sums it up (no mixing brands across stores). If a store doesn't carry
+ * something, it's flagged as missing that item and points to another
+ * store that has it.
  */
 export async function getStoreOptimization(projectId) {
   const materials = await getQuantityTakeoff(projectId);
-  // Deactivated stores (admin.controller.js's setStoreActive) are excluded
-  // entirely — they're temporarily out of commission, not just a store that
-  // happens to be missing one material (that case still shows up, with
-  // missingMaterials naming the gap, below).
+  // Skip deactivated stores entirely, they're not just missing an item,
+  // they're closed for business right now.
   const stores = await query('SELECT * FROM stores WHERE is_active = 1 ORDER BY name');
 
   const results = [];
@@ -85,8 +82,8 @@ export async function getStoreOptimization(projectId) {
     .sort((a, b) => (a.optimizedTotal ?? Infinity) - (b.optimizedTotal ?? Infinity));
 }
 
-/** Every brand option for one brand-selectable material at one store (feeds
- * Brand Selection's per-material dropdown / Automatic-mode tiers). */
+/** Every brand option for one material at one store, feeds Brand
+ * Selection's dropdowns and tier cards. */
 export async function getBrandCatalog(projectId, storeId) {
   const materials = await getQuantityTakeoff(projectId);
   const catalog = {};
@@ -110,10 +107,9 @@ export async function getBrandCatalog(projectId, storeId) {
 }
 
 /**
- * Prices the full quantity take-off against one store: a saved brand choice
- * wins where one exists, otherwise the cheapest available brand at that
- * store is used (commodities like sand/gravel always use the store's flat
- * price, they have no brand choice).
+ * Prices the full take-off at one store. Uses the saved brand choice if
+ * there is one, otherwise picks the cheapest option. Sand/gravel just use
+ * the store's flat price since they don't have brands.
  */
 export async function computeBom(projectId, storeId) {
   const materials = await getQuantityTakeoff(projectId);

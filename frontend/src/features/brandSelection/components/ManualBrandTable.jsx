@@ -20,12 +20,8 @@ import { BRAND_MATERIAL_SHORT_LABELS, getStoreBrandOptions, getAvailableMaterial
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
 import { colors } from '../../../theme/palette';
 
-// Fixed percentage widths (sum to 100%) paired with `tableLayout: 'fixed'`
-// on the Table below — this is what actually stops the table (and the card/
-// page around it) from shifting width when a longer or shorter brand name
-// is selected. Without an explicit layout, the browser's default table
-// auto-sizing recomputes every column's width from its content on each
-// render, which is what caused the whole page to visibly shift.
+// Fixed widths + tableLayout: 'fixed' below stop the table (and page)
+// from shifting width when a longer/shorter brand name gets picked.
 const COLUMNS = [
   { label: 'MATERIAL', width: '15%' },
   { label: 'SELECTED BRAND', width: '27%' },
@@ -35,9 +31,7 @@ const COLUMNS = [
   { label: 'ESTIMATED COST', width: '17%' },
 ];
 
-// Shared truncation styling for any cell whose text length varies with the
-// selected option — keeps every row the same height instead of wrapping to
-// a second line.
+// Truncates instead of wrapping, keeps every row the same height.
 const TRUNCATE_SX = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
 function formatPeso(value) {
@@ -54,15 +48,9 @@ function QualityStars({ quality }) {
   );
 }
 
-// Was noticeably larger and roomier than every other piece of text on the
-// page — MUI's TextField falls back to a 1rem input font and default
-// padding when nothing overrides it, which stood out sharply next to the
-// 0.7–0.85rem scale the rest of Brand Selection (and the Automatic page in
-// particular) is built on. This card's whole scale below is pulled down to
-// match that same range, and the select itself gets an explicit smaller
-// font/tighter padding so its dropdown value stops reading like a page
-// heading. Desktop's table (further down, unaffected by this component)
-// keeps the exact TextField sizing it already had.
+// MUI's TextField defaults to 1rem font, way bigger than the rest of this
+// page's 0.7-0.85rem scale, so everything here is sized down to match.
+// Desktop's table below is untouched.
 function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, estimatedCost }) {
   const options = getStoreBrandOptions(storeId, materialKey);
   const selectedOption = options.find((option) => option.id === choices[materialKey]) ?? options[0];
@@ -121,24 +109,19 @@ function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, est
 }
 
 /**
- * Manual mode body: per-material brand dropdown, live-updating price/
- * quality/supplier for whichever option is picked. Column widths are fixed
- * (see COLUMNS) and long text is truncated with a tooltip rather than
- * wrapped, so picking a different option never changes the table's size or
- * shifts the row heights.
+ * Manual mode: per-material brand dropdown, live price/quality/supplier
+ * for whatever's picked. Fixed column widths + truncation so picking a
+ * different option never resizes the table.
  *
  * @param {object} props
  * @param {Record<string, string>} props.choices materialKey -> brandOptionId
  * @param {(materialKey: string, optionId: string) => void} props.onChoiceChange
- * @param {string} props.storeId Which store's brand catalog to populate the dropdowns from.
- * @param {Array<{key: string, amount: number}>} props.lineItems Pre-computed
- *   BOM line items (from computeBom) — supplies each row's Estimated Cost so
- *   it always matches what Bill of Materials will show for the same choice.
+ * @param {string} props.storeId Which store's catalog to use.
+ * @param {Array<{key: string, amount: number}>} props.lineItems Pre-computed BOM line items for the Estimated Cost column.
  */
 function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems }) {
-  // Only materials this project's estimation actually needs (and this
-  // store's catalog has options for) — not the app-wide static list, which
-  // still includes e.g. roofing even for a project that's toggled it off.
+  // Only materials this project actually needs, not the full static list
+  // (which still has roofing even if the project toggled it off).
   const availableMaterialKeys = getAvailableMaterialKeys(storeId);
   const categoryGroups = groupMaterialsByCategory(availableMaterialKeys.map((key) => ({ key })));
 
@@ -149,11 +132,9 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems }) {
         borderRadius: 3,
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        // 'auto' rather than 'hidden' — still clips to the rounded corners,
-        // but scrolls internally when the material list is taller than the
-        // card's flex-computed height, instead of silently clipping rows
-        // off the bottom (see the identical fix in QuantityTakeoffTable.jsx
-        // for the full explanation — same Paper shape, same risk).
+        // 'auto' not 'hidden', scrolls instead of clipping rows off the
+        // bottom when the list is taller than the card (same fix as
+        // QuantityTakeoffTable.jsx).
         overflow: 'auto',
         flex: 1,
         minWidth: 0,
