@@ -1,8 +1,5 @@
 import { colors } from '../../../theme/palette';
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
+import { formatPeso } from '../../../utils/formatNumbers';
 
 // This popup is built as a raw HTML string (see buildStoreInfoWindowContent's
 // own comment below for why), so anything that came from the database -

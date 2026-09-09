@@ -8,16 +8,13 @@ import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import { OPTIMIZATION_TIERS } from '../data/brandOptionsMock';
 import { computeTierTotal } from '../utils/computeBom';
 import { colors } from '../../../theme/palette';
+import { formatPeso } from '../../../utils/formatNumbers';
 
 const TIER_ICONS = {
   premium: { Icon: DiamondRoundedIcon, bg: colors.iconPurpleBg, fg: colors.iconPurpleFg },
   standard: { Icon: StarRoundedIcon, bg: colors.iconBlueBg, fg: colors.iconBlueFg },
   budget: { Icon: SavingsRoundedIcon, bg: colors.iconGreenBg, fg: colors.iconGreenFg },
 };
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
 
 /**
  * Premium / Standard / Budget selectable tier cards — each maps to a fixed

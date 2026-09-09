@@ -33,6 +33,15 @@ CREATE TABLE users (
   email_verification_expires_at TIMESTAMP NULL,
   email_verification_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
   email_verification_last_sent_at TIMESTAMP NULL,
+  -- Separate from the email_verification_* set above so the two flows can't
+  -- overwrite each other's live code: an account that registered but never
+  -- typed its signup code can still request a password reset. See
+  -- db/migrations/014_users_password_reset.sql and auth.controller.js's
+  -- forgotPassword/resetPassword.
+  password_reset_code CHAR(6) NULL,
+  password_reset_expires_at TIMESTAMP NULL,
+  password_reset_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  password_reset_last_sent_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

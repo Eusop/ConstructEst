@@ -21,10 +21,7 @@ import { computeBom } from '../features/brandSelection/utils/computeBom';
 import { apiRequest } from '../services/apiClient';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
+import { formatPeso } from '../utils/formatNumbers';
 
 /**
  * Brand Selection: choose which brand each shoppable material comes from,

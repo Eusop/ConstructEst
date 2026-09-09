@@ -7,10 +7,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import { colors } from '../../../theme/palette';
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
+import { formatPeso } from '../../../utils/formatNumbers';
 
 function directionsUrl(store) {
   const { lat, lng } = store.position;

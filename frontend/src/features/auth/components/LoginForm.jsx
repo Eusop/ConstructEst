@@ -146,7 +146,15 @@ function LoginForm() {
             <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
               Password
             </Typography>
-            <Link href="#" underline="none" sx={{ color: 'primary.main', fontWeight: 600, fontSize: '0.8rem' }}>
+            {/* Was href="#" with nothing behind it — no route, no page, no
+                endpoint. Now goes to the real reset flow, carrying whatever
+                was already typed so it doesn't have to be retyped. */}
+            <Link
+              component={RouterLink}
+              to={`${ROUTES.RESET_PASSWORD}${form.identifier.includes('@') ? `?email=${encodeURIComponent(form.identifier)}` : ''}`}
+              underline="none"
+              sx={{ color: 'primary.main', fontWeight: 600, fontSize: '0.8rem' }}
+            >
               Forgot password?
             </Link>
           </Stack>

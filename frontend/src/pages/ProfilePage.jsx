@@ -20,7 +20,7 @@ import { useNotifications } from '../context/NotificationsContext';
 import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
-import { updateProfileRequest, changePasswordRequest } from '../services/usersService';
+import { updateProfileRequest, changePasswordRequest, uploadAvatarRequest, removeAvatarRequest } from '../services/usersService';
 import { colors } from '../theme/palette';
 
 const EMPTY_PASSWORD_FIELDS = { currentPassword: '', newPassword: '', confirmPassword: '' };
@@ -43,7 +43,9 @@ function splitFullName(fullName) {
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') || parts[0] };
 }
 
-function validate(form) {
+// Split from the password rules below because the two now save separately —
+// "Save changes" must not care whether a password field happens to be filled.
+function validateDetails(form) {
   const errors = {};
 
   if (!isRequired(form.fullName)) errors.fullName = 'Full name is required';
@@ -54,22 +56,24 @@ function validate(form) {
     errors.email = 'Enter a valid email address';
   }
 
-  // Password is optional, only validate it once the user starts typing.
-  const isChangingPassword = isRequired(form.currentPassword) || isRequired(form.newPassword) || isRequired(form.confirmPassword);
-  if (isChangingPassword) {
-    if (!isRequired(form.currentPassword)) errors.currentPassword = 'Current password is required';
+  return errors;
+}
 
-    if (!isRequired(form.newPassword)) {
-      errors.newPassword = 'New password is required';
-    } else if (!isStrongPassword(form.newPassword)) {
-      errors.newPassword = 'Must be at least 6 characters';
-    }
+function validatePassword(form) {
+  const errors = {};
 
-    if (!isRequired(form.confirmPassword)) {
-      errors.confirmPassword = 'Please confirm your new password';
-    } else if (!passwordsMatch(form.newPassword, form.confirmPassword)) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
+  if (!isRequired(form.currentPassword)) errors.currentPassword = 'Current password is required';
+
+  if (!isRequired(form.newPassword)) {
+    errors.newPassword = 'New password is required';
+  } else if (!isStrongPassword(form.newPassword)) {
+    errors.newPassword = 'Must be at least 6 characters';
+  }
+
+  if (!isRequired(form.confirmPassword)) {
+    errors.confirmPassword = 'Please confirm your new password';
+  } else if (!passwordsMatch(form.newPassword, form.confirmPassword)) {
+    errors.confirmPassword = 'Passwords do not match';
   }
 
   return errors;
@@ -77,12 +81,14 @@ function validate(form) {
 
 /**
  * Profile page: name, email, avatar, and password change. Employee ID is
- * shown but read-only. Save calls PUT /users/me, and PUT /users/me/password
- * too if a password field was touched (separate calls, so a failed
- * password change doesn't undo an already-saved name/email change).
- * Cancel just resets the form. Avatar changes save immediately instead of
- * waiting for Save (note: avatar upload itself isn't persisted to the
- * backend yet).
+ * shown but read-only.
+ *
+ * Three independent saves rather than one, which is the fix for having to
+ * re-enter the current password just to edit a name: "Save changes" only
+ * ever sends name/email (PUT /users/me), the Change Password section has its
+ * own button (PUT /users/me/password), and the photo uploads on its own
+ * (POST /users/me/avatar) the moment it is confirmed. Nothing about a
+ * password is read unless the user is deliberately changing one.
  */
 function ProfilePage() {
   const profile = useUser();
@@ -95,10 +101,15 @@ function ProfilePage() {
   const [form, setForm] = useState(() => buildForm(profile));
   const [touched, setTouched] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
 
   // Recomputed from `form` every render, `touched` just decides which of
-  // these to actually show.
-  const errors = validate(form);
+  // these to actually show. The password errors are only surfaced once the
+  // user has started filling that section in, so an untouched Change Password
+  // block never reports "required" at someone editing their email.
+  const isChangingPassword = isRequired(form.currentPassword) || isRequired(form.newPassword) || isRequired(form.confirmPassword);
+  const errors = { ...validateDetails(form), ...(isChangingPassword ? validatePassword(form) : {}) };
 
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -108,10 +119,26 @@ function ProfilePage() {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  const handleAvatarChange = (url) => {
-    updateProfile({ avatarUrl: url });
-    setForm((prev) => ({ ...prev, avatarUrl: url }));
-    setSavedForm((prev) => ({ ...prev, avatarUrl: url }));
+  // The photo is its own save, separate from the page's "Save changes":
+  // picking a file only previews it, and this runs when the user confirms.
+  // `file` null means "remove my photo".
+  const handleAvatarSave = async (file) => {
+    setIsSavingPhoto(true);
+    try {
+      const user = file
+        ? await uploadAvatarRequest(file)
+        : await removeAvatarRequest();
+      // Server-generated URL, not the local blob preview — that is what makes
+      // the photo survive a logout instead of dying with the browser document.
+      updateProfile({ avatarUrl: user.avatarUrl });
+      setForm((prev) => ({ ...prev, avatarUrl: user.avatarUrl }));
+      setSavedForm((prev) => ({ ...prev, avatarUrl: user.avatarUrl }));
+      showToast(file ? 'Profile photo updated' : 'Profile photo removed', 'success');
+    } catch (error) {
+      showToast(error.message || 'Could not update your photo. Please try again.');
+    } finally {
+      setIsSavingPhoto(false);
+    }
   };
 
   const handleCancel = () => {
@@ -119,20 +146,43 @@ function ProfilePage() {
     setTouched({});
   };
 
-  const handleSave = async () => {
-    setTouched({
-      fullName: true,
-      email: true,
-      currentPassword: true,
-      newPassword: true,
-      confirmPassword: true,
-    });
-    if (Object.keys(errors).length > 0) {
+  const handleChangePassword = async () => {
+    setTouched((prev) => ({ ...prev, currentPassword: true, newPassword: true, confirmPassword: true }));
+    const passwordErrors = validatePassword(form);
+    if (Object.keys(passwordErrors).length > 0) {
       showToast('Please fix the highlighted fields before saving.');
       return;
     }
 
-    const isChangingPassword = isRequired(form.currentPassword) || isRequired(form.newPassword) || isRequired(form.confirmPassword);
+    setIsSavingPassword(true);
+    try {
+      await changePasswordRequest({ currentPassword: form.currentPassword, newPassword: form.newPassword });
+      addNotification({
+        type: 'profile_updated',
+        title: 'Password changed',
+        description: 'Your password was updated. Check your email for a confirmation.',
+      });
+      showToast('Password changed', 'success');
+      // Clearing these is deliberate, not a glitch: the app never holds a
+      // password, so there is nothing to leave in the boxes afterwards.
+      setForm((prev) => ({ ...prev, ...EMPTY_PASSWORD_FIELDS }));
+      setTouched((prev) => ({ ...prev, currentPassword: false, newPassword: false, confirmPassword: false }));
+    } catch (error) {
+      showToast(error.message || 'Could not change your password. Please try again.');
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
+  // Name and email only. Passwords are handled by handleChangePassword and
+  // the photo by handleAvatarSave, so this never reads a password field.
+  const handleSave = async () => {
+    setTouched((prev) => ({ ...prev, fullName: true, email: true }));
+    const detailErrors = validateDetails(form);
+    if (Object.keys(detailErrors).length > 0) {
+      showToast('Please fix the highlighted fields before saving.');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -142,12 +192,6 @@ function ProfilePage() {
       // header picks up the new name without a refetch.
       updateProfile({ userName: user.userName, email: user.email });
 
-      // Separate call, if this fails the name/email change above already
-      // succeeded and stays, only the password part reports its own error.
-      if (isChangingPassword) {
-        await changePasswordRequest({ currentPassword: form.currentPassword, newPassword: form.newPassword });
-      }
-
       addNotification({
         type: 'profile_updated',
         title: 'Profile updated',
@@ -155,10 +199,8 @@ function ProfilePage() {
       });
       showToast('Profile updated', 'success');
 
-      const committed = { ...form, ...EMPTY_PASSWORD_FIELDS };
-      setSavedForm(committed);
-      setForm(committed);
-      setTouched({});
+      setSavedForm((prev) => ({ ...prev, fullName: form.fullName, email: form.email }));
+      setTouched((prev) => ({ ...prev, fullName: false, email: false }));
     } catch (error) {
       showToast(error.message || 'Could not save your changes. Please try again.');
     } finally {
@@ -188,7 +230,8 @@ function ProfilePage() {
             fullName={form.fullName}
             employeeId={form.employeeId}
             avatarUrl={form.avatarUrl}
-            onAvatarChange={handleAvatarChange}
+            onAvatarSave={handleAvatarSave}
+            isSaving={isSavingPhoto}
           />
 
           {isMobile ? (
@@ -239,6 +282,8 @@ function ProfilePage() {
                     touched={touched}
                     onFieldChange={updateField}
                     onFieldBlur={handleFieldBlur}
+                    onSubmit={handleChangePassword}
+                    isSaving={isSavingPassword}
                   />
                 </AccordionDetails>
               </Accordion>
@@ -278,6 +323,8 @@ function ProfilePage() {
                   touched={touched}
                   onFieldChange={updateField}
                   onFieldBlur={handleFieldBlur}
+                  onSubmit={handleChangePassword}
+                  isSaving={isSavingPassword}
                 />
               </Box>
             </>

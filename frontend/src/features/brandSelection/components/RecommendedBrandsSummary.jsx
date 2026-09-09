@@ -10,10 +10,7 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { BRAND_MATERIAL_SHORT_LABELS, OPTIMIZATION_TIERS, getStoreBrandOptions, getAvailableMaterialKeys } from '../data/brandOptionsMock';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
+import { formatPeso } from '../../../utils/formatNumbers';
 
 // Only materials this project's estimation actually needs (see
 // getAvailableMaterialKeys) — not the app-wide static list, which still

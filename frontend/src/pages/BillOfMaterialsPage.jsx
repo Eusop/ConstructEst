@@ -19,10 +19,7 @@ import { loadParsedProject, formatQuantityLabel } from '../features/projects/dat
 import { apiRequest } from '../services/apiClient';
 import { generateBomPdf } from '../services/bomPdfService';
 import { ROUTES } from '../routes/paths';
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
+import { formatPeso } from '../utils/formatNumbers';
 
 /**
  * Adapts GET /projects/:id/bom to what BomTable and bomPdfService read. The
@@ -38,7 +35,7 @@ function toDisplayLineItems(lineItems) {
     material: item.material.replace(/\s*\(.*\)$/, ''),
     category: item.category ?? '',
     brand: item.brand ?? '',
-    quantityLabel: formatQuantityLabel(item.quantity),
+    quantityLabel: formatQuantityLabel(item.quantity, item.unit),
   }));
 }
 
