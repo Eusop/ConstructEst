@@ -95,7 +95,7 @@ CREATE TABLE estimation_results (
 -- Quantity take-off line items for one estimation run. `material_key` is the
 -- stable identifier already used throughout the frontend (hollowBlocks,
 -- cement, sand, gravel, steelRebar, tieWire, roofingSheets, purlins, ridge,
--- flashing, angleBar, plywood, lumber, steelProps, scaffolding).
+-- flashing, angleBar, gutter, plywood, lumber, steelProps, scaffolding).
 CREATE TABLE estimation_line_items (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   estimation_id INT UNSIGNED NOT NULL,

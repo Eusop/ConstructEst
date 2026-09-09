@@ -28,8 +28,12 @@ function formatPeso(value) {
  * @param {string} props.selectedTier
  * @param {(tierKey: string) => void} props.onSelectTier
  * @param {string} props.storeId Which store's brand catalog to price against.
+ * @param {Record<string, number>|null} [props.realUnitPrices] The store's real
+ *   per-material prices from the backend's BOM, used for the materials that
+ *   have no brand options (sand/gravel) so these totals agree with the Bill
+ *   of Materials page instead of pricing those two from flat literals.
  */
-function OptimizationTierCards({ selectedTier, onSelectTier, storeId }) {
+function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPrices = null }) {
   return (
     // Row at every size now (was xs: column) — below `sm`, all three cards
     // shrink to fit one horizontal row instead of stacking full-width; the
@@ -42,7 +46,7 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId }) {
       {Object.values(OPTIMIZATION_TIERS).map((tier) => {
         const { Icon, bg, fg } = TIER_ICONS[tier.key];
         const selected = tier.key === selectedTier;
-        const total = computeTierTotal(tier.key, storeId);
+        const total = computeTierTotal(tier.key, storeId, realUnitPrices);
 
         return (
           <Paper

@@ -30,7 +30,11 @@ export let ESTIMATED_COST_VALUE = 0;
 // take-off table (this module only carries what Results/Store Locator need).
 export const MATERIALS = [];
 
-function formatQuantityLabel(quantity) {
+// Exported so anything else rendering a quantity formats it identically —
+// notably BillOfMaterialsPage, which gets raw numeric quantities from the
+// backend's BOM endpoint and has to produce the same label this module
+// already puts on MATERIALS.
+export function formatQuantityLabel(quantity) {
   return Number(quantity).toLocaleString('en-PH', { maximumFractionDigits: 3 });
 }
 

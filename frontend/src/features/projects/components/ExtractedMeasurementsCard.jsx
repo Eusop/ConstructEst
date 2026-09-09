@@ -40,7 +40,7 @@ function PerFloorCard({ label, wallLength, floorArea }) {
  */
 function ExtractedMeasurementsCard({ storeys }) {
   const measurements = [
-    { label: 'Total wall length', value: PARSED_MEASUREMENTS.totalWallLength },
+    { label: `Total wall length (${storeys} flr)`, value: PARSED_MEASUREMENTS.totalWallLength },
     { label: `Floor area (${storeys} flr)`, value: PARSED_MEASUREMENTS.floorArea },
     { label: 'Roof area', value: PARSED_MEASUREMENTS.roofArea },
     { label: 'Rooms detected', value: String(PARSED_MEASUREMENTS.roomsDetected) },
@@ -53,7 +53,11 @@ function ExtractedMeasurementsCard({ storeys }) {
   const detailedMeasurements = [
     { label: 'Door area', value: PARSED_MEASUREMENTS.doorArea },
     { label: 'Window area', value: PARSED_MEASUREMENTS.windowArea },
-    { label: 'Columns detected', value: String(PARSED_MEASUREMENTS.columnCount) },
+    // Not labelled "detected": this is the count the take-off actually used,
+    // which is the user's own value whenever they set a columnCount override,
+    // and a default of 4 when the DXF has no COLUMN layer at all. Calling an
+    // override "detected" defeated the point of this whole sanity-check panel.
+    { label: 'Columns used', value: String(PARSED_MEASUREMENTS.columnCount) },
     { label: 'Floor perimeter', value: PARSED_MEASUREMENTS.floorPerimeter },
     { label: 'Roof perimeter', value: PARSED_MEASUREMENTS.roofPerimeter },
     { label: 'Roof ridge length', value: PARSED_MEASUREMENTS.roofRidgeLength },

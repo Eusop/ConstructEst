@@ -12,7 +12,7 @@
 export const QUANTITY_TAKEOFF_MATERIALS = [];
 
 // Purely cosmetic row-dot color, keyed by material — the key set is fixed
-// (matches the backend's 15 material_key values), so this stays static.
+// (matches the backend's 16 material_key values), so this stays static.
 const MATERIAL_COLORS = {
   hollowBlocks: 'orange',
   cement: 'blue',

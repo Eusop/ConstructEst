@@ -9,8 +9,15 @@
  */
 
 // Sand/gravel are commodities with no brand catalog (see the backend's
-// material_brands.is_commodity) — priced flat regardless of store, same as
-// this mock always did. 1300/1250 match the seeded base price.
+// material_brands.is_commodity), so they never get a per-store price from
+// getStoreBrandOptions the way every other material does. These flat 1300/1250
+// literals are the seeded BASE price, i.e. store 1's — every other store
+// applies its own multiplier (seed.sql), so using them as the real price made
+// the Brand Selection totals and the Bill of Materials disagree with the
+// Store Locator by ~P1.5-2.4k on a 2-storey house. Both pages now pass the
+// store's real prices into computeBom as `realUnitPrices`, read off the
+// backend's own BOM; these stay only as the fallback for when that request
+// fails, so a hiccup degrades to the old numbers instead of showing P0.
 export const BASE_PRICING = {
   hollowBlocks: { brand: '', category: 'Masonry' },
   cement: { brand: '', category: 'Cementitious' },
