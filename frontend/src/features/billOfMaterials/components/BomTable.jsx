@@ -13,12 +13,9 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
+import { formatAmount } from '../../../utils/formatNumbers';
 
 const COLUMNS = ['MATERIAL', 'BRAND', 'QTY', 'UNIT P', 'AMOUNT'];
-
-function formatNumber(value) {
-  return (value ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 2 });
-}
 
 function BomMobileCard({ item }) {
   return (
@@ -32,7 +29,7 @@ function BomMobileCard({ item }) {
           <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{item.brand}</Typography>
         </Box>
         <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>
-          ₱{formatNumber(item.amount)}
+          ₱{formatAmount(item.amount)}
         </Typography>
       </Stack>
 
@@ -45,7 +42,7 @@ function BomMobileCard({ item }) {
         </Box>
         <Box sx={{ textAlign: 'right' }}>
           <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>Unit price</Typography>
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>{formatNumber(item.unitPrice)}</Typography>
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>{formatAmount(item.unitPrice)}</Typography>
         </Box>
       </Stack>
     </Paper>
@@ -126,9 +123,9 @@ function BomTable({ items }) {
                 </TableCell>
                 <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{item.brand}</TableCell>
                 <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{item.quantityLabel}</TableCell>
-                <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{formatNumber(item.unitPrice)}</TableCell>
+                <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{formatAmount(item.unitPrice)}</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>
-                  ₱{formatNumber(item.amount)}
+                  ₱{formatAmount(item.amount)}
                 </TableCell>
               </TableRow>
             ))}

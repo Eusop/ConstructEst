@@ -9,10 +9,12 @@
  * loadCurrentEstimation) — an indicative cost shown before a store/brand is
  * chosen; the real priced total comes later from Brand Selection.
  */
+import { formatQuantity } from '../../../utils/formatNumbers';
+
 export const QUANTITY_TAKEOFF_MATERIALS = [];
 
 // Purely cosmetic row-dot color, keyed by material — the key set is fixed
-// (matches the backend's 15 material_key values), so this stays static.
+// (matches the backend's 16 material_key values), so this stays static.
 const MATERIAL_COLORS = {
   hollowBlocks: 'orange',
   cement: 'blue',
@@ -32,9 +34,6 @@ const MATERIAL_COLORS = {
   scaffolding: 'blue',
 };
 
-function formatQuantityLabel(quantity) {
-  return Number(quantity).toLocaleString('en-PH', { maximumFractionDigits: 3 });
-}
 
 /** @param {Array<{key:string, name:string, quantity:number, unit:string, basis:string, unitCost:number,
  *   sourceBreakdown?: {ground:number, second:number, roofing:number, shared:number}}>} materials
@@ -49,7 +48,7 @@ export function loadQuantityTakeoff(materials) {
       key: material.key,
       name: material.name,
       quantity: material.quantity,
-      quantityLabel: formatQuantityLabel(material.quantity),
+      quantityLabel: formatQuantity(material.quantity, material.unit),
       unit: material.unit,
       unitCost: material.unitCost,
       basis: material.basis,

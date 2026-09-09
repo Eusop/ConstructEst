@@ -71,7 +71,18 @@ def main():
     except json.JSONDecodeError as exc:
         fail(f"Invalid engine request: {exc}")
 
+    if not isinstance(payload, dict):
+        fail("Invalid engine request: expected a JSON object.")
+
     dxf_path = payload.get("dxfPath")
+    if not dxf_path:
+        fail("Invalid engine request: dxfPath is required.")
+
+    try:
+        storeys_raw = payload.get("storeys", 1)
+        int(storeys_raw)
+    except (TypeError, ValueError):
+        fail(f"Invalid engine request: storeys must be a number, got {storeys_raw!r}.")
     second_floor_dxf_path = payload.get("secondFloorDxfPath")
     storeys = int(payload.get("storeys", 1))
     include_roofing = bool(payload.get("includeRoofing", True))
@@ -86,4 +97,17 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Belt and braces around main(). Its own checks cover the failures we can
+    # name, but extract_geometry/compute_materials can still raise on a DXF
+    # that is structurally valid yet shaped in a way the reader does not expect
+    # (a vertex missing coordinates, a degenerate polygon). Without this, those
+    # exited non-zero with a traceback on stderr and NOTHING on stdout, which
+    # breaks the contract in this file's docstring: engine.service.js then just
+    # reports "Estimation engine returned invalid output" and the real reason
+    # is lost. Every exit path now prints one JSON object.
+    try:
+        main()
+    except SystemExit:
+        raise  # fail() already printed its JSON
+    except Exception as exc:  # noqa: BLE001 - deliberately catch-all, see above
+        fail(f"Engine failed while processing the DXF: {type(exc).__name__}: {exc}")

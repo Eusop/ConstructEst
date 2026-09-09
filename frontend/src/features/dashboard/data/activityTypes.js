@@ -27,6 +27,13 @@ export const ACTIVITY_TYPES = {
   brand_selection_completed: { icon: SellRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg },
   bom_generated: { icon: DescriptionRoundedIcon, iconBg: colors.iconPurpleBg, iconFg: colors.iconPurpleFg },
   pdf_downloaded: { icon: DownloadRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg },
+  // The two the BACKEND writes to activity_log (see projects.controller.js's
+  // logActivity calls). They only started reaching this map once the dashboard
+  // began fetching persisted entries instead of only showing what happened in
+  // the current session — before that they rendered nowhere, so their absence
+  // here went unnoticed.
+  estimation_recomputed: { icon: CheckCircleRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg },
+  brand_selection_saved: { icon: SellRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg },
 };
 
 /** Fallback presentation for any activity `type` not (yet) registered above. */

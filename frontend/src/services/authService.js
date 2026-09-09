@@ -41,6 +41,21 @@ export async function resendCodeRequest({ email }) {
   return apiRequest('/auth/resend-verification-code', { method: 'POST', body: { email } });
 }
 
+/** Asks for a reset code. Always resolves with the same message whether or
+ * not the address is registered — the backend answers identically on purpose
+ * (see forgotPassword), so callers must not treat success as proof the
+ * account exists. */
+export async function forgotPasswordRequest({ email }) {
+  return apiRequest('/auth/forgot-password', { method: 'POST', body: { email } });
+}
+
+/** Consumes the emailed code and sets the new password. Unlike the request
+ * above this does report real errors (wrong/expired code), since by now the
+ * caller already holds a code that was sent to that address. */
+export async function resetPasswordRequest({ email, code, newPassword }) {
+  return apiRequest('/auth/reset-password', { method: 'POST', body: { email, code, newPassword } });
+}
+
 /** Live pre-submit duplicate check (see SignUpForm.jsx's debounced effects)
  * — reveals nothing register() doesn't already reveal via a duplicate-entry
  * error at submit time; this just surfaces it earlier, as the user types.

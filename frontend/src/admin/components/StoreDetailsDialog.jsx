@@ -23,9 +23,16 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 /**
- * Store details dialog (mirrors the reference mockup's store drawer):
- * quick stats plus "Set active & manage", which is the required hand-off
- * into Materials & Brands (see requirement 9's Store -> Materials flow).
+ * Store details dialog (mirrors the reference mockup's store drawer): quick
+ * stats plus "Manage materials", the required hand-off into Materials &
+ * Brands (see requirement 9's Store -> Materials flow).
+ *
+ * Note there are two different meanings of "active" nearby, which is worth
+ * keeping straight: `onSetActive` below only marks which store the Materials
+ * & Brands page is currently editing (client-side selection), while
+ * `onToggleActiveRequest` is the real store.isActive flag that decides whether
+ * the store appears in price comparisons at all. The manage button used to be
+ * labelled "Set active & manage" and was routinely mistaken for the latter.
  */
 function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, onRemoveRequest, onToggleActiveRequest }) {
   const navigate = useNavigate();
@@ -202,11 +209,16 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
             </Box>
           </Button>
         </Stack>
+        {/* Was labelled "Set active & manage", which read like it activated
+            the store — the Deactivate/Reactivate button right above does that.
+            This one only picks which store the Materials & Brands page is
+            working on, so it now says so. */}
         <Button
           onClick={handleManage}
           variant="contained"
           disableElevation
           fullWidth
+          disabled={isDeactivated}
           endIcon={<ArrowForwardRoundedIcon />}
           sx={{
             bgcolor: colors.accentBlue,
@@ -215,7 +227,7 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
             fontSize: { xs: '0.85rem', sm: '1.05rem' },
           }}
         >
-          Set active & manage
+          {isDeactivated ? 'Reactivate to manage materials' : 'Manage materials'}
         </Button>
       </DialogActions>
     </Dialog>

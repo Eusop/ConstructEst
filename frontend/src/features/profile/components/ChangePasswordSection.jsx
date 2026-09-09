@@ -1,9 +1,12 @@
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import PasswordField from '../../../components/PasswordField';
 import PasswordStrengthMeter from '../../../components/PasswordStrengthMeter';
+import { colors } from '../../../theme/palette';
 
 const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 };
 const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />;
@@ -11,8 +14,9 @@ const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary
 /**
  * "Change Password" section body: current/new/confirm password fields
  * (each with a show/hide toggle) plus a helper caption. Changing the
- * password is optional — leaving all three fields blank just means the
- * password isn't being changed (see the validation in ProfilePage).
+ * password is independent of the rest of the page: this section has its own
+ * submit button and its own validation, so saving a name or email never
+ * involves these fields at all.
  *
  * @param {object} props
  * @param {{currentPassword: string, newPassword: string, confirmPassword: string}} props.form
@@ -20,8 +24,10 @@ const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary
  * @param {object} props.touched
  * @param {(field: string, value: string) => void} props.onFieldChange
  * @param {(field: string) => void} props.onFieldBlur
+ * @param {() => void} props.onSubmit
+ * @param {boolean} [props.isSaving]
  */
-function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBlur }) {
+function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBlur, onSubmit, isSaving = false }) {
   // Shows the instant there's content, not gated on blur alone — a browser
   // autofilling saved credentials never fires a real blur event (see
   // SignUpForm.jsx for the same fix and fuller explanation).
@@ -79,9 +85,29 @@ function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBl
         </Box>
       </Stack>
 
+      {/* Was "8-16 characters with uppercase, lowercase, a number, and a
+          special character", which no longer matched anything: the rule is
+          just a 6-character minimum, enforced by isStrongPassword here and by
+          changePassword on the server. */}
       <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: -1.5 }}>
-        8–16 characters with uppercase, lowercase, a number, and a special character.
+        At least 6 characters. We will email you whenever your password changes.
       </Typography>
+
+      {/* This section saves on its own, separate from the page's "Save
+          changes" — that button used to submit the password too, so editing
+          a name meant re-typing the current password for no reason. */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          onClick={onSubmit}
+          variant="contained"
+          disableElevation
+          disabled={isSaving}
+          startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+        >
+          {isSaving ? 'Changing…' : 'Change password'}
+        </Button>
+      </Box>
     </Stack>
   );
 }

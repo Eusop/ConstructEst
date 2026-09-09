@@ -36,10 +36,13 @@ import { getMaterialDefinition } from '../data/materialCatalog';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { ADMIN_ROUTES } from '../../routes/paths';
 import { colors } from '../../theme/palette';
+import { formatPeso as formatPesoAmount } from '../../utils/formatNumbers';
 
+// Keeps the "—" for an unpriced material (the shared helper treats null as 0,
+// which would read as a real ₱0.00 price here rather than "not set").
 function formatPeso(value) {
   if (value == null) return '—';
-  return `₱${Number(value).toLocaleString('en-PH')}`;
+  return formatPesoAmount(value);
 }
 
 function Stars({ count, sx }) {

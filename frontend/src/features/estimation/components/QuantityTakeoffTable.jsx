@@ -21,6 +21,7 @@ import FactorsAppliedBanner from './FactorsAppliedBanner';
 import { colors } from '../../../theme/palette';
 import { QUANTITY_TAKEOFF_MATERIALS } from '../data/quantityTakeoffMaterials';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
+import { formatPeso, formatQuantity } from '../../../utils/formatNumbers';
 
 const COLUMNS = ['MATERIAL', 'BASIS', 'QUANTITY', 'UNIT', 'UNIT COST', 'TOTAL COST'];
 
@@ -37,10 +38,6 @@ const SOURCE_CATEGORY_META = [
   { key: 'shared', label: 'Shared / Whole building' },
 ];
 
-function formatQty(value) {
-  return Number(value).toLocaleString('en-PH', { maximumFractionDigits: 3 });
-}
-
 // Splits each material's total into its 4 source buckets, keeping only
 // materials that actually contributed to that bucket. Per-bucket quantities
 // are plain-rounded (not ceiling'd like the grand total), so they won't
@@ -54,7 +51,7 @@ function buildSourceGroups(materials) {
       .filter((material) => (material.sourceBreakdown?.[key] ?? 0) > 0)
       .map((material) => {
         const categoryQuantity = material.sourceBreakdown[key];
-        return { ...material, quantity: categoryQuantity, quantityLabel: formatQty(categoryQuantity), totalCost: categoryQuantity * material.unitCost };
+        return { ...material, quantity: categoryQuantity, quantityLabel: formatQuantity(categoryQuantity, material.unit), totalCost: categoryQuantity * material.unitCost };
       }),
   })).filter((group) => group.items.length > 0);
 }
@@ -66,10 +63,6 @@ const DOT_COLORS = {
   teal: colors.iconTealFg,
   purple: colors.iconPurpleFg,
 };
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
 
 function StatCell({ label, value }) {
   return (

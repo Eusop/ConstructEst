@@ -140,7 +140,15 @@ export const createProject = asyncHandler(async (req, res) => {
       overrides: toEngineOverrides(overrides),
     });
   } catch (err) {
-    parseError = err.message || 'DXF parsing failed.';
+    // Only pass through messages we wrote ourselves. A 4xx from the engine is
+    // a real, user-actionable explanation ("no FLOOR layer..."), but a 5xx
+    // carries raw Python stderr - full traceback and absolute server paths -
+    // and this response bypasses errorHandler, which is what sanitises 500s
+    // everywhere else. Without this the same failure leaked here while being
+    // scrubbed on the recompute path.
+    const isUserFacing = err instanceof HttpError && err.status >= 400 && err.status < 500;
+    if (!isUserFacing) console.error('DXF parsing failed:', err);
+    parseError = isUserFacing ? err.message : 'DXF parsing failed. Check that the file is a valid DXF and try again.';
   }
 
   if (!engineResult) {

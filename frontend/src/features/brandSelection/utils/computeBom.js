@@ -19,8 +19,13 @@ function resolveBrandOption(storeId, materialKey, optionId) {
  * @param {Record<string, string>} [choices] Defaults to the Standard tier.
  * @param {string|null} [storeId] Which store's catalog to price against;
  *   omit for the generic (unscaled) catalog, e.g. cross-store baselines.
+ * @param {Record<string, number>|null} [realUnitPrices] materialKey -> the
+ *   store's real price, taken from the backend's own BOM response. Only
+ *   consulted for materials with no resolvable brand option, i.e. the
+ *   commodities (sand/gravel), whose BASE_PRICING literals are flat and so
+ *   disagree with the per-store prices the backend actually charges.
  */
-export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeId = null) {
+export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeId = null, realUnitPrices = null) {
   const lineItems = MATERIALS.map((material) => {
     const base = BASE_PRICING[material.key];
     const brandOption = choices[material.key] ? resolveBrandOption(storeId, material.key, choices[material.key]) : null;
@@ -29,7 +34,7 @@ export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeI
     // has no resolvable brand at this store — e.g. it's genuinely
     // unavailable there, or no choice was ever made for it. Without this,
     // unitPrice stays undefined and crashes BomTable's formatNumber.
-    const unitPrice = brandOption?.price ?? base.unitPrice ?? 0;
+    const unitPrice = brandOption?.price ?? realUnitPrices?.[material.key] ?? base.unitPrice ?? 0;
     const brand = brandOption?.brand ?? base.brand;
 
     return {
@@ -60,6 +65,6 @@ export function computeBomForProject(project) {
   return computeBom(project?.brandSelection?.choices ?? OPTIMIZATION_TIERS.standard.choices, project?.selectedStoreId ?? null);
 }
 
-export function computeTierTotal(tierKey, storeId = null) {
-  return computeBom(OPTIMIZATION_TIERS[tierKey].choices, storeId).grandTotal;
+export function computeTierTotal(tierKey, storeId = null, realUnitPrices = null) {
+  return computeBom(OPTIMIZATION_TIERS[tierKey].choices, storeId, realUnitPrices).grandTotal;
 }

@@ -19,6 +19,7 @@ import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { BRAND_MATERIAL_SHORT_LABELS, getStoreBrandOptions, getAvailableMaterialKeys } from '../data/brandOptionsMock';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
 import { colors } from '../../../theme/palette';
+import { formatPeso } from '../../../utils/formatNumbers';
 
 // Fixed widths + tableLayout: 'fixed' below stop the table (and page)
 // from shifting width when a longer/shorter brand name gets picked.
@@ -33,10 +34,6 @@ const COLUMNS = [
 
 // Truncates instead of wrapping, keeps every row the same height.
 const TRUNCATE_SX = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
 
 function QualityStars({ quality }) {
   return (

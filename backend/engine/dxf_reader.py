@@ -74,6 +74,71 @@ def entities_on_layer(msp, layer):
     return [e for e in msp if entity_layer(e) == layer]
 
 
+def is_closed_polyline(entity):
+    """Whether a polyline is actually flagged closed in the file.
+
+    LWPOLYLINE exposes `.closed` and old-style POLYLINE exposes `.is_closed`,
+    so checking only one of them silently misses the other; both set bit 1 of
+    group code 70, which is what the `flags` fallback covers. WALL already did
+    this check inline. ROOF used to just assume closed=True, which added a
+    phantom closing segment to any open roof line it read.
+    """
+    return (bool(getattr(entity, "closed", False))
+            or bool(getattr(entity, "is_closed", False))
+            or bool(getattr(entity.dxf, "flags", 0) & 1))
+
+
+def merge_bounds(current, points):
+    """Grows a [xmin, ymin, xmax, ymax] box to include `points`."""
+    xmin, ymin, xmax, ymax = bounding_box(points)
+    if current is None:
+        return [xmin, ymin, xmax, ymax]
+    return [min(current[0], xmin), min(current[1], ymin),
+            max(current[2], xmax), max(current[3], ymax)]
+
+
+# Two endpoints this close (1mm, one drawing unit) count as the same point
+# when stitching loose lines together.
+JOIN_TOLERANCE_M = 0.001
+
+
+def _same_point(a, b):
+    return abs(a[0] - b[0]) <= JOIN_TOLERANCE_M and abs(a[1] - b[1]) <= JOIN_TOLERANCE_M
+
+
+def chain_segments(segments):
+    """Stitches loose LINE segments end-to-end and returns the closed loops.
+
+    A room outline drawn as four separate LINEs is just as valid a floor plan
+    as one closed polyline, but the FLOOR layer only read polylines, so those
+    plans came back with zero area and failed with an error blaming the layer
+    *name*. Segments arrive in no particular order, so this walks from one
+    chain's end to whichever unused segment touches it, and keeps only the
+    rings that actually close back on themselves.
+    """
+    remaining = list(segments)
+    loops = []
+    while remaining:
+        start, end = remaining.pop()
+        loop = [start, end]
+        while True:
+            for i, (a, b) in enumerate(remaining):
+                if _same_point(loop[-1], a):
+                    loop.append(b)
+                elif _same_point(loop[-1], b):
+                    loop.append(a)
+                else:
+                    continue
+                remaining.pop(i)
+                break
+            else:
+                break  # nothing left connects to this chain
+        # Only a ring encloses an area; an open run of lines is ignored.
+        if len(loop) >= 4 and _same_point(loop[-1], loop[0]):
+            loops.append(loop[:-1])  # drop the repeated closing point
+    return loops
+
+
 def extract_geometry(doc):
     msp = doc.modelspace()
 
@@ -85,28 +150,38 @@ def extract_geometry(doc):
             wall_length_m += segment_length(p1, p2)
         elif e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
             points = polyline_points(e)
-            closed = bool(getattr(e, "closed", False)) or bool(getattr(e.dxf, "flags", 0) & 1)
-            wall_length_m += polyline_length(points, closed)
+            wall_length_m += polyline_length(points, is_closed_polyline(e))
 
     floor_area_m2 = 0.0
     rooms_detected = 0
     floor_perimeter_m = 0.0
     floor_bounds = None
+    floor_line_segments = []
     for e in entities_on_layer(msp, "FLOOR"):
         if e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
             points = polyline_points(e)
             if len(points) >= 3:
                 floor_area_m2 += shoelace_area(points)
+                # closed=True regardless of the flag here (unlike WALL/ROOF) so
+                # the perimeter stays consistent with shoelace_area, which
+                # closes the ring implicitly.
                 floor_perimeter_m += polyline_length(points, closed=True)
                 rooms_detected += 1
-                xmin, ymin, xmax, ymax = bounding_box(points)
-                if floor_bounds is None:
-                    floor_bounds = [xmin, ymin, xmax, ymax]
-                else:
-                    floor_bounds[0] = min(floor_bounds[0], xmin)
-                    floor_bounds[1] = min(floor_bounds[1], ymin)
-                    floor_bounds[2] = max(floor_bounds[2], xmax)
-                    floor_bounds[3] = max(floor_bounds[3], ymax)
+                floor_bounds = merge_bounds(floor_bounds, points)
+        elif e.dxftype() == "LINE":
+            # Collected rather than measured one at a time: a single line is
+            # only an edge, it takes a full ring of them to enclose a room.
+            floor_line_segments.append((
+                (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M),
+                (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M),
+            ))
+
+    for loop in chain_segments(floor_line_segments):
+        if len(loop) >= 3:
+            floor_area_m2 += shoelace_area(loop)
+            floor_perimeter_m += polyline_length(loop, closed=True)
+            rooms_detected += 1
+            floor_bounds = merge_bounds(floor_bounds, loop)
 
     def opening_area(layer, standard_height):
         total = 0.0
@@ -119,8 +194,16 @@ def extract_geometry(doc):
                 points = polyline_points(e)
                 if not points:
                     continue
-                xmin, ymin, xmax, ymax = bounding_box(points)
-                width = max(xmax - xmin, ymax - ymin)
+                if len(points) == 2:
+                    # Same span the LINE branch above would measure, so measure
+                    # it the same way. The bounding box below is right for a
+                    # rectangle but understates a 2-point diagonal (a 1.0m
+                    # opening at 45 degrees boxes to 0.707m), which made the
+                    # answer depend on which entity type the drafter picked.
+                    width = segment_length(points[0], points[1])
+                else:
+                    xmin, ymin, xmax, ymax = bounding_box(points)
+                    width = max(xmax - xmin, ymax - ymin)
             else:
                 continue
             total += width * standard_height
@@ -139,15 +222,12 @@ def extract_geometry(doc):
         if e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
             points = polyline_points(e)
             if len(points) >= 2:
-                roof_perimeter_m += polyline_length(points, closed=True)
-                xmin, ymin, xmax, ymax = bounding_box(points)
-                if roof_bounds is None:
-                    roof_bounds = [xmin, ymin, xmax, ymax]
-                else:
-                    roof_bounds[0] = min(roof_bounds[0], xmin)
-                    roof_bounds[1] = min(roof_bounds[1], ymin)
-                    roof_bounds[2] = max(roof_bounds[2], xmax)
-                    roof_bounds[3] = max(roof_bounds[3], ymax)
+                # Was hardcoded closed=True, which invented a closing segment
+                # for an open eave/hip line and inflated every perimeter-driven
+                # roofing accessory (flashing, gutter, angle bar). WALL reads
+                # the real flag, so ROOF does now too.
+                roof_perimeter_m += polyline_length(points, is_closed_polyline(e))
+                roof_bounds = merge_bounds(roof_bounds, points)
         elif e.dxftype() == "LINE":
             p1 = (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M)
             p2 = (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)

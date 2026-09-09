@@ -2,7 +2,7 @@
 Rule-based quantity take-off — implements the capstone paper's Tables
 12-19 (Wall, Slab, Column, Beam, Roofing, Footing, Stair, Scaffolding &
 Formwork Material Computation) against the geometry `dxf_reader.py`
-extracts, aggregated onto the 15 material keys the frontend already uses
+extracts, aggregated onto the 16 material keys the frontend already uses
 (see frontend/src/features/projects/data/parsedProjectMock.js).
 
 A few inputs the paper itself documents as NOT derivable from a 2D DXF
@@ -51,22 +51,35 @@ still an unreviewed candidate for that same process:
     "eave length" available from a simple rectangular ROOF outline, so
     it's approximated using the same roof perimeter flashing already uses.
   - Formwork materials (plywood/"Phenolic Board", lumber/"Coco Lumber",
-    steel props, scaffolding — Table 19) are computed and priced here as a
+    steel props, scaffolding — Table 19) are computed here (below) as a
     one-time purchase of the full raw quantity, with no reuse/cycling
     factor. This matches Table 19's own formula exactly, which has no
-    reuse variable — per the expert validation form: estimating per total
-    formwork area is an accepted approach, but a real bill of materials
-    would additionally account for how many times a contractor can reuse
-    the same formwork panels/props/sets across pour stages (columns, then
-    beams, then slab), which would lower the actual quantity purchased.
-    Deliberately out of scope here — the paper's Table 19, and this
-    engine, estimate raw material need, not procurement/reuse planning.
-    See services/optimization.service.js's computeBom (Node backend),
-    which prices every material key identically, formwork included.
+    reuse variable. A local civil engineer reviewed this exact concern
+    from the expert validation form on 2026-09-07 and endorsed keeping it
+    this way: reuse is real in practice, but it's thickness-dependent —
+    thin 1/4"-1/8" plywood (typical on a house) is basically single-use,
+    while thicker 3/4" plywood (used when a job is already known to need
+    3+ pours) can go around 3 uses, though thinner plywood also needs more
+    stud lumber per sheet for sturdiness either way. The engineer's actual
+    reason to still estimate quantity as one-time-use rather than dividing
+    by an assumed reuse count: you can't know ahead of time whether a
+    stripped/cut formwork piece is still a usable shape for whatever gets
+    built next, so treating reuse as a price adjustment (optional, not
+    required) is safer than baking an assumed reuse count into quantity.
+    See services/optimization.service.js's computeBom (Node backend) —
+    it doesn't compute formwork quantity itself, it just prices whatever
+    quantity this file already produced, the same way it prices every
+    other material key.
 """
 import math
 
 WALL_HEIGHT_PER_STOREY_M = 3.0
+# Used only when a DXF has no COLUMN layer at all. Previously this sat behind
+# an `overrides.get("fallbackColumnCount", 4)` lookup, but "fallbackColumnCount"
+# was never a real override key (it is not in designOverrides.service.js's
+# FIELDS, not a DB column, and not a UI field), so the literal 4 was always
+# what got used. Named here instead of pretending it is configurable.
+DEFAULT_COLUMN_COUNT = 4
 # Standard nominal mass formula for deformed reinforcing bars, kg/m = d^2/162
 # (d in mm) — PNS/DPWH standard table. Element-to-diameter mapping per
 # Engr. Espiritu's expert validation: 10mm for walls/ground slab, 12mm for
@@ -76,6 +89,19 @@ REBAR_UNIT_WEIGHT_12MM_KG_PER_M = 0.889
 
 # NSCP 2016 moderate slope, rise:run = 1:3 -> sqrt(rise^2 + run^2) / run = sqrt(10) / 3
 PITCH_MULTIPLIER = math.sqrt(10) / 3
+
+# How each material's unit gets rounded in the take-off. Anything sold as a
+# countable item is rounded UP (Table 12-19's own "rounded up") — you can't buy
+# 0.744 of a cement bag or half a plywood sheet. Only genuinely bulk/weight
+# units stay fractional, because those really are ordered by volume or weight.
+# "bags" used to be missing from WHOLE_UNITS, so cement — the one material
+# measured in bags, and the largest single quantity in the take-off — was
+# reported as e.g. "143.744 bags" while every other countable material was
+# rounded up. Splitting the two lists out (instead of one tuple and an else)
+# also means a newly added unit that belongs to neither is caught below rather
+# than silently defaulting to fractional.
+WHOLE_UNITS = ("pcs", "sheets", "lengths", "sets", "bd.ft.", "bags")
+FRACTIONAL_UNITS = ("m3", "tons", "kg")
 
 
 def ceil_int(value):
@@ -143,14 +169,25 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     window_area_m2 = geometry["window_area_m2"]
     floor_area_m2 = geometry["floor_area_m2"]
     floor_perimeter_m = geometry["floor_perimeter_m"]
+    # Ground floor's own COLUMN layer only, even with a second floor's DXF
+    # given — a column is one continuous member from footing to roof, not a
+    # separate one per floor, so the 2nd floor's COLUMN layer (if it even has
+    # one) isn't a second count to add.
+    detected_column_count = geometry["column_count"]
     if overrides.get("columnCount") is not None:
         column_count = overrides["columnCount"]
+        column_count_source = "override"
+    elif detected_column_count:
+        column_count = detected_column_count
+        column_count_source = "detected"
     else:
-        # Ground floor's own COLUMN layer only, even with a second floor's
-        # DXF given — a column is one continuous member from footing to
-        # roof, not a separate one per floor, so the 2nd floor's COLUMN
-        # layer (if it even has one) isn't a second count to add.
-        column_count = geometry["column_count"] or overrides.get("fallbackColumnCount", 4)
+        # No COLUMN layer (or an empty one). Unlike a missing WALL/FLOOR layer
+        # — which engine.py fails loudly on — we keep going with a default,
+        # because plenty of simple plans genuinely don't draw columns. But it
+        # IS an assumption that adds column AND footing concrete, so it's
+        # reported as such instead of being passed off as an extraction result.
+        column_count = DEFAULT_COLUMN_COUNT
+        column_count_source = "assumed"
     # roof_perimeter_m/roof_ridge_length_m are resolved further down (Table
     # 16) against whichever file actually represents the roof — the ground
     # floor's here, or the second floor's when one was given.
@@ -354,9 +391,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         if key in ("roofingSheets", "purlins", "ridge", "flashing", "angleBar", "gutter") and not include_roofing:
             continue
         raw_qty = acc.totals.get(key, 0.0)
-        # Whole-unit materials are rounded up (Table 12-19 "rounded up");
-        # sand/gravel/rebar/tie wire stay fractional (m3/tons/kg).
-        qty = ceil_int(raw_qty) if unit in ("pcs", "sheets", "lengths", "sets", "bd.ft.") else round(raw_qty, 3)
+        if unit not in WHOLE_UNITS and unit not in FRACTIONAL_UNITS:
+            raise ValueError(
+                f"Material '{key}' uses unit '{unit}', which isn't listed in WHOLE_UNITS or "
+                f"FRACTIONAL_UNITS — decide how it rounds before adding it."
+            )
+        qty = ceil_int(raw_qty) if unit in WHOLE_UNITS else round(raw_qty, 3)
         # Per-category subtotals are plain-rounded, not ceiling'd like whole-
         # unit totals above — independently ceiling each of 4 buckets can
         # overshoot the already-rounded total (e.g. 6.1+6.1 -> 7+7=14 vs a
@@ -376,30 +416,50 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             "sourceBreakdown": source_breakdown,
         })
 
-    # True combined wall run (both floors' own real walls) when a second
-    # floor's DXF was given — same "combine, don't just report file 1's own"
-    # treatment floorArea already gets; otherwise unchanged.
-    total_wall_length_m = wall_length_m + geometry2["wall_length_m"] if geometry2 is not None else wall_length_m
-    # Same combine-both-floors treatment for the extra "detailed extraction"
-    # figures below — door/window openings and the floor outline's own
-    # perimeter are per-floor quantities like wall length, so they're summed
-    # the same way. column_count is deliberately NOT summed here: a column
-    # is one continuous member running through every floor, not a separate
-    # one per floor (see its resolution above), and roof_perimeter_m /
-    # roof_ridge_length_m already come from whichever single file represents
-    # the roof (roof_source above) — there's only ever one roof.
-    total_door_area_m2 = door_area_m2 + (geometry2["door_area_m2"] if geometry2 is not None else 0.0)
-    total_window_area_m2 = window_area_m2 + (geometry2["window_area_m2"] if geometry2 is not None else 0.0)
-    total_floor_perimeter_m = floor_perimeter_m + (geometry2["floor_perimeter_m"] if geometry2 is not None else 0.0)
+    # Every per-floor quantity below follows the SAME rule as floorArea above:
+    # sum both files when a second floor's DXF was given, otherwise scale the
+    # one file we have by storeys. That "x storeys" used to be missing here
+    # while floorArea had it, so a 2-storey project uploaded as a single file
+    # reported one floor's wall run next to a two-storey block count — the
+    # take-off loop below already runs per storey, so the materials were right
+    # and only the reported measurement was short. Anything derived from these
+    # is per-floor: walls, door/window openings, and the floor outline's own
+    # perimeter.
+    #
+    # Deliberately NOT scaled/summed: column_count (one continuous member runs
+    # through every floor, not a new one per floor — see its resolution above)
+    # and roof_perimeter_m / roof_ridge_length_m (both already come from
+    # whichever single file represents the roof via roof_source — there's only
+    # ever one roof, no matter how many storeys).
+    def _combine(ground_value, key):
+        if geometry2 is not None:
+            return ground_value + geometry2[key]
+        return ground_value * storeys
+
+    total_wall_length_m = _combine(wall_length_m, "wall_length_m")
+    total_door_area_m2 = _combine(door_area_m2, "door_area_m2")
+    total_window_area_m2 = _combine(window_area_m2, "window_area_m2")
+    total_floor_perimeter_m = _combine(floor_perimeter_m, "floor_perimeter_m")
+    total_rooms_detected = _combine(geometry["rooms_detected"], "rooms_detected")
 
     measurements = {
         "totalWallLength": round(total_wall_length_m, 2),
         "floorArea": round(total_floor_area_m2, 2),
         "roofArea": round(roof_area_m2, 2),
-        "roomsDetected": geometry["rooms_detected"],
+        "roomsDetected": total_rooms_detected,
         "doorArea": round(total_door_area_m2, 2),
         "windowArea": round(total_window_area_m2, 2),
+        # "columnCount" stays the EFFECTIVE count the take-off actually used —
+        # it's what gets persisted to estimation_results.column_count and what
+        # every existing consumer reads, so its meaning is unchanged. The two
+        # fields beside it are new and purely additive: what the DXF really
+        # had (None when there was no COLUMN layer at all), and whether that
+        # number came from the drawing, a user override, or our default. The
+        # UI used to label this "Columns detected", which was untrue whenever
+        # an override or the default was in play.
         "columnCount": column_count,
+        "columnCountDetected": detected_column_count or None,
+        "columnCountSource": column_count_source,
         "floorPerimeter": round(total_floor_perimeter_m, 2),
         "roofPerimeter": round(roof_perimeter_m, 2),
         "roofRidgeLength": round(roof_ridge_length_m, 2),

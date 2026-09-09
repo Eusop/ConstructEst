@@ -1,9 +1,13 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { colors } from '../theme/palette';
+import { formatAmount } from '../utils/formatNumbers';
 
+// "Php " rather than the peso sign because jsPDF's built-in fonts have no
+// glyph for it. Amount itself is formatted by the shared helper so the PDF
+// and the on-screen table can never disagree on decimals.
 function formatCurrency(value) {
-  return `Php ${Math.round(value ?? 0).toLocaleString('en-PH')}`;
+  return `Php ${formatAmount(value)}`;
 }
 
 function sanitizeForFilename(text) {

@@ -21,10 +21,7 @@ import { computeBom } from '../features/brandSelection/utils/computeBom';
 import { apiRequest } from '../services/apiClient';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
+import { formatPeso } from '../utils/formatNumbers';
 
 /**
  * Brand Selection: choose which brand each shoppable material comes from,
@@ -46,6 +43,13 @@ function BrandSelectionPage() {
   const [loadedForStoreId, setLoadedForStoreId] = useState(null);
   const catalogReady = storeId != null && loadedForStoreId === storeId;
   const [isSaving, setIsSaving] = useState(false);
+  // materialKey -> this store's real price, read off the backend's own BOM.
+  // Only actually consulted for materials with no brand options (sand and
+  // gravel), whose prices would otherwise come from BASE_PRICING's flat
+  // literals and disagree with what the store really charges. Null until it
+  // loads, and stays null if the request fails, which just falls back to the
+  // old behaviour rather than blocking the page.
+  const [realUnitPrices, setRealUnitPrices] = useState(null);
 
   const initialSelection = activeProject?.brandSelection;
   const [mode, setMode] = useState(initialSelection?.mode ?? 'automatic');
@@ -67,14 +71,25 @@ function BrandSelectionPage() {
         if (!cancelled) setLoadedForStoreId(storeId);
       });
 
+    // Separate request on purpose: the page stays usable if this one fails,
+    // and the totals just fall back to BASE_PRICING as before. The brand
+    // choices don't affect what we take from it (commodities have no brands),
+    // so it doesn't need refetching when the user changes a pick.
+    apiRequest(`/projects/${activeProject.id}/bom?storeId=${storeId}`)
+      .then(({ lineItems }) => {
+        if (cancelled) return;
+        setRealUnitPrices(Object.fromEntries(lineItems.map((item) => [item.key, item.unitPrice])));
+      })
+      .catch(() => {});
+
     return () => {
       cancelled = true;
     };
   }, [activeProject?.id, storeId]);
 
   const { lineItems, grandTotal } = useMemo(
-    () => (catalogReady && choices ? computeBom(choices, storeId) : { lineItems: [], grandTotal: 0 }),
-    [choices, storeId, catalogReady],
+    () => (catalogReady && choices ? computeBom(choices, storeId, realUnitPrices) : { lineItems: [], grandTotal: 0 }),
+    [choices, storeId, catalogReady, realUnitPrices],
   );
 
   if (!activeProject) {
@@ -158,7 +173,7 @@ function BrandSelectionPage() {
         // let it compute shorter than the actual card grid, spilling the
         // "Continue" button below on top of the still-overflowing cards.
         <Stack spacing={2.5} sx={{ minWidth: 0 }}>
-          <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} />
+          <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} realUnitPrices={realUnitPrices} />
           <RecommendedBrandsSummary tierKey={tier} grandTotal={grandTotal} storeId={storeId} />
         </Stack>
       ) : (

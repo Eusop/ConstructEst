@@ -45,6 +45,14 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+// Admin accounts are protected from deactivation — see admin.controller.js's
+// setUserActive, which rejects it server-side too. Without that, one click
+// could deactivate every admin (including your own account) and leave nobody
+// able to get back into the admin module.
+function isAdminAccount(user) {
+  return user?.accessRole === 'admin';
+}
+
 // A brand-new self-registered account (isVerified: false) reads as "Pending"
 // regardless of isActive — distinct from an existing account an admin
 // deliberately deactivated. See admin.controller.js's verifyUser /
@@ -409,10 +417,18 @@ function AdminUsersPage() {
                             </IconButton>
                           </Tooltip>
                         ) : (
-                          <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
-                            <IconButton size="small" onClick={() => handleToggleActive(user)}>
-                              {user.isActive ? <BlockRoundedIcon fontSize="small" color="error" /> : <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />}
-                            </IconButton>
+                          // Admin accounts can't be deactivated (the backend
+                          // rejects it too) — otherwise an admin could lock
+                          // every admin, themselves included, out of this
+                          // module. Shown disabled rather than hidden so the
+                          // reason is visible instead of the button just
+                          // silently missing on some rows.
+                          <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deactivated' : user.isActive ? 'Deactivate' : 'Activate'}>
+                            <span>
+                              <IconButton size="small" disabled={isAdminAccount(user)} onClick={() => handleToggleActive(user)}>
+                                {user.isActive ? <BlockRoundedIcon fontSize="small" color={isAdminAccount(user) ? 'disabled' : 'error'} /> : <CheckCircleOutlineRoundedIcon fontSize="small" color={isAdminAccount(user) ? 'disabled' : 'success'} />}
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                       </Stack>
@@ -485,7 +501,9 @@ function AdminUsersPage() {
             <ListItemText>Verify</ListItemText>
           </MenuItem>
         ) : (
+          // Same admin protection as the desktop table above.
           <MenuItem
+            disabled={Boolean(rowMenu && isAdminAccount(rowMenu.user))}
             onClick={() => {
               handleToggleActive(rowMenu.user);
               closeRowMenu();
@@ -498,7 +516,11 @@ function AdminUsersPage() {
                 <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
               )}
             </ListItemIcon>
-            <ListItemText>{rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}</ListItemText>
+            <ListItemText>
+              {rowMenu && isAdminAccount(rowMenu.user)
+                ? 'Admins cannot be deactivated'
+                : rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}
+            </ListItemText>
           </MenuItem>
         )}
       </Menu>

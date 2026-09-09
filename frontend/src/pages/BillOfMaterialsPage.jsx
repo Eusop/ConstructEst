@@ -12,31 +12,58 @@ import NoActiveProjectState from '../features/projects/components/NoActiveProjec
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
 import { useNotifications } from '../context/NotificationsContext';
-import { computeBomForProject, computeTierTotal } from '../features/brandSelection/utils/computeBom';
+import { computeTierTotal } from '../features/brandSelection/utils/computeBom';
 import { loadBrandCatalog } from '../features/brandSelection/data/brandOptionsMock';
 import { STORES, loadStores } from '../features/storeLocator/data/storesMock';
-import { loadParsedProject } from '../features/projects/data/parsedProjectMock';
+import { loadParsedProject, formatQuantityLabel } from '../features/projects/data/parsedProjectMock';
 import { apiRequest } from '../services/apiClient';
 import { generateBomPdf } from '../services/bomPdfService';
 import { ROUTES } from '../routes/paths';
+import { formatPeso } from '../utils/formatNumbers';
 
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
+/**
+ * Adapts GET /projects/:id/bom to what BomTable and bomPdfService read. The
+ * backend sends everything they need except `quantityLabel`, and it sends the
+ * full material name where the table shows the trimmed one, so those two are
+ * derived here. `category`/`brand` come back null when no priced row was
+ * found for a material, and the PDF passes category straight into
+ * jspdf-autotable, so both are defaulted rather than left null.
+ */
+function toDisplayLineItems(lineItems) {
+  return lineItems.map((item) => ({
+    ...item,
+    material: item.material.replace(/\s*\(.*\)$/, ''),
+    category: item.category ?? '',
+    brand: item.brand ?? '',
+    quantityLabel: formatQuantityLabel(item.quantity, item.unit),
+  }));
 }
 
 /**
  * Bill of Materials: the final priced material list plus a cost breakdown
  * against the project's budget ceiling. Self-sufficient regardless of which
  * page the user arrived from (or a reload): fetches the active project's
- * estimation, its selected store's real brand catalog, and the store list,
- * then computes the priced BOM the same way Brand Selection's live preview
- * does (see computeBom.js) so the two always agree.
+ * estimation, its selected store's real brand catalog, the store list, and
+ * the priced BOM itself.
+ *
+ * The line items and grand total come from the backend (GET /:id/bom), not
+ * from computeBom.js. That matters because computeBom prices sand and gravel
+ * from flat BASE_PRICING literals — they're commodities with no brand
+ * catalog — while the backend prices every material from store_material_prices,
+ * which is per-store. The two therefore disagreed for any store whose price
+ * multiplier isn't 1.0, so this page's grand total didn't match the total the
+ * Store Locator showed for the same project. Fetching it also means a saved
+ * manual brand selection survives a reload: brandSelection lives only in
+ * React state (ProjectsContext hardcodes it to null), so the client-side
+ * version silently fell back to the Standard tier after a refresh, while the
+ * backend still had the user's real picks.
  */
 function BillOfMaterialsPage() {
   const { activeProject, refreshActiveProjectEstimation } = useProjects();
   const { logActivity } = useDashboardActivity();
   const { addNotification } = useNotifications();
   const [loadedForKey, setLoadedForKey] = useState(null);
+  const [bom, setBom] = useState(null);
 
   const storeId = activeProject?.selectedStoreId ?? null;
   const materialEstimationDone = activeProject?.status !== 'Parsing' && activeProject?.status !== 'Failed';
@@ -53,15 +80,24 @@ function BillOfMaterialsPage() {
       if (cancelled) return;
       if (estimation) loadParsedProject(estimation);
 
-      const [{ catalog }, { stores }] = await Promise.all([
+      // The brand catalog is still needed even though the BOM is now priced
+      // server-side: the Premium subtotal below has no backend equivalent
+      // (the endpoint prices the *saved* selection, it can't answer "what
+      // would Premium have cost"), so that one figure is still computed here.
+      const [{ catalog }, { stores }, fetchedBom] = await Promise.all([
         apiRequest(`/projects/${activeProject.id}/brand-catalog?storeId=${storeId}`),
         apiRequest(`/projects/${activeProject.id}/stores`),
+        apiRequest(`/projects/${activeProject.id}/bom?storeId=${storeId}`),
       ]);
       if (cancelled) return;
       loadBrandCatalog(storeId, catalog);
       loadStores(stores);
+      setBom({ ...fetchedBom, lineItems: toDisplayLineItems(fetchedBom.lineItems) });
       setLoadedForKey(`${activeProject.id}-${storeId}`);
     })().catch(() => {
+      // Leaves `bom` null, which renders IncompleteBomState below rather than
+      // an error screen — covers the endpoint's own 400 (no store selected
+      // and none saved) and 409 (no current estimation yet).
       if (!cancelled) setLoadedForKey(`${activeProject.id}-${storeId}`);
     });
 
@@ -87,8 +123,17 @@ function BillOfMaterialsPage() {
     );
   }
 
-  const { lineItems, grandTotal } = computeBomForProject(activeProject);
-  const premiumTotal = computeTierTotal('premium', storeId);
+  if (!bom) {
+    return <IncompleteBomState nextRoute={ROUTES.STORE_LOCATOR} />;
+  }
+
+  const { lineItems, grandTotal } = bom;
+  // Price the Premium baseline off the same real per-store prices the fetched
+  // BOM used, so the commodities (sand/gravel, which have no brand options and
+  // would otherwise fall back to BASE_PRICING's flat literals) don't drag a
+  // stale number into the saving figure.
+  const realUnitPrices = Object.fromEntries(lineItems.map((item) => [item.key, item.unitPrice]));
+  const premiumTotal = computeTierTotal('premium', storeId, realUnitPrices);
   const saving = Math.max(0, premiumTotal - grandTotal);
 
   const ceilingValue = Number(String(activeProject.budgetCeiling).replace(/,/g, ''));

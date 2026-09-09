@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { apiRequest } from '../services/apiClient';
 
 const INITIAL_STATE = {
   totalProjects: 0,
@@ -16,14 +17,37 @@ const DashboardActivityContext = createContext(null);
  * survives navigation across the whole authenticated app, not just one
  * flow.
  *
- * Frontend-only for now (plain component state, activities kept in
- * memory); swapping this for real backend activity logs later only means
- * changing what's inside this provider — call sites just read
- * `totalProjects` / `estimationsDone` / `activities` and call the
- * `log*`/`increment*` functions, same as they would against a real API.
+ * Seeded on mount from GET /api/dashboard, which returns the real project
+ * counts and the persisted activity_log rows. Before that fetch existed here,
+ * this was purely in-memory: the counters read 0 and the feed was empty after
+ * every reload, even for a user whose Projects page listed real projects, and
+ * everything logged during a session was lost on refresh. The in-memory
+ * `log*`/`increment*` functions are still used so the dashboard updates the
+ * instant something happens rather than waiting for a refetch.
  */
 export function DashboardActivityProvider({ children }) {
   const [state, setState] = useState(INITIAL_STATE);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiRequest('/dashboard/summary')
+      .then(({ totalProjects, estimationsDone, activities }) => {
+        if (cancelled) return;
+        setState((prev) => ({
+          totalProjects,
+          estimationsDone,
+          // Anything logged this session stays on top of the fetched history.
+          activities: [...prev.activities, ...activities.map((a) => ({ ...a, timestamp: new Date(a.timestamp) }))],
+        }));
+      })
+      .catch(() => {
+        // Leaves the zeroed initial state; the dashboard renders its own empty
+        // state and nothing else depends on these numbers.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const incrementTotalProjects = useCallback(() => {
     setState((prev) => ({ ...prev, totalProjects: prev.totalProjects + 1 }));

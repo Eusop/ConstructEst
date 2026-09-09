@@ -52,11 +52,12 @@ export function UserProvider({ children }) {
 
   const updateProfile = useCallback((updates) => {
     setProfile((prev) => {
-      // The avatar is an object URL (see ProfileAvatarSection) shared
-      // across the app (header avatar + Profile page) rather than owned by
-      // any one component, so its lifecycle is managed here: once it's
-      // replaced by a different value, the outgoing URL is genuinely
-      // unreferenced anywhere and safe to revoke.
+      // Avatars are server paths now (/uploads/avatars/...), uploaded via
+      // POST /users/me/avatar, so this revoke no longer has anything to do in
+      // practice: the only object URLs left are the local previews inside
+      // ProfileAvatarSection, which never reach this context and are revoked
+      // there. Kept as a cheap guard in case any other code path ever hands
+      // an object URL to updateProfile again — it costs one string check.
       if ('avatarUrl' in updates && prev.avatarUrl && prev.avatarUrl !== updates.avatarUrl && prev.avatarUrl.startsWith('blob:')) {
         URL.revokeObjectURL(prev.avatarUrl);
       }

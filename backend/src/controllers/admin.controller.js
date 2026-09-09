@@ -89,6 +89,32 @@ export const updateUser = asyncHandler(async (req, res) => {
   if (email !== undefined) { fields.push('email = ?'); params.push(email); changedFields.push('email'); }
   if (accessRole !== undefined) {
     if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
+
+    // Promoting someone to admin is fine and stays allowed. Demotion is what
+    // needs guarding, because there was nothing stopping an admin from
+    // demoting themselves or the only remaining admin and leaving the system
+    // with no way to reach the admin module at all. Only run these checks
+    // when the role is actually changing to 'user'.
+    if (accessRole === 'user') {
+      const [current] = await query('SELECT access_role FROM users WHERE id = ?', [req.params.id]);
+      if (current?.access_role === 'admin') {
+        if (String(req.params.id) === String(req.user.id)) {
+          throw new HttpError(403, 'You cannot remove your own admin role.');
+        }
+        // Backstop only, and deliberately kept even though the self-demotion
+        // check above already covers every path that can reach it today: the
+        // caller must be an admin, so demoting a *different* admin means at
+        // least two exist and this can never trip. It matters if the rule
+        // above is ever relaxed, or if another code path starts setting roles.
+        const [{ adminCount }] = await query(
+          "SELECT COUNT(*) AS adminCount FROM users WHERE access_role = 'admin'",
+        );
+        if (adminCount <= 1) {
+          throw new HttpError(403, 'This is the last admin account, so its role cannot be changed.');
+        }
+      }
+    }
+
     fields.push('access_role = ?'); params.push(accessRole); changedFields.push('role');
   }
   if (fields.length === 0) throw new HttpError(400, 'No fields to update.');
@@ -103,8 +129,17 @@ export const updateUser = asyncHandler(async (req, res) => {
 
 export const setUserActive = asyncHandler(async (req, res) => {
   const { isActive } = req.body;
-  const [target] = await query('SELECT first_name, last_name FROM users WHERE id = ?', [req.params.id]);
+  const [target] = await query('SELECT first_name, last_name, access_role FROM users WHERE id = ?', [req.params.id]);
   if (!target) throw new HttpError(404, 'User not found.');
+  // Admin accounts can't be deactivated by anyone, including themselves.
+  // Nothing here checked identity before, so an admin could lock themselves
+  // (or every other admin) out of the whole admin module with one click, and
+  // the only way back in would be editing the database by hand. Checked on
+  // the server because the UI hiding the button is just a convenience - the
+  // endpoint is still reachable directly.
+  if (target.access_role === 'admin') {
+    throw new HttpError(403, 'Admin accounts cannot be deactivated. Change the role to user first.');
+  }
   await query('UPDATE users SET is_active = ? WHERE id = ?', [isActive ? 1 : 0, req.params.id]);
   const name = `${target.first_name} ${target.last_name}`;
   await logAdminActivity(

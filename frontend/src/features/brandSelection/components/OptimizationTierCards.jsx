@@ -8,16 +8,13 @@ import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import { OPTIMIZATION_TIERS } from '../data/brandOptionsMock';
 import { computeTierTotal } from '../utils/computeBom';
 import { colors } from '../../../theme/palette';
+import { formatPeso } from '../../../utils/formatNumbers';
 
 const TIER_ICONS = {
   premium: { Icon: DiamondRoundedIcon, bg: colors.iconPurpleBg, fg: colors.iconPurpleFg },
   standard: { Icon: StarRoundedIcon, bg: colors.iconBlueBg, fg: colors.iconBlueFg },
   budget: { Icon: SavingsRoundedIcon, bg: colors.iconGreenBg, fg: colors.iconGreenFg },
 };
-
-function formatPeso(value) {
-  return `₱${Math.round(value).toLocaleString('en-PH')}`;
-}
 
 /**
  * Premium / Standard / Budget selectable tier cards — each maps to a fixed
@@ -28,8 +25,12 @@ function formatPeso(value) {
  * @param {string} props.selectedTier
  * @param {(tierKey: string) => void} props.onSelectTier
  * @param {string} props.storeId Which store's brand catalog to price against.
+ * @param {Record<string, number>|null} [props.realUnitPrices] The store's real
+ *   per-material prices from the backend's BOM, used for the materials that
+ *   have no brand options (sand/gravel) so these totals agree with the Bill
+ *   of Materials page instead of pricing those two from flat literals.
  */
-function OptimizationTierCards({ selectedTier, onSelectTier, storeId }) {
+function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPrices = null }) {
   return (
     // Row at every size now (was xs: column) — below `sm`, all three cards
     // shrink to fit one horizontal row instead of stacking full-width; the
@@ -42,7 +43,7 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId }) {
       {Object.values(OPTIMIZATION_TIERS).map((tier) => {
         const { Icon, bg, fg } = TIER_ICONS[tier.key];
         const selected = tier.key === selectedTier;
-        const total = computeTierTotal(tier.key, storeId);
+        const total = computeTierTotal(tier.key, storeId, realUnitPrices);
 
         return (
           <Paper
