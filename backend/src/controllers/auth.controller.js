@@ -167,26 +167,6 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
   }
 
   const code = generateVerificationCode();
-
-  // FIX HERE: Add the missing "try {" statement right before sending the email
-  try {
-    await sendVerificationCodeEmail(email, code);
-  } catch (err) {
-    console.error('Failed to resend verification email:', err);
-    throw new HttpError(502, 'Could not send the email. Try again in a moment.', 'EMAIL_SEND_FAILED');
-  }
-
-  await query(
-    `UPDATE users SET email_verification_code = ?, email_verification_expires_at = NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE,
-                       email_verification_last_sent_at = NOW(), email_verification_attempts = 0
-     WHERE id = ?`,
-    [code, user.id],
-  );
-  res.json({ message: 'A new code has been sent to your email.' });
-});
-
-
-  const code = generateVerificationCode();
   // Send first, save after. If sending fails, the old code still works
   // instead of getting wiped out for nothing.
   try {
@@ -204,6 +184,7 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
     [code, user.id],
   );
   res.json({ message: 'A new code has been sent to your email.' });
+});
 
 // Same wording no matter what happened, so the response can't be used to
 // find out which email addresses have accounts here.
