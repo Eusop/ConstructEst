@@ -24,7 +24,10 @@ dns.Resolver = LookupBackedResolver;
 // explicitly since a bad App Password would otherwise hang for almost a
 // minute before failing, which just looked like the app was broken.
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  requireTLS: true,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
