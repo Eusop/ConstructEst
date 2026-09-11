@@ -267,7 +267,7 @@ function AdminUsersPage() {
   return (
     <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
       <Box>
-        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>User Management</Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>User Accounts</Typography>
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>View, create, and manage registered accounts.</Typography>
       </Box>
 

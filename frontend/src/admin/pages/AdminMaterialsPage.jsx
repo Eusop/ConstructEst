@@ -22,8 +22,6 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
-import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import EmptyState from '../components/EmptyState';
 import AddMaterialsDialog from '../components/AddMaterialsDialog';
@@ -43,14 +41,6 @@ import { formatPeso as formatPesoAmount } from '../../utils/formatNumbers';
 function formatPeso(value) {
   if (value == null) return '—';
   return formatPesoAmount(value);
-}
-
-function Stars({ count, sx }) {
-  return (
-    <Stack direction="row" sx={{ color: '#f5a623', ...sx }}>
-      {[1, 2, 3, 4, 5].map((n) => (n <= count ? <StarRoundedIcon key={n} sx={{ fontSize: 16 }} /> : <StarBorderRoundedIcon key={n} sx={{ fontSize: 16 }} />))}
-    </Stack>
-  );
 }
 
 function AvailabilityChip({ available, sx }) {
@@ -73,9 +63,8 @@ function AvailabilityChip({ available, sx }) {
 // Mobile-only rendering (below `md`). Desktop's rows above are untouched —
 // these are dedicated compact cards, not the desktop row squeezed smaller:
 // no per-row category icon (it's the same generic icon on every row, pure
-// clutter at phone width), a single "★ 4/5" instead of a 5-icon star
-// rating, and edit/delete consolidated into one kebab menu instead of two
-// separate icon buttons.
+// clutter at phone width), and edit/delete consolidated into one kebab
+// menu instead of two separate icon buttons.
 // ---------------------------------------------------------------------
 
 function BulkMaterialMobileCard({ material, data, onOpenMenu }) {
@@ -108,13 +97,9 @@ function BulkMaterialMobileCard({ material, data, onOpenMenu }) {
 function BrandMobileCard({ brand, onOpenMenu }) {
   return (
     <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2.5, p: 1.25 }}>
-      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
         <Box sx={{ minWidth: 0 }}>
           <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{brand.name}</Typography>
-          <Stack direction="row" spacing={0.4} sx={{ alignItems: 'center', mt: 0.25 }}>
-            <StarRoundedIcon sx={{ fontSize: 14, color: '#f5a623' }} />
-            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 600 }}>{brand.stars}/5</Typography>
-          </Stack>
         </Box>
         <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center', flexShrink: 0 }}>
           <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', color: colors.iconGreenFg, bgcolor: colors.iconGreenBg, px: 1, py: 0.25, borderRadius: 1.5, whiteSpace: 'nowrap' }}>
@@ -318,7 +303,7 @@ function AdminMaterialsPage() {
   return (
     <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
       <Box>
-        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Materials & Brands</Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Material Catalog</Typography>
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Manage the materials, brands, prices, and availability for the active store.</Typography>
       </Box>
 
@@ -600,15 +585,13 @@ function AdminMaterialsPage() {
                               <Typography sx={{ order: 1, fontWeight: 700, fontSize: '0.9rem', minWidth: { xs: 0, sm: 140 } }}>
                                 {brand.name}
                               </Typography>
-                              {/* Mobile-only line breaks: force the rating, then the
-                                  price, then the availability chip, each onto their own
-                                  row — invisible and inert at sm+, where the row never wraps. */}
+                              {/* Mobile-only line break: force the price, then the
+                                  availability chip, each onto their own row —
+                                  invisible and inert at sm+, where the row never wraps. */}
                               <Box sx={{ order: 2, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
-                              <Stars count={brand.stars} sx={{ order: 3 }} />
-                              <Box sx={{ order: 4, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
                               <Typography
                                 sx={{
-                                  order: 5,
+                                  order: 3,
                                   fontWeight: 800,
                                   fontSize: '0.9rem',
                                   color: colors.iconGreenFg,
@@ -621,14 +604,14 @@ function AdminMaterialsPage() {
                                 {formatPeso(brand.price)}
                                 <Typography component="span" sx={{ fontSize: '0.68rem', color: 'text.secondary' }}> /{brand.unit}</Typography>
                               </Typography>
-                              <Box sx={{ order: 6, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
-                              <AvailabilityChip available={brand.available} sx={{ order: 7 }} />
-                              <Box sx={{ order: 8, flex: 1, display: { xs: 'none', sm: 'block' } }} />
+                              <Box sx={{ order: 4, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
+                              <AvailabilityChip available={brand.available} sx={{ order: 5 }} />
+                              <Box sx={{ order: 6, flex: 1, display: { xs: 'none', sm: 'block' } }} />
                               <Tooltip title="Edit">
                                 <IconButton
                                   size="small"
                                   onClick={() => setBrandDialog({ open: true, materialKey: material.key, brand })}
-                                  sx={{ order: 9, ml: { xs: 'auto', sm: 0 } }}
+                                  sx={{ order: 7, ml: { xs: 'auto', sm: 0 } }}
                                 >
                                   <EditRoundedIcon fontSize="small" />
                                 </IconButton>
@@ -637,7 +620,7 @@ function AdminMaterialsPage() {
                                 <IconButton
                                   size="small"
                                   onClick={() => handleDeleteBrand(material.key, brand.id)}
-                                  sx={{ order: 10, mr: { xs: 0.5, sm: 0 } }}
+                                  sx={{ order: 8, mr: { xs: 0.5, sm: 0 } }}
                                 >
                                   <DeleteOutlineRoundedIcon fontSize="small" color="error" />
                                 </IconButton>

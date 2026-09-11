@@ -26,15 +26,27 @@ function EstimatedCostBanner({ estimatedCost, ceilingLabel, withinBudget, onView
     <Box sx={{ borderRadius: 3, bgcolor: colors.ctaBackground, p: { xs: 2.5, md: 3 } }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
-        spacing={{ xs: 2, sm: 3 }}
-        sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
+        spacing={{ xs: 2.25, sm: 3 }}
+        sx={{
+          justifyContent: 'space-between',
+          // xs: 'stretch' so the nested Stack below (budget info + button)
+          // spans the card's full width instead of shrink-wrapping to its
+          // content — otherwise the button's own width:100% (further down)
+          // has nothing full-width to fill. sm+ unchanged from the original
+          // flat 'flex-start'.
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+        }}
       >
         <Box>
           <Typography sx={{ fontSize: '0.78rem', color: 'grey.500' }}>Estimated material cost</Typography>
           <Typography sx={{ fontSize: '1.4rem', fontWeight: 800, color: 'common.white' }}>{estimatedCost}</Typography>
         </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={{ xs: 2.25, sm: 2 }}
+          sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
+        >
           <Box>
             <Typography sx={{ fontSize: '0.78rem', color: 'grey.500' }}>Budget ceiling</Typography>
             <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, color: 'common.white' }}>{ceilingLabel}</Typography>
@@ -51,7 +63,18 @@ function EstimatedCostBanner({ estimatedCost, ceilingLabel, withinBudget, onView
             variant="contained"
             disableElevation
             startIcon={<ArrowForwardRoundedIcon />}
-            sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark }, flexShrink: 0 }}
+            sx={{
+              bgcolor: colors.accentBlue,
+              '&:hover': { bgcolor: colors.accentBlueDark },
+              flexShrink: 0,
+              // Full-bleed primary CTA on phones, same convention as this
+              // app's other mobile "Continue"/"Download" actions (Store
+              // Locator, Brand Selection, Bill of Materials) — was
+              // auto-width here, which left it small and off-balance,
+              // stranded with empty space to its right.
+              width: { xs: '100%', sm: 'auto' },
+              minHeight: { xs: 46, sm: 'auto' },
+            }}
           >
             View estimate
           </Button>

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import CalibrationFactorsCard from '../../features/settings/components/CalibrationFactorsCard';
@@ -46,6 +45,11 @@ function AdminSettingsPage() {
   const [draftFactors, setDraftFactors] = useState(null);
   const [savedOverrides, setSavedOverrides] = useState(null);
   const [draftOverrides, setDraftOverrides] = useState(null);
+  // Cancel/Save were removed from the UI on request, but the save/cancel
+  // logic below is left wired up as-is (not a functionality change) in case
+  // a trigger for it returns — hence the lint suppressions on this and the
+  // two handlers below, which would otherwise flag them as unused.
+  // eslint-disable-next-line no-unused-vars
   const [isSaving, setIsSaving] = useState(false);
 
   const load = () => {
@@ -73,11 +77,13 @@ function AdminSettingsPage() {
   const updateOverride = (key, value) => setDraftOverrides((prev) => ({ ...prev, [key]: value }));
   const handleResetOverrides = () => setDraftOverrides({ ...EMPTY_OVERRIDES });
 
+  // eslint-disable-next-line no-unused-vars
   const handleCancel = () => {
     setDraftFactors(savedFactors);
     setDraftOverrides(savedOverrides);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -98,34 +104,45 @@ function AdminSettingsPage() {
   };
 
   return (
-    <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
-      <Box>
-        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Estimation Settings</Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-          Default calibration factors and design parameters applied to every new project unless it sets its own override.
-        </Typography>
-      </Box>
+    <Box sx={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Stack spacing={2.5}>
+        <Box>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Estimation Configuration</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+            Default calibration factors and design parameters applied to every new project unless it sets its own override.
+          </Typography>
+        </Box>
 
-      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ alignItems: 'stretch' }}>
-        <MobileTabSwitcher labels={['Design', 'Calibration']}>
-          <DesignParametersCard overrides={draftOverrides} onOverrideChange={updateOverride} onResetAll={handleResetOverrides} />
-          <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />
-        </MobileTabSwitcher>
+        {/* alignItems: 'flex-start' at lg+ (row layout) so the two cards sit at
+            their own natural content height side by side, instead of the
+            shorter one being cross-stretched to match the taller one and
+            ending in a block of dead white space (visible once the Cancel/
+            Save row — which used to visually anchor the bottom of both — was
+            removed). 'stretch' below lg (column layout) is unchanged: that's
+            what makes each stacked card span the full container width. */}
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ alignItems: { xs: 'stretch', lg: 'flex-start' } }}>
+          <MobileTabSwitcher labels={['Design', 'Calibration']}>
+            <DesignParametersCard overrides={draftOverrides} onOverrideChange={updateOverride} onResetAll={handleResetOverrides} />
+            <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />
+          </MobileTabSwitcher>
+        </Stack>
       </Stack>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
-        <Button
-          onClick={handleCancel}
-          disabled={isSaving}
-          sx={{ bgcolor: 'common.white', color: 'text.primary', border: '1px solid', borderColor: 'grey.300', '&:hover': { bgcolor: 'grey.50', borderColor: 'grey.300' } }}
-        >
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={isSaving} variant="contained" disableElevation sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}>
-          Save changes
-        </Button>
-      </Stack>
-    </Stack>
+      {/* Explicit-height spacer, not padding on the flex:1/minHeight:0
+          container above — this page has no inner flex/minHeight:0/
+          overflow:auto panel of its own the way AdminMaterialsPage/
+          AdminStoresPage do (their content scrolls inside that inner panel
+          instead, so AdminLayout's content Box itself never has to scroll).
+          Here the cards are left to grow to their natural, possibly tall,
+          height, so that outer Box does end up scrolling — and browsers
+          drop a nested flex-basis:0 item's own end-padding/margin from the
+          scrollable area once it overflows, which silently ate a plain
+          `pb` here too. A sibling with a real height isn't subject to
+          that, so it reliably reproduces AdminLayout's own bottom spacing
+          on this page's content regardless of which of the two cards ends
+          up longest. */}
+      <Box sx={{ flexShrink: 0, height: { xs: 16, md: 24 } }} />
+    </Box>
   );
 }
 

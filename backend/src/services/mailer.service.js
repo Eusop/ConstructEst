@@ -1,12 +1,24 @@
 import { Resend } from 'resend';
 import 'dotenv/config';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Built lazily (not at import time) so the server can still start when
+// RESEND_API_KEY is unset — only an actual send attempt fails, instead of
+// every route that imports this module.
+let resend;
+function getClient() {
+  if (!resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not set — add it to backend/.env to enable email sending.');
+    }
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || 'ConstructEst <onboarding@resend.dev>';
 
 async function send({ to, subject, text, html }) {
-  const { error } = await resend.emails.send({ from: FROM_ADDRESS, to, subject, text, html });
+  const { error } = await getClient().emails.send({ from: FROM_ADDRESS, to, subject, text, html });
   if (error) throw new Error(error.message || 'Failed to send email via Resend');
 }
 

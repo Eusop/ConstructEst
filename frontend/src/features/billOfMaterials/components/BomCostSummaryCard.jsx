@@ -34,23 +34,23 @@ function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceili
   const deltaColor = withinBudget ? colors.iconGreenFg : colors.iconRedFg;
 
   return (
-    <Box sx={{ borderRadius: 3, bgcolor: colors.ctaBackground, p: { xs: 1.75, md: 3 } }}>
-      <Stack spacing={{ xs: 1, md: 1.25 }}>
+    <Box sx={{ borderRadius: 3, bgcolor: colors.ctaBackground, p: { xs: 2, sm: 1.75, md: 3 } }}>
+      <Stack spacing={{ xs: 1.25, sm: 1, md: 1.25 }}>
         <SummaryRow label="Subtotal" value={subtotalLabel} />
         <SummaryRow label="Optimization saving" value={savingLabel} valueColor={colors.iconGreenFg} />
       </Stack>
 
-      <Divider sx={{ my: { xs: 1.5, md: 2 }, borderColor: 'rgba(255,255,255,0.1)' }} />
+      <Divider sx={{ my: { xs: 2, sm: 1.5, md: 2 }, borderColor: 'rgba(255,255,255,0.1)' }} />
 
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
+        spacing={{ xs: 2.25, sm: 2 }}
         sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' } }}
       >
         <Box>
           <Typography sx={{ fontSize: '0.85rem', color: 'grey.500' }}>Grand total</Typography>
-          <Typography sx={{ fontSize: '1.4rem', fontWeight: 800, color: 'common.white' }}>{grandTotalLabel}</Typography>
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.5 }}>
+          <Typography sx={{ fontSize: { xs: '1.5rem', sm: '1.4rem' }, fontWeight: 800, color: 'common.white' }}>{grandTotalLabel}</Typography>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: { xs: 0.75, sm: 0.5 } }}>
             <CheckCircleRoundedIcon sx={{ fontSize: 15, color: deltaColor }} />
             <Typography sx={{ fontSize: '0.8rem', color: deltaColor }}>{ceilingDeltaLabel}</Typography>
           </Stack>
@@ -67,6 +67,12 @@ function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceili
             flexShrink: 0,
             whiteSpace: 'nowrap',
             fontSize: { xs: '0.9rem', sm: '1.05rem' },
+            // Full-bleed primary CTA on phones, same convention as this
+            // app's other mobile "Continue" actions (Store Locator, Brand
+            // Selection) — was auto-width here, which on a narrow card
+            // left it looking undersized next to the grand total above it.
+            width: { xs: '100%', sm: 'auto' },
+            minHeight: { xs: 46, sm: 'auto' },
           }}
         >
           Download PDF report

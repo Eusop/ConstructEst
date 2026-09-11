@@ -74,7 +74,7 @@ function AdminActivityLogPage() {
   return (
     <Stack spacing={2.5} sx={{ width: '100%', flex: 1, minHeight: 0 }}>
       <Box>
-        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Activity Log</Typography>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>System Activity</Typography>
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
           A permanent record of admin actions. Nothing here can be edited or removed.
         </Typography>

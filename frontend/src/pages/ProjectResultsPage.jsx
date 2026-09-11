@@ -78,8 +78,24 @@ function ProjectResultsPage() {
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
           p: { xs: 2.5, md: 4 },
-          flex: 1,
-          minHeight: 0,
+          // sm+ (tablet and desktop): natural, content-based sizing
+          // instead of flex:1/minHeight:0. Mobile (xs) still uses that
+          // combination unchanged, since it never hit this bug — but once
+          // this card's real content (floor plan + extracted measurements
+          // + detailed extraction info + cost banner) is taller than the
+          // viewport at sm+, forcing the DashboardLayout content area to
+          // scroll, a flex-basis:0/min-height:0 item's own background
+          // stops covering its actual rendered height once it overflows
+          // its flex-computed size — the overflowing content (in
+          // practice, everything from partway through "Extracted
+          // measurements" onward) still renders, just without this
+          // card's white background behind it, exposing the page
+          // background instead. minHeight:'auto' restores the browser's
+          // normal "never shrink below content" protection for a flex
+          // item, which keeps the white background covering the card's
+          // true full height regardless of viewport/scroll state.
+          flex: { xs: 1, sm: 'initial' },
+          minHeight: { xs: 0, sm: 'auto' },
         }}
       >
         <Stack spacing={3} divider={<Divider />}>

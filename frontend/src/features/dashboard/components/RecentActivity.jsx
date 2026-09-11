@@ -7,9 +7,18 @@ import Typography from '@mui/material/Typography';
 /**
  * Dashboard "Recent activity" card: an icon tile, a message, and a
  * right-aligned relative timestamp per entry. Shows a placeholder message
- * when there's nothing to list. The card has its own fixed height — the
- * title stays pinned, and only the activity list scrolls internally once
- * it outgrows that space, instead of growing the card taller.
+ * when there's nothing to list.
+ *
+ * No fixed height at any size — it grows with its content (a `minHeight`
+ * just keeps the empty state from looking like a collapsed sliver), same
+ * adaptive approach as Store Locator's Hardware Stores list. `md`+
+ * additionally flexes to fill whatever vertical space the dashboard's
+ * layout leaves below the stat cards (its parent in DashboardPage.jsx is
+ * already `flex: 1` for exactly this), instead of sitting at a fixed 240px
+ * with empty page beneath it — so a short list leaves calm empty space
+ * inside the card rather than the card just stopping early, and the title
+ * stays pinned with only the activity list scrolling internally once it
+ * outgrows even that expanded space.
  *
  * @param {object} props
  * @param {Array<{id: number|string, icon: React.ElementType, iconBg: string,
@@ -24,7 +33,8 @@ function RecentActivity({ activities }) {
         p: { xs: 2.5, sm: 3 },
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        height: { xs: 230, md: 240 },
+        minHeight: { xs: 160, sm: 180, md: 240 },
+        flex: { md: 1 },
         display: 'flex',
         flexDirection: 'column',
       }}

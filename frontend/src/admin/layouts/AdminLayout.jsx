@@ -13,6 +13,7 @@ const PAGE_TITLES = {
   [ADMIN_ROUTES.USERS]: 'User Management',
   [ADMIN_ROUTES.STORES]: 'Hardware Stores',
   [ADMIN_ROUTES.MATERIALS]: 'Materials & Brands',
+  [ADMIN_ROUTES.ACTIVITY_LOG]: 'Activity Log',
   [ADMIN_ROUTES.SETTINGS]: 'Estimation Settings',
   [ADMIN_ROUTES.PROFILE]: 'Profile',
 };

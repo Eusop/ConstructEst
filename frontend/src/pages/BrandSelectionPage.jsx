@@ -159,7 +159,7 @@ function BrandSelectionPage() {
         <Box>
           <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Brand selection</Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-            Choose brands for {activeProject.projectName}'s shoppable materials.
+            Choose the brands you want for your materials.
           </Typography>
         </Box>
 

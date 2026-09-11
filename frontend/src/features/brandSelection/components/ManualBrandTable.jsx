@@ -15,35 +15,22 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { BRAND_MATERIAL_SHORT_LABELS, getStoreBrandOptions, getAvailableMaterialKeys } from '../data/brandOptionsMock';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
-import { colors } from '../../../theme/palette';
 import { formatPeso } from '../../../utils/formatNumbers';
 
 // Fixed widths + tableLayout: 'fixed' below stop the table (and page)
 // from shifting width when a longer/shorter brand name gets picked.
 const COLUMNS = [
-  { label: 'MATERIAL', width: '15%' },
-  { label: 'SELECTED BRAND', width: '27%' },
-  { label: 'UNIT PRICE', width: '12%' },
-  { label: 'RATING', width: '13%' },
-  { label: 'SUPPLIER', width: '16%' },
-  { label: 'ESTIMATED COST', width: '17%' },
+  { label: 'MATERIAL', width: '16%' },
+  { label: 'SELECTED BRAND', width: '32%' },
+  { label: 'UNIT PRICE', width: '14%' },
+  { label: 'SUPPLIER', width: '18%' },
+  { label: 'ESTIMATED COST', width: '20%' },
 ];
 
 // Truncates instead of wrapping, keeps every row the same height.
 const TRUNCATE_SX = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-
-function QualityStars({ quality }) {
-  return (
-    <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
-      {Array.from({ length: 5 }, (_, index) => (
-        <StarRoundedIcon key={index} sx={{ fontSize: 16, color: index < quality ? colors.orange : 'grey.300' }} />
-      ))}
-    </Stack>
-  );
-}
 
 // MUI's TextField defaults to 1rem font, way bigger than the rest of this
 // page's 0.7-0.85rem scale, so everything here is sized down to match.
@@ -92,12 +79,9 @@ function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, est
 
       <Divider sx={{ my: 1 }} />
 
-      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.85rem' }}>
-          {formatPeso(selectedOption.price)}
-        </Typography>
-        <QualityStars quality={selectedOption.quality} />
-      </Stack>
+      <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.85rem' }}>
+        {formatPeso(selectedOption.price)}
+      </Typography>
       <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem', mt: 0.5, ...TRUNCATE_SX }}>
         {selectedOption.supplier}
       </Typography>
@@ -106,8 +90,8 @@ function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, est
 }
 
 /**
- * Manual mode: per-material brand dropdown, live price/quality/supplier
- * for whatever's picked. Fixed column widths + truncation so picking a
+ * Manual mode: per-material brand dropdown, live price/supplier for
+ * whatever's picked. Fixed column widths + truncation so picking a
  * different option never resizes the table.
  *
  * @param {object} props
@@ -173,7 +157,7 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems }) {
       </Stack>
 
       <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
-        <Table sx={{ minWidth: 780, tableLayout: 'fixed' }}>
+        <Table sx={{ minWidth: 680, tableLayout: 'fixed' }}>
           <TableHead>
             <TableRow>
               {COLUMNS.map((col) => (
@@ -235,9 +219,6 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems }) {
                   </TableCell>
                   <TableCell sx={{ ...TRUNCATE_SX, color: 'text.primary', fontWeight: 700, borderColor: 'divider' }}>
                     {formatPeso(selectedOption.price)}
-                  </TableCell>
-                  <TableCell sx={{ borderColor: 'divider' }}>
-                    <QualityStars quality={selectedOption.quality} />
                   </TableCell>
                   <TableCell sx={{ borderColor: 'divider' }}>
                     <Tooltip title={selectedOption.supplier}>

@@ -7,7 +7,11 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
+import Collapse from '@mui/material/Collapse';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import MapView from '../components/MapView';
 import StoreListCard from '../features/storeLocator/components/StoreListCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
@@ -36,10 +40,17 @@ const USER_LOCATION_MARKER_ID = 'user-location';
  * both and centers the map. Fetches the real per-store cost optimization
  * once per active project.
  */
+// Phones start collapsed to a short preview; tablets/desktop always show
+// the full list, so this only ever affects the xs breakpoint below.
+const MOBILE_PREVIEW_COUNT = 3;
+
 function StoreLocatorPage() {
   const { activeProject, updateActiveProject } = useProjects();
   const { addNotification } = useNotifications();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [hardwareListExpanded, setHardwareListExpanded] = useState(false);
   const [rawStores, setRawStores] = useState(null);
   const [loadedForId, setLoadedForId] = useState(null);
   const [loadError, setLoadError] = useState('');
@@ -232,7 +243,7 @@ function StoreLocatorPage() {
             }}
           >
             <Stack spacing={{ xs: 1.25, sm: 1.5 }}>
-              {STORES.map((store) => (
+              {(isMobile ? STORES.slice(0, MOBILE_PREVIEW_COUNT) : STORES).map((store) => (
                 <StoreListCard
                   key={store.id}
                   store={store}
@@ -241,12 +252,58 @@ function StoreLocatorPage() {
                   onSelect={() => setSelectedStoreId(store.id)}
                 />
               ))}
+
+              {isMobile && STORES.length > MOBILE_PREVIEW_COUNT && (
+                <>
+                  <Collapse in={hardwareListExpanded} timeout="auto" unmountOnExit>
+                    <Stack spacing={1.25}>
+                      {STORES.slice(MOBILE_PREVIEW_COUNT).map((store) => (
+                        <StoreListCard
+                          key={store.id}
+                          store={store}
+                          badgeColor={badgeColorFor(store)}
+                          selected={store.id === selectedStoreId}
+                          onSelect={() => setSelectedStoreId(store.id)}
+                        />
+                      ))}
+                    </Stack>
+                  </Collapse>
+
+                  <Button
+                    onClick={() => setHardwareListExpanded((prev) => !prev)}
+                    disableElevation
+                    fullWidth
+                    aria-expanded={hardwareListExpanded}
+                    endIcon={
+                      <ExpandMoreRoundedIcon
+                        sx={{
+                          fontSize: 20,
+                          transition: 'transform 0.2s ease',
+                          transform: hardwareListExpanded ? 'rotate(180deg)' : 'none',
+                        }}
+                      />
+                    }
+                    sx={{
+                      minHeight: 44,
+                      borderRadius: 2.5,
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      color: colors.accentBlue,
+                      bgcolor: colors.iconBlueBg,
+                      '&:hover': { bgcolor: colors.iconBlueBg, opacity: 0.85 },
+                    }}
+                  >
+                    {hardwareListExpanded ? 'Show Less' : `View All Hardware (${STORES.length})`}
+                  </Button>
+                </>
+              )}
             </Stack>
           </Paper>
         </Box>
       </Stack>
 
-      <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
+      <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' }, pb: { xs: 2, sm: 3 } }}>
         <Tooltip title={selectedStoreId ? '' : 'Select a hardware store to continue'}>
           {/* Box, not a bare <span>, so it can carry the full-width phone
               style — it still forwards the ref Tooltip needs to anchor to

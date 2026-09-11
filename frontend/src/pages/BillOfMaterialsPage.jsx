@@ -179,7 +179,7 @@ function BillOfMaterialsPage() {
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
         <Box>
           <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>
-            {activeProject.projectName}: Bill of Materials
+            {activeProject.projectName}
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>{summaryTags.join(' · ')}</Typography>
         </Box>
