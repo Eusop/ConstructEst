@@ -186,16 +186,15 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
 });
 
 
-    const code = generateVerificationCode();
+  const code = generateVerificationCode();
   // Send first, save after. If sending fails, the old code still works
   // instead of getting wiped out for nothing.
   try {
-    await sendVerificationCodeEmail(user.email, code);
+    await sendVerificationCodeEmail(email, code);
   } catch (err) {
     console.error('Failed to resend verification email:', err);
     throw new HttpError(502, 'Could not send the email. Try again in a moment.', 'EMAIL_SEND_FAILED');
   }
-
 
   await query(
     `UPDATE users SET email_verification_code = ?, email_verification_expires_at = NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE,
