@@ -40,7 +40,7 @@ function AdminLayout() {
     // panel further down (e.g. AdminStoresPage's "Registered stores" list)
     // never actually gets a bounded height to scroll *within* — the
     // browser just scrolls the whole page instead of that one panel.
-    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
+    <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
       <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

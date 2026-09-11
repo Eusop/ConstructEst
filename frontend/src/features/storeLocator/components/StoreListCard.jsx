@@ -60,7 +60,7 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
       sx={{
         borderRadius: 3,
         bgcolor: 'common.white',
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         // Still clickable when out of stock (onSelect fires the "why not"
         // notification — see StoreLocatorPage's setSelectedStoreId guard)
         // but visually signals it won't actually select, rather than
@@ -73,9 +73,9 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
       }}
     >
       <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
           <BadgeNumber rank={store.rank} color={badgeColor} />
-          <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary' }}>{store.name}</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', minWidth: 0, overflowWrap: 'anywhere' }}>{store.name}</Typography>
         </Stack>
 
         {store.isCheapest && (
@@ -87,11 +87,11 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
 
       {store.inStock ? (
         <>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: 'text.primary', mt: 1 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: 'text.primary', mt: { xs: 0.75, sm: 1 } }}>
             {formatPeso(store.totalCost)}
           </Typography>
 
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: { xs: 0.25, sm: 0.5 } }}>
             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               <LocationOnRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
               <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{store.distanceLabel}</Typography>
@@ -102,19 +102,31 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
               rel="noopener noreferrer"
               onClick={(event) => event.stopPropagation()}
               underline="hover"
-              sx={{ fontSize: '0.8rem', fontWeight: 600, color: colors.accentBlue }}
+              sx={{
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: colors.accentBlue,
+                // Phone-only tap target. Scoped rather than applied flat so
+                // sm+ keeps the plain inline <a> box it has always been.
+                display: { xs: 'inline-flex', sm: 'inline' },
+                alignItems: { xs: 'center', sm: 'baseline' },
+                minHeight: { xs: 32, sm: 'auto' },
+                px: { xs: 0.75, sm: 0 },
+                mr: { xs: -0.75, sm: 0 },
+                my: { xs: -0.5, sm: 0 },
+              }}
             >
               Directions
             </Link>
           </Stack>
 
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.5 }}>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: { xs: 0.25, sm: 0.5 } }}>
             <CheckCircleRoundedIcon sx={{ fontSize: 14, color: colors.iconGreenFg }} />
             <Typography sx={{ fontSize: '0.8rem', color: colors.iconGreenFg, fontWeight: 600 }}>{store.stockLabel}</Typography>
           </Stack>
         </>
       ) : (
-        <Box sx={{ mt: 1.25, bgcolor: colors.iconOrangeBg, borderRadius: 2, p: 1.25 }}>
+        <Box sx={{ mt: { xs: 1, sm: 1.25 }, bgcolor: colors.iconOrangeBg, borderRadius: 2, p: { xs: 1, sm: 1.25 } }}>
           <Stack direction="row" spacing={0.75}>
             <WarningAmberRoundedIcon sx={{ fontSize: 16, color: colors.orange, flexShrink: 0, mt: 0.1 }} />
             <Typography sx={{ fontSize: '0.8rem', color: colors.orangeDark }}>

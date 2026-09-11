@@ -65,7 +65,12 @@ function ProjectResultsPage() {
   const secondFloorFileValidation = activeProject.secondFloorFileValidation ?? {};
 
   return (
-    <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
+    // Mobile: not forced to stretch and fill the viewport — the Paper
+    // below is `flex: 1`, so that stretch inflated it into a tall white card
+    // with a large empty gap under short content. Matches the root pattern
+    // already used by MaterialEstimationPage / BrandSelectionPage /
+    // BillOfMaterialsPage. sm+ keeps the original flex:1 behavior.
+    <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
       <Paper
         elevation={0}
         sx={{

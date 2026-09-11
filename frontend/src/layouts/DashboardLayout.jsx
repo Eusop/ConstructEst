@@ -99,7 +99,13 @@ function DashboardLayout() {
     // height (not minHeight) is what makes this a fixed-viewport shell.
     // Without it the whole page could grow past the viewport instead of
     // letting an inner panel scroll on its own, same fix as AdminLayout.jsx.
-    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
+    // 100dvh, not 100vh: on mobile browsers 100vh is the viewport with the
+    // URL bar hidden, so a 100vh shell always hangs below the visible area
+    // and its bottom edge (and this shell's bottom padding) ends up under
+    // the toolbar — by a different amount on every device, which is what
+    // made the same page look differently spaced across phone presets.
+    // Identical to 100vh wherever there is no dynamic toolbar (desktop).
+    <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

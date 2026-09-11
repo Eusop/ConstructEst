@@ -14,3 +14,24 @@
 .leaflet-tooltip.map-marker-label::before {
   display: none;
 }
+
+/* Phone-only map chrome. Leaflet's attribution renders at its desktop size
+   here, which on a ~390px map is wide enough to wrap onto a second line and
+   sit over the tiles instead of tucking into the corner. Shrinking it keeps
+   the required OpenStreetMap credit fully visible (no truncation) on one
+   line. `sm` and up (600px+) keep Leaflet's stock sizing. */
+@media (max-width: 599.98px) {
+  .leaflet-control-attribution {
+    font-size: 9px;
+    line-height: 1.5;
+    padding: 0 5px;
+    background: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+  }
+
+  /* The default 12px gutter costs real estate on a narrow map. */
+  .leaflet-top .leaflet-control,
+  .leaflet-bottom .leaflet-control {
+    margin: 8px;
+  }
+}

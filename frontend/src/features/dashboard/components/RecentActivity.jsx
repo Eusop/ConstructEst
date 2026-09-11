@@ -21,7 +21,7 @@ function RecentActivity({ activities }) {
       elevation={0}
       sx={{
         borderRadius: 3,
-        p: 3,
+        p: { xs: 2.5, sm: 3 },
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
         height: { xs: 230, md: 240 },

@@ -268,6 +268,12 @@ function BrandSelectionPage() {
               bgcolor: colors.accentBlue,
               '&:hover': { bgcolor: colors.accentBlueDark },
               fontSize: { xs: '0.9rem', sm: '1.05rem' },
+              // Full-width primary CTA on phones — this tab's button was the
+              // one place left still sized to its label instead of matching
+              // the Manual tab's own mobile Continue button just above (and
+              // every other primary mobile CTA in the app, e.g. Store
+              // Locator's "Continue to Brand Selection"). sm+ unchanged.
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             Continue to Bill of Materials

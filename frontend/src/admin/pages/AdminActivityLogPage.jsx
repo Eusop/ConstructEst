@@ -84,6 +84,16 @@ function AdminActivityLogPage() {
         <Tabs
           value={category}
           onChange={(event, value) => setCategory(value)}
+          // scrollable rather than the default standard variant — at the
+          // narrowest phones (320px) "User Management" + "Store Management"
+          // don't both fit and the second tab was clipped against the
+          // card's edge. scrollable only changes anything when content
+          // actually overflows its own row, so this is a no-op everywhere
+          // both labels already fit (360px and up, and every tablet/desktop
+          // width, which all have far more room than two short tab labels
+          // need).
+          variant="scrollable"
+          scrollButtons={false}
           sx={{ px: { xs: 1.5, md: 2.5 }, pt: 1, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}
         >
           {CATEGORIES.map((item) => (

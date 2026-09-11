@@ -7,7 +7,7 @@ function SignUpPage() {
     <Box
       sx={{
         position: 'relative',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
         alignItems: { xs: 'stretch', md: 'center' },
         justifyContent: 'center',

@@ -69,17 +69,35 @@ function TypedConfirmDialog({ open, title, message, confirmWord = 'DELETE', conf
           disabled={isConfirming}
         />
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
+      {/* On phones (`down('sm')`) the two actions stack full-width instead of
+          sharing a cramped row — side by side, the confirm label ("Yes,
+          Deactivate") wraps onto two lines and the buttons look unbalanced.
+          Desktop/tablet (`sm`+) keep the original inline row untouched. */}
+      <DialogActions
+        sx={(theme) => ({
+          px: 3,
+          pb: 3,
+          [theme.breakpoints.down('sm')]: {
+            flexDirection: 'column-reverse',
+            alignItems: 'stretch',
+            gap: 1,
+            px: 2,
+            pb: 2,
+            '& > :not(:first-of-type)': { ml: 0 },
+          },
+        })}
+      >
         <Button
           onClick={onCancel}
           disabled={isConfirming}
-          sx={{
+          sx={(theme) => ({
             bgcolor: 'common.white',
             color: 'text.primary',
             border: '1px solid',
             borderColor: 'grey.300',
             '&:hover': { bgcolor: 'grey.50', borderColor: 'grey.300' },
-          }}
+            [theme.breakpoints.down('sm')]: { width: '100%' },
+          })}
         >
           Cancel
         </Button>
@@ -89,7 +107,11 @@ function TypedConfirmDialog({ open, title, message, confirmWord = 'DELETE', conf
           variant="contained"
           disableElevation
           startIcon={isConfirming ? <CircularProgress size={16} color="inherit" /> : null}
-          sx={{ bgcolor: colors.iconRedFg, '&:hover': { bgcolor: '#B91C1C' } }}
+          sx={(theme) => ({
+            bgcolor: colors.iconRedFg,
+            '&:hover': { bgcolor: '#B91C1C' },
+            [theme.breakpoints.down('sm')]: { width: '100%', whiteSpace: 'nowrap' },
+          })}
         >
           {isConfirming ? 'Working…' : confirmLabel}
         </Button>

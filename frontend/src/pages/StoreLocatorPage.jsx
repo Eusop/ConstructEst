@@ -160,7 +160,7 @@ function StoreLocatorPage() {
   }
 
   return (
-    <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
+    <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
       <Box>
         <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Compare hardware stores</Typography>
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
@@ -179,9 +179,9 @@ function StoreLocatorPage() {
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={2.5}
-        sx={{ flexGrow: { xs: 0, md: 1 }, minHeight: 0, minWidth: 0 }}
+        sx={{ flexGrow: { xs: 1, sm: 0, md: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}
       >
-        <Box sx={{ flex: { md: 3 }, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+        <Box sx={{ flex: { md: 3 }, flexShrink: { xs: 0, sm: 1 }, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
@@ -207,7 +207,7 @@ function StoreLocatorPage() {
           </Paper>
         </Box>
 
-        <Box sx={{ flex: { md: 2 }, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box sx={{ flex: { xs: 1, sm: 'unset', md: 2 }, width: '100%', display: 'flex', flexDirection: 'column', minHeight: { xs: 220, sm: 0 } }}>
           <Paper
             elevation={0}
             sx={{
@@ -216,14 +216,22 @@ function StoreLocatorPage() {
               boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
               p: 1.5,
               flex: 1,
-              minHeight: { xs: 260, md: 420 },
               // Without a bounded height + scroll, this list grew past its
               // row and the button below landed on top of it. Matches the
               // map's Paper on the left so both columns behave the same.
               overflow: 'auto',
+              // Phones: no fixed height of its own — it fills whatever the
+              // flex chain above leaves over, so the page always ends a
+              // consistent page-padding above the bottom edge regardless of
+              // phone height, and a long store list scrolls in here.
+              minHeight: { xs: 0, sm: 260, md: 420 },
+              // Keeps the inner scroll feeling native on touch: momentum,
+              // and no scroll-chaining to the page when the list bottoms out.
+              overscrollBehavior: { xs: 'contain', sm: 'auto' },
+              WebkitOverflowScrolling: { xs: 'touch', sm: 'auto' },
             }}
           >
-            <Stack spacing={1.5}>
+            <Stack spacing={{ xs: 1.25, sm: 1.5 }}>
               {STORES.map((store) => (
                 <StoreListCard
                   key={store.id}
@@ -240,7 +248,10 @@ function StoreLocatorPage() {
 
       <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
         <Tooltip title={selectedStoreId ? '' : 'Select a hardware store to continue'}>
-          <span>
+          {/* Box, not a bare <span>, so it can carry the full-width phone
+              style — it still forwards the ref Tooltip needs to anchor to
+              a disabled button. */}
+          <Box component="span" sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Button
               onClick={() => {
                 if (selectedStore) {
@@ -260,11 +271,14 @@ function StoreLocatorPage() {
                 bgcolor: colors.accentBlue,
                 '&:hover': { bgcolor: colors.accentBlueDark },
                 fontSize: { xs: '0.9rem', sm: '1.05rem' },
+                // Full-bleed primary action on phones, matching how the
+                // rest of the app's mobile CTAs sit.
+                width: { xs: '100%', sm: 'auto' },
               }}
             >
               Continue to Brand Selection
             </Button>
-          </span>
+          </Box>
         </Tooltip>
       </Box>
     </Stack>
