@@ -109,7 +109,14 @@ function ProfilePage() {
   // these to actually show. The password errors are only surfaced once the
   // user has started filling that section in, so an untouched Change Password
   // block never reports "required" at someone editing their email.
-  const isChangingPassword = isRequired(form.currentPassword) || isRequired(form.newPassword) || isRequired(form.confirmPassword);
+  //
+  // Deliberately excludes currentPassword: browsers eagerly autofill a
+  // "current password"-type field from saved credentials on page load, with
+  // no user intent to change anything, which used to flip this true (and
+  // reveal the Change Password button) on page load alone. newPassword/
+  // confirmPassword aren't autofilled the same way, so they're the real
+  // signal that someone is actually trying to change their password.
+  const isChangingPassword = isRequired(form.newPassword) || isRequired(form.confirmPassword);
   const errors = { ...validateDetails(form), ...(isChangingPassword ? validatePassword(form) : {}) };
 
   const updateField = (field, value) => {
