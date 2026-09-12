@@ -21,6 +21,7 @@ import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
 import { updateProfileRequest, changePasswordRequest, uploadAvatarRequest, removeAvatarRequest } from '../services/usersService';
+import { resolveAssetUrl } from '../services/apiClient';
 import { colors } from '../theme/palette';
 
 const EMPTY_PASSWORD_FIELDS = { currentPassword: '', newPassword: '', confirmPassword: '' };
@@ -131,8 +132,8 @@ function ProfilePage() {
       // Server-generated URL, not the local blob preview — that is what makes
       // the photo survive a logout instead of dying with the browser document.
       updateProfile({ avatarUrl: user.avatarUrl });
-      setForm((prev) => ({ ...prev, avatarUrl: user.avatarUrl }));
-      setSavedForm((prev) => ({ ...prev, avatarUrl: user.avatarUrl }));
+      setForm((prev) => ({ ...prev, avatarUrl: resolveAssetUrl(user.avatarUrl) }));
+      setSavedForm((prev) => ({ ...prev, avatarUrl: resolveAssetUrl(user.avatarUrl) }));
       showToast(file ? 'Profile photo updated' : 'Profile photo removed', 'success');
     } catch (error) {
       showToast(error.message || 'Could not update your photo. Please try again.');

@@ -6,6 +6,13 @@
  */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const TOKEN_KEY = 'constructest_token';
+const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+
+export function resolveAssetUrl(path) {
+  if (!path) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_ORIGIN}${path}`;
+}
 
 export class ApiError extends Error {
   constructor(status, message, code, email) {
