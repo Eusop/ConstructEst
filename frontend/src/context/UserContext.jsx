@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { fetchCurrentUser, isLoggedIn, logout as logoutRequest } from '../services/authService';
+import { resolveAssetUrl } from '../services/apiClient';
 
 const UserContext = createContext(null);
-
 const INITIAL_PROFILE = { id: null, userName: null, employeeId: null, email: null, avatarUrl: null, accessRole: null };
 
 /**
@@ -33,7 +33,7 @@ export function UserProvider({ children }) {
           userName: user.userName,
           employeeId: user.employeeId,
           email: user.email,
-          avatarUrl: user.avatarUrl,
+          avatarUrl: resolveAssetUrl(user.avatarUrl),
           accessRole: user.accessRole,
         });
         setIsAuthenticated(true);
@@ -61,6 +61,10 @@ export function UserProvider({ children }) {
       if ('avatarUrl' in updates && prev.avatarUrl && prev.avatarUrl !== updates.avatarUrl && prev.avatarUrl.startsWith('blob:')) {
         URL.revokeObjectURL(prev.avatarUrl);
       }
+      if ('avatarUrl' in updates) {
+        updates = { ...updates, avatarUrl: resolveAssetUrl(updates.avatarUrl) };
+      }
+
       return { ...prev, ...updates };
     });
   }, []);
