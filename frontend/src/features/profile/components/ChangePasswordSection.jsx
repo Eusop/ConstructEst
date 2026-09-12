@@ -26,8 +26,11 @@ const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary
  * @param {(field: string) => void} props.onFieldBlur
  * @param {() => void} props.onSubmit
  * @param {boolean} [props.isSaving]
+ * @param {boolean} [props.isActive] Whether any of the three fields has
+ *   content yet — the submit button only appears once true, so it isn't
+ *   sitting there implying a save is needed when nothing has been typed.
  */
-function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBlur, onSubmit, isSaving = false }) {
+function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBlur, onSubmit, isSaving = false, isActive = false }) {
   // Shows the instant there's content, not gated on blur alone — a browser
   // autofilling saved credentials never fires a real blur event (see
   // SignUpForm.jsx for the same fix and fuller explanation).
@@ -95,19 +98,24 @@ function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBl
 
       {/* This section saves on its own, separate from the page's "Save
           changes" — that button used to submit the password too, so editing
-          a name meant re-typing the current password for no reason. */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          onClick={onSubmit}
-          variant="contained"
-          disableElevation
-          disabled={isSaving}
-          startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
-          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
-        >
-          {isSaving ? 'Changing…' : 'Change password'}
-        </Button>
-      </Box>
+          a name meant re-typing the current password for no reason. Only
+          shown once something has actually been typed here, so it doesn't
+          sit next to "Save changes" looking like a second way to do the
+          same thing when the section is untouched. */}
+      {isActive && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            onClick={onSubmit}
+            variant="contained"
+            disableElevation
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+          >
+            {isSaving ? 'Changing…' : 'Change password'}
+          </Button>
+        </Box>
+      )}
     </Stack>
   );
 }
