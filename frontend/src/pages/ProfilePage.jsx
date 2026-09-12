@@ -285,6 +285,7 @@ function ProfilePage() {
                     onFieldBlur={handleFieldBlur}
                     onSubmit={handleChangePassword}
                     isSaving={isSavingPassword}
+                    isActive={isChangingPassword}
                   />
                 </AccordionDetails>
               </Accordion>
@@ -326,6 +327,7 @@ function ProfilePage() {
                   onFieldBlur={handleFieldBlur}
                   onSubmit={handleChangePassword}
                   isSaving={isSavingPassword}
+                  isActive={isChangingPassword}
                 />
               </Box>
             </>
