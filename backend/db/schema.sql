@@ -42,6 +42,10 @@ CREATE TABLE users (
   password_reset_expires_at TIMESTAMP NULL,
   password_reset_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
   password_reset_last_sent_at TIMESTAMP NULL,
+  -- "Online now" presence for the Admin Module — set on every successful
+  -- login and refreshed by a heartbeat while a session stays open (see
+  -- migrations/015_users_last_seen.sql). NULL means never logged in.
+  last_seen_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

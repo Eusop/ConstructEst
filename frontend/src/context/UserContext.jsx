@@ -1,9 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { fetchCurrentUser, isLoggedIn, logout as logoutRequest } from '../services/authService';
 import { resolveAssetUrl } from '../services/apiClient';
+import { sendHeartbeat } from '../services/usersService';
 
 const UserContext = createContext(null);
 const INITIAL_PROFILE = { id: null, userName: null, employeeId: null, email: null, avatarUrl: null, accessRole: null };
+
+// Feeds the Admin Module's "online now" indicator (see AdminUsersPage.jsx,
+// which treats last_seen_at within the last ~90s — double this — as
+// online). 45s keeps that reasonably fresh without hammering the backend.
+const HEARTBEAT_INTERVAL_MS = 45_000;
 
 /**
  * The signed-in user's identity. `userName` is set once on successful
@@ -54,6 +60,20 @@ export function UserProvider({ children }) {
       })
       .finally(() => setIsLoading(false));
   }, []);
+
+  // Fires once immediately on becoming authenticated (not just after the
+  // first interval delay), then on a steady timer for as long as the
+  // session stays open. Failures are swallowed — a missed heartbeat just
+  // means this account looks briefly offline to an admin, not worth
+  // surfacing as an error to the person using the app.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    sendHeartbeat().catch(() => {});
+    const intervalId = setInterval(() => {
+      sendHeartbeat().catch(() => {});
+    }, HEARTBEAT_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated]);
 
   const setCurrentUser = useCallback((name, accessRole = 'user') => {
     setProfile((prev) => ({ ...prev, userName: name, accessRole }));

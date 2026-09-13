@@ -77,6 +77,17 @@ export const uploadProfilePhoto = asyncHandler(async (req, res) => {
   res.status(201).json({ user: toPublicUser(user) });
 });
 
+/**
+ * PUT /api/users/me/heartbeat — no body, no response content. Polled
+ * periodically by the frontend (see UserContext.jsx) while a session stays
+ * open, so the Admin Module's "online now" indicator (last_seen_at within
+ * the last ~90s) stays accurate beyond just the moment of login.
+ */
+export const heartbeat = asyncHandler(async (req, res) => {
+  await query('UPDATE users SET last_seen_at = NOW() WHERE id = ?', [req.user.id]);
+  res.status(204).end();
+});
+
 /** DELETE /api/users/me/avatar — back to the generated initials. */
 export const removeProfilePhoto = asyncHandler(async (req, res) => {
   const [previous] = await query('SELECT avatar_url FROM users WHERE id = ?', [req.user.id]);
