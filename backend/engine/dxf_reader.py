@@ -5,6 +5,7 @@ All source coordinates are millimeters (Table 23); every length/area
 returned here is already converted to meters / square meters.
 """
 import math
+import re
 
 MM_TO_M = 1 / 1000
 
@@ -21,9 +22,32 @@ LAYER_ALIASES = {
     "floor": "FLOOR", "floor_area": "FLOOR",
 }
 
+# Splits a layer name into tokens on any run of non-alphanumeric characters,
+# so "WALL-150", "A-WALL", and "COLUMN-150x300" all yield a bare "WALL"/
+# "COLUMN" token alongside whatever else is in the name.
+_LAYER_TOKEN_RE = re.compile(r"[^A-Za-z0-9]+")
+
 
 def normalize_layer(name):
-    return LAYER_ALIASES.get((name or "").strip().lower(), (name or "").strip().upper())
+    """Maps a DXF layer name to the paper's convention (WALL/DOOR/etc).
+
+    A real architectural DXF rarely uses that exact bare name — it's much
+    more common to see a discipline prefix (AIA-style "A-WALL", "S-COLUMN")
+    or a dimension suffix ("WALL-150", "COLUMN-150x300"). Matching only the
+    whole string meant any such file silently detected zero of everything,
+    with no error to explain why — the geometry was there, just filed under
+    a name that never matched. Splitting into tokens first and checking each
+    one against LAYER_ALIASES catches both conventions, while still refusing
+    a false hit like "WALLPAPER" (one token, not a separate "WALL" token).
+    """
+    cleaned = (name or "").strip()
+    whole = cleaned.lower()
+    if whole in LAYER_ALIASES:
+        return LAYER_ALIASES[whole]
+    for token in _LAYER_TOKEN_RE.split(whole):
+        if token in LAYER_ALIASES:
+            return LAYER_ALIASES[token]
+    return cleaned.upper()
 
 
 def entity_layer(entity):
@@ -212,7 +236,12 @@ def extract_geometry(doc):
     door_area_m2 = opening_area("DOOR", STANDARD_DOOR_HEIGHT_M)
     window_area_m2 = opening_area("WINDOW", STANDARD_WINDOW_HEIGHT_M)
 
-    column_count = len(entities_on_layer(msp, "COLUMN"))
+    # Only closed LWPOLYLINE/POLYLINE footprints count as a real column —
+    # standard practice draws a column as one closed rectangle (RECTANG/
+    # PLINE), never as loose LINE segments. Counting every raw entity on the
+    # layer overcounted by including a stray unjoined LINE left over from
+    # drafting that wasn't a column at all.
+    column_count = sum(1 for e in entities_on_layer(msp, "COLUMN") if e.dxftype() in ("LWPOLYLINE", "POLYLINE"))
 
     roof_perimeter_m = 0.0
     roof_ridge_length_m = 0.0
