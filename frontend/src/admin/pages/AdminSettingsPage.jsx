@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import CalibrationFactorsCard from '../../features/settings/components/CalibrationFactorsCard';
@@ -45,11 +46,6 @@ function AdminSettingsPage() {
   const [draftFactors, setDraftFactors] = useState(null);
   const [savedOverrides, setSavedOverrides] = useState(null);
   const [draftOverrides, setDraftOverrides] = useState(null);
-  // Cancel/Save were removed from the UI on request, but the save/cancel
-  // logic below is left wired up as-is (not a functionality change) in case
-  // a trigger for it returns — hence the lint suppressions on this and the
-  // two handlers below, which would otherwise flag them as unused.
-  // eslint-disable-next-line no-unused-vars
   const [isSaving, setIsSaving] = useState(false);
 
   const load = () => {
@@ -77,13 +73,19 @@ function AdminSettingsPage() {
   const updateOverride = (key, value) => setDraftOverrides((prev) => ({ ...prev, [key]: value }));
   const handleResetOverrides = () => setDraftOverrides({ ...EMPTY_OVERRIDES });
 
-  // eslint-disable-next-line no-unused-vars
+  // Save/Cancel only appear once a draft actually diverges from what's
+  // saved — both cards share one Save action (they save together in one
+  // request below), so either card being dirty is enough to show it. Plain
+  // objects of primitives, so a JSON comparison is a reliable, simple dirty
+  // check without needing a per-field diff.
+  const isDirty = JSON.stringify(draftFactors) !== JSON.stringify(savedFactors)
+    || JSON.stringify(draftOverrides) !== JSON.stringify(savedOverrides);
+
   const handleCancel = () => {
     setDraftFactors(savedFactors);
     setDraftOverrides(savedOverrides);
   };
 
-  // eslint-disable-next-line no-unused-vars
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -126,6 +128,37 @@ function AdminSettingsPage() {
             <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />
           </MobileTabSwitcher>
         </Stack>
+
+        {/* Only shown once a draft actually differs from what's saved — the
+            page stays button-free otherwise, matching the earlier removal,
+            while still giving dragging a slider a way to actually persist. */}
+        {isDirty && (
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
+            <Button
+              onClick={handleCancel}
+              disabled={isSaving}
+              sx={{
+                bgcolor: 'common.white',
+                color: 'text.primary',
+                border: '1px solid',
+                borderColor: 'grey.300',
+                '&:hover': { bgcolor: 'grey.50', borderColor: 'grey.300' },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              variant="contained"
+              disableElevation
+              disabled={isSaving}
+              startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+              sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+            >
+              {isSaving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </Stack>
+        )}
       </Stack>
 
       {/* Explicit-height spacer, not padding on the flex:1/minHeight:0

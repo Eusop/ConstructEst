@@ -38,8 +38,18 @@ export function UserProvider({ children }) {
         });
         setIsAuthenticated(true);
       })
-      .catch(() => {
-        logoutRequest();
+      .catch((error) => {
+        // requireAuth (backend/src/middleware/auth.js) always answers 401 for
+        // a missing/invalid/expired token — that's the only case that means
+        // the stored token is actually bad. Anything else (a transient
+        // network error, a cold-starting backend, a CORS hiccup) used to hit
+        // this same catch and wipe an otherwise still-valid token, silently
+        // logging out someone who checked "Keep me signed in" the moment
+        // they reopened the tab. Leave the token alone for those — the user
+        // just stays logged out for this load and can retry/refresh.
+        if (error?.status === 401) {
+          logoutRequest();
+        }
         setIsAuthenticated(false);
       })
       .finally(() => setIsLoading(false));

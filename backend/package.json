@@ -17,6 +17,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
     "mysql2": "^3.11.0",
-    "resend": "^4.0.0"
+    "@getbrevo/brevo": "^2.2.0"
   }
 }
