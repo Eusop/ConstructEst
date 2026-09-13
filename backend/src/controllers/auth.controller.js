@@ -108,6 +108,11 @@ export const login = asyncHandler(async (req, res) => {
     throw new HttpError(403, 'This account has been deactivated.', 'ACCOUNT_DEACTIVATED');
   }
 
+  // Feeds the Admin Module's "online now" indicator — see
+  // db/migrations/015_users_last_seen.sql. Kept fresh afterward by a
+  // heartbeat while the session stays open (users.controller.js's heartbeat).
+  await query('UPDATE users SET last_seen_at = NOW() WHERE id = ?', [user.id]);
+
   const token = signToken(user);
   res.json({ token, user: toPublicUser(user) });
 });

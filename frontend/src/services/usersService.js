@@ -33,3 +33,12 @@ export async function removeAvatarRequest() {
   const { user } = await apiRequest('/users/me/avatar', { method: 'DELETE' });
   return user;
 }
+
+/**
+ * Polled periodically while a session stays open (see UserContext.jsx) so
+ * the Admin Module's "online now" indicator reflects more than just the
+ * moment of login. No response body — a 204.
+ */
+export async function sendHeartbeat() {
+  return apiRequest('/users/me/heartbeat', { method: 'PUT' });
+}

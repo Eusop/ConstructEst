@@ -12,6 +12,7 @@ import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
+import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Menu from '@mui/material/Menu';
@@ -43,6 +44,64 @@ function avatarColorFor(id) {
 function formatDate(value) {
   if (!value) return '—';
   return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// Double the 45s heartbeat interval (see UserContext.jsx's sendHeartbeat
+// polling) so one missed beat from ordinary network jitter doesn't
+// immediately flip someone to looking offline.
+const ONLINE_THRESHOLD_MS = 90_000;
+// Keeps the dots/last-seen text reasonably live while an admin sits on this
+// page watching, without needing a websocket — see refresh() below.
+const ADMIN_LIST_REFRESH_MS = 30_000;
+
+function isOnline(user) {
+  if (!user.lastSeenAt) return false;
+  return Date.now() - new Date(user.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS;
+}
+
+// Null past the ~7 day mark — formatLastSeen falls back to formatDate then,
+// since "23 days ago" is less useful than an actual date at that point.
+function formatRelativeTime(date) {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+  return null;
+}
+
+// Shown both as the presence dot's tooltip and as a secondary line under
+// each user's name, so the actual recency is visible without needing to
+// hover — a bare dot alone doesn't say whether "offline" means 2 minutes
+// or 2 months. lastSeenAt is null for an admin-created/seeded account that
+// has never actually logged in yet, distinct from "was online, now isn't."
+function formatLastSeen(user) {
+  if (isOnline(user)) return 'Online now';
+  if (!user.lastSeenAt) return 'Never signed in';
+  const relative = formatRelativeTime(new Date(user.lastSeenAt));
+  return relative ? `Last seen ${relative}` : `Last seen ${formatDate(user.lastSeenAt)}`;
+}
+
+// Wraps an Avatar with the green "online now" dot (hidden otherwise) and a
+// tooltip giving the exact recency on hover. Shared between the desktop
+// table and UserMobileCard so the dot/tooltip logic isn't duplicated.
+function PresenceAvatar({ user, children }) {
+  return (
+    <Tooltip title={formatLastSeen(user)}>
+      <Badge
+        overlap="circular"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        variant="dot"
+        invisible={!isOnline(user)}
+        sx={{ '& .MuiBadge-dot': { bgcolor: colors.iconGreenFg, boxShadow: '0 0 0 2px #fff' } }}
+      >
+        {children}
+      </Badge>
+    </Tooltip>
+  );
 }
 
 // Admin accounts are protected from deactivation — see admin.controller.js's
@@ -110,15 +169,20 @@ function UserMobileCard({ user, onOpenMenu }) {
   return (
     <Paper elevation={0} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider', p: 1.25 }}>
       <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-        <Avatar sx={{ width: 36, height: 36, fontSize: '0.8rem', fontWeight: 700, bgcolor: avatarColorFor(user.id), flexShrink: 0 }}>
-          {getInitials(user.userName)}
-        </Avatar>
+        <PresenceAvatar user={user}>
+          <Avatar sx={{ width: 36, height: 36, fontSize: '0.8rem', fontWeight: 700, bgcolor: avatarColorFor(user.id), flexShrink: 0 }}>
+            {getInitials(user.userName)}
+          </Avatar>
+        </PresenceAvatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: 'text.primary' }} noWrap>
             {user.userName}
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem' }} noWrap>
             {user.employeeId} · {user.email}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.68rem' }} noWrap>
+            {formatLastSeen(user)}
           </Typography>
         </Box>
         <IconButton size="small" onClick={(event) => onOpenMenu(event, user)} sx={{ flexShrink: 0, mr: -0.5 }} aria-label="User actions">
@@ -184,7 +248,23 @@ function AdminUsersPage() {
       .finally(() => setIsLoading(false));
   };
 
+  // Silent background refresh — no isLoading toggle, so the table doesn't
+  // flash back to a spinner every cycle while an admin is actively reading
+  // it. Only exists to keep the online dots/last-seen text from going
+  // stale while this page stays open; failures are ignored, the next tick
+  // just tries again.
+  const refresh = () => {
+    listAdminUsers()
+      .then(({ users: list }) => setUsers(list))
+      .catch(() => {});
+  };
+
   useEffect(load, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(refresh, ADMIN_LIST_REFRESH_MS);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -376,10 +456,15 @@ function AdminUsersPage() {
                   <TableRow key={user.id} hover>
                     <TableCell>
                       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                        <Avatar sx={{ width: 36, height: 36, fontSize: '0.85rem', fontWeight: 700, bgcolor: avatarColorFor(user.id) }}>
-                          {getInitials(user.userName)}
-                        </Avatar>
-                        <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.userName}</Typography>
+                        <PresenceAvatar user={user}>
+                          <Avatar sx={{ width: 36, height: 36, fontSize: '0.85rem', fontWeight: 700, bgcolor: avatarColorFor(user.id) }}>
+                            {getInitials(user.userName)}
+                          </Avatar>
+                        </PresenceAvatar>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.userName}</Typography>
+                          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>{formatLastSeen(user)}</Typography>
+                        </Box>
                       </Stack>
                     </TableCell>
                     <TableCell sx={{ color: 'text.secondary' }}>{user.employeeId}</TableCell>

@@ -10,6 +10,7 @@ export function toPublicUser(row) {
     avatarUrl: row.avatar_url,
     accessRole: row.access_role,
     createdAt: row.created_at,
+    lastSeenAt: row.last_seen_at,
   };
 }
 
