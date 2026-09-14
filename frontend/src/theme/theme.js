@@ -25,9 +25,20 @@ const theme = createTheme({
   },
 
   typography: {
-    fontFamily: ['Roboto', 'Helvetica', 'Arial', 'sans-serif'].join(','),
+    fontFamily: ['Sora', 'Helvetica', 'Arial', 'sans-serif'].join(','),
     h5: { fontWeight: 700 },
     button: { fontWeight: 700, textTransform: 'none' },
+    // Every fontSize in this app is authored as a `rem` literal (page
+    // titles, headings, body text, labels, buttons, nav, tables, form
+    // fields, helper text — none of it goes through MUI's variant/pxToRem
+    // system, which is barely used here). That makes the actual root
+    // <html> font-size — set to match, in styles/index.css — the one lever
+    // that scales all of it down together by the same one-step ratio,
+    // instead of hand-editing hundreds of individual sx values. This just
+    // keeps MUI's own internal pxToRem() math (used by a handful of
+    // unstyled built-in component defaults, e.g. Tooltip) consistent with
+    // that real root size.
+    htmlFontSize: 15,
   },
 
   shape: { borderRadius: 8 },

@@ -1,3 +1,10 @@
+/* Leaflet's own stylesheet hardcodes "Helvetica Neue" on its root container,
+   which would otherwise override the app-wide Sora font (set on <body> via
+   the MUI theme) for zoom controls, attribution, and tooltip labels. */
+.leaflet-container {
+  font-family: inherit;
+}
+
 /* Strips Leaflet's default tooltip chrome (white box + border + arrow) for
    marker labels — the original Google Maps version rendered its label text
    directly on top of the marker icon, not in a separate speech-bubble. */

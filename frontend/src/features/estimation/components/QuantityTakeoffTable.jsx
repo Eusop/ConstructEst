@@ -130,30 +130,35 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
   const sourceGroups = viewMode === 'bySource' ? buildSourceGroups(materials) : [];
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        bgcolor: 'common.white',
-        boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        overflow: 'hidden',
-        flex: 1,
-        minWidth: 0,
-        minHeight: { xs: 0, md: 420 },
-        // A flex column so the header (Total/By source toggle) and footer
-        // (factors banner + Continue button) stay pinned at their natural
-        // height while only the middle content area scrolls internally —
-        // without this, the Paper's own fixed flex-computed height (now
-        // that the page shell has a real height ceiling — see
-        // DashboardLayout.jsx) combined with `overflow: hidden` above just
-        // clipped the footer outright whenever the "Total" view's full,
-        // ungrouped row list ran taller than the card (the "By source"
-        // view's collapsed-by-default accordions rarely hit this, which is
-        // why the button only seemed to vanish in one of the two views).
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    // The extra wrapping Box (rather than margin/padding on the Paper
+    // itself) is the actual fix here: this card is Stack's last direct
+    // child (see MaterialEstimationPage.jsx's spacing={2.5} Stack), and
+    // Stack forcibly resets margin:0 on all its direct children to
+    // implement its own spacing — so a margin-bottom on the Paper gets
+    // silently overridden. Padding on this outer Box isn't touched by that
+    // reset and isn't inside the card itself, so it reliably keeps a gap
+    // below the card (matching the page's own spacing={2.5} rhythm) once
+    // the card's content — now natural-height, see below — overflows the
+    // page's scroll region and would otherwise sit flush against its edge.
+    <Box sx={{ pb: 2.5 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          bgcolor: 'common.white',
+          boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
+          minWidth: 0,
+          // Deliberately no flex:1/minHeight/overflow clamp here (that
+          // previously stretched this card to fill leftover viewport space
+          // and scrolled the middle content internally instead of growing).
+          // The card now sizes to its natural content height — including
+          // when a "By source" accordion opens — and the page-level scroll
+          // region (DashboardLayout's Outlet wrapper, `overflow: auto`)
+          // handles anything taller than the viewport instead.
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
       {/* Always available, not just for 2-storey/two-file projects — every
           material's sourceBreakdown already tags ground/roofing/shared
           contributions regardless of storeys (see backend/engine/formulas.py's
@@ -195,7 +200,7 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
         )}
       </Stack>
 
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+      <Box>
       {viewMode === 'bySource' ? (
         <Stack spacing={1.25} sx={{ p: { xs: 1.5, sm: 2.5 } }}>
           {sourceGroups.map((group) => (
@@ -249,7 +254,7 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
             ))}
           </Stack>
 
-          <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
+          <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto', p: { xs: 1.5, sm: 2.5 } }}>
             <Table sx={{ minWidth: 800 }}>
               <TableHead>
                 <TableRow>
@@ -320,7 +325,8 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
           Continue to Store Locator
         </Button>
       </Stack>
-    </Paper>
+      </Paper>
+    </Box>
   );
 }
 

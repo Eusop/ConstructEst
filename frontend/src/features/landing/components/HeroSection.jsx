@@ -54,6 +54,13 @@ function HeroSection() {
                 color: 'text.primary',
                 lineHeight: 1.2,
                 fontSize: { xs: '1.9rem', sm: '2.4rem', md: '2.6rem' },
+                // Sora runs noticeably wider than Roboto at this bold weight —
+                // without this, "Estimate materials straight" no longer fits
+                // the md two-column layout's text half on one line and wraps
+                // a third time. A small negative tracking (letter-spacing
+                // only, not font-size) closes that gap without changing the
+                // glyphs' actual rendered size.
+                letterSpacing: '-0.04em',
                 mb: { xs: 2, md: 2.5 },
               }}
             >

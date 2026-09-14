@@ -40,7 +40,7 @@ export function buildStoreInfoWindowContent(store) {
     : '';
 
   return `
-    <div style="font-family:Roboto,Helvetica,Arial,sans-serif;min-width:220px;max-width:260px;padding:2px;">
+    <div style="font-family:Sora,Helvetica,Arial,sans-serif;min-width:220px;max-width:260px;padding:2px;">
       <div style="font-weight:700;font-size:14px;color:${colors.textPrimary};">${escapeHtml(store.name)}</div>
       <div style="color:${colors.textSecondary};font-size:12px;margin-top:2px;">${escapeHtml(store.address)}</div>
       <div style="display:flex;gap:12px;font-size:12px;color:${colors.textPrimary};margin-top:6px;">

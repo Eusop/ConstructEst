@@ -108,6 +108,12 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
         p: { xs: 2, md: 4 },
+        // Matches CalibrationFactorsCard's Paper (its sibling in
+        // MobileTabSwitcher) — without this, this card's full width was
+        // only incidental (from its own content), not guaranteed by CSS,
+        // unlike its sibling and the card below it, causing its left/right
+        // edges to not reliably line up with them.
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
       }}

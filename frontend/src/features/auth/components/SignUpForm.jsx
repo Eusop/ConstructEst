@@ -325,6 +325,12 @@ function SignUpForm() {
               placeholder="Confirm password"
               autoComplete="new-password"
               icon={<LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+              // Sora renders this placeholder ~14% wider than Roboto did,
+              // which no longer fits this icon-narrowed field at full
+              // tracking — a small negative letter-spacing (not a font-size
+              // or layout change) recovers the fit without shrinking the
+              // text's rendered size.
+              sx={{ '& .MuiOutlinedInput-input': { letterSpacing: '-0.05em' } }}
               value={form.confirmPassword}
               onChange={handleChange}
               onBlur={handleBlur}

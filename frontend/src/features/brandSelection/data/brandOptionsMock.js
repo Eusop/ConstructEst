@@ -62,15 +62,15 @@ export const MATERIAL_BRAND_OPTIONS = {};
 let currentStoreId = null;
 
 export const OPTIMIZATION_TIERS = {
-  premium: { key: 'premium', label: 'Premium', description: 'Highest-quality brands, regardless of price', choices: {} },
+  premium: { key: 'premium', label: 'Premium', description: 'Higher-priced brands', choices: {} },
   standard: {
     key: 'standard',
     label: 'Standard',
-    description: 'Best balance of quality and price',
+    description: 'Mixed-price brands',
     recommended: true,
     choices: {},
   },
-  budget: { key: 'budget', label: 'Budget', description: 'Lowest-cost brands meeting minimum quality', choices: {} },
+  budget: { key: 'budget', label: 'Budget', description: 'Lower-priced brands', choices: {} },
 };
 
 function pickPremium(options) {

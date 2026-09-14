@@ -4,11 +4,13 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// Roboto (MUI's default typeface) — self-hosted, no external requests.
-import '@fontsource/roboto/300.css';
-import '@fontsource/roboto/400.css';
-import '@fontsource/roboto/500.css';
-import '@fontsource/roboto/700.css';
+// Sora (app-wide typeface) — self-hosted, no external requests. Weights
+// match every fontWeight value actually used across the app (400/500/600/700/800).
+import '@fontsource/sora/400.css';
+import '@fontsource/sora/500.css';
+import '@fontsource/sora/600.css';
+import '@fontsource/sora/700.css';
+import '@fontsource/sora/800.css';
 
 import App from './App';
 import theme from './theme/theme';
