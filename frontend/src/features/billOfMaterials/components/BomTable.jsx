@@ -15,7 +15,7 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
 import { formatAmount } from '../../../utils/formatNumbers';
 
-const COLUMNS = ['MATERIAL', 'BRAND', 'QTY', 'UNIT P', 'AMOUNT'];
+const COLUMNS = ['MATERIAL', 'BRAND', 'SPEC', 'QTY', 'UNIT P', 'AMOUNT'];
 
 function BomMobileCard({ item }) {
   return (
@@ -27,10 +27,19 @@ function BomMobileCard({ item }) {
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.92rem' }}>{item.material}</Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{item.brand}</Typography>
+          {item.spec && (
+            <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem', mt: 0.15 }}>{item.spec}</Typography>
+          )}
         </Box>
-        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>
-          ₱{formatAmount(item.amount)}
-        </Typography>
+        {item.available === false ? (
+          <Typography sx={{ fontWeight: 700, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+            Not available here
+          </Typography>
+        ) : (
+          <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>
+            ₱{formatAmount(item.amount)}
+          </Typography>
+        )}
       </Stack>
 
       <Divider sx={{ my: 1.25 }} />
@@ -42,7 +51,9 @@ function BomMobileCard({ item }) {
         </Box>
         <Box sx={{ textAlign: 'right' }}>
           <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>Unit price</Typography>
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>{formatAmount(item.unitPrice)}</Typography>
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>
+            {item.available === false ? 'Not available' : formatAmount(item.unitPrice)}
+          </Typography>
         </Box>
       </Stack>
     </Paper>
@@ -61,7 +72,7 @@ function BomMobileCard({ item }) {
  * horizontally scrolling a shrunk desktop table — see BomMobileCard above.
  *
  * @param {object} props
- * @param {Array<{key: string, material: string, brand: string, quantityLabel: string, unitPrice: number, amount: number}>} props.items
+ * @param {Array<{key: string, material: string, brand: string, spec: string|null, available: boolean, quantityLabel: string, unitPrice: number|null, amount: number|null}>} props.items
  */
 function BomTable({ items }) {
   const categoryGroups = groupMaterialsByCategory(items);
@@ -122,11 +133,20 @@ function BomTable({ items }) {
                   {item.material}
                 </TableCell>
                 <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{item.brand}</TableCell>
+                <TableCell sx={{ color: 'text.secondary', fontSize: '0.82rem', borderColor: 'divider' }}>{item.spec}</TableCell>
                 <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{item.quantityLabel}</TableCell>
-                <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{formatAmount(item.unitPrice)}</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>
-                  ₱{formatAmount(item.amount)}
-                </TableCell>
+                {item.available === false ? (
+                  <TableCell sx={{ color: 'text.secondary', fontStyle: 'italic', borderColor: 'divider' }} colSpan={2}>
+                    Not available at this store
+                  </TableCell>
+                ) : (
+                  <>
+                    <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{formatAmount(item.unitPrice)}</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>
+                      ₱{formatAmount(item.amount)}
+                    </TableCell>
+                  </>
+                )}
               </TableRow>
             ))}
           </TableBody>

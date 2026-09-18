@@ -21,9 +21,9 @@ import FactorsAppliedBanner from './FactorsAppliedBanner';
 import { colors } from '../../../theme/palette';
 import { QUANTITY_TAKEOFF_MATERIALS } from '../data/quantityTakeoffMaterials';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
-import { formatPeso, formatQuantity } from '../../../utils/formatNumbers';
+import { formatQuantity } from '../../../utils/formatNumbers';
 
-const COLUMNS = ['MATERIAL', 'BASIS', 'QUANTITY', 'UNIT', 'UNIT COST', 'TOTAL COST'];
+const COLUMNS = ['MATERIAL', 'BASIS', 'QUANTITY', 'UNIT'];
 
 // "By source" grouping — see backend/engine/formulas.py's SOURCE_CATEGORIES.
 // "Roofing" and "Shared / Whole building" aren't floors; they're honest
@@ -51,7 +51,7 @@ function buildSourceGroups(materials) {
       .filter((material) => (material.sourceBreakdown?.[key] ?? 0) > 0)
       .map((material) => {
         const categoryQuantity = material.sourceBreakdown[key];
-        return { ...material, quantity: categoryQuantity, quantityLabel: formatQuantity(categoryQuantity, material.unit), totalCost: categoryQuantity * material.unitCost };
+        return { ...material, quantity: categoryQuantity, quantityLabel: formatQuantity(categoryQuantity, material.unit) };
       }),
   })).filter((group) => group.items.length > 0);
 }
@@ -76,24 +76,18 @@ function StatCell({ label, value }) {
 function MaterialMobileCard({ material }) {
   return (
     <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', p: 1.75 }}>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
-        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
-          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOT_COLORS[material.color], flexShrink: 0 }} />
-          <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.92rem' }}>{material.name}</Typography>
-        </Stack>
-        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>
-          {formatPeso(material.totalCost)}
-        </Typography>
+      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
+        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOT_COLORS[material.color], flexShrink: 0 }} />
+        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.92rem' }}>{material.name}</Typography>
       </Stack>
 
       <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem', mt: 0.5, mb: 1.25 }}>{material.basis}</Typography>
 
       <Divider sx={{ mb: 1.25 }} />
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
         <StatCell label="Quantity" value={material.quantityLabel} />
         <StatCell label="Unit" value={material.unit} />
-        <StatCell label="Unit cost" value={formatPeso(material.unitCost)} />
       </Box>
     </Paper>
   );
@@ -106,7 +100,6 @@ function buildMaterials(storeys) {
   return QUANTITY_TAKEOFF_MATERIALS.map((material) => ({
     ...material,
     basis: material.key === 'hollowBlocks' ? `Wall area (${storeys} flr) ÷ coverage` : material.basis,
-    totalCost: material.quantity * material.unitCost,
   }));
 }
 
@@ -114,9 +107,10 @@ function buildMaterials(storeys) {
  * Itemized material quantity take-off table, derived from the parsed floor
  * plan measurements and calibration factors — covers the full structural
  * material list the rule-based estimation engine produces (see
- * QUANTITY_TAKEOFF_MATERIALS), with a mock unit/total cost per row until
- * real pricing is wired in. Scrolls horizontally on narrow viewports
- * instead of clipping.
+ * QUANTITY_TAKEOFF_MATERIALS). No pricing shown here — no store/brand has
+ * been picked yet at this point in the flow, so a dollar figure would
+ * imply a precision the app doesn't have until Store Locator/Bill of
+ * Materials. Scrolls horizontally on narrow viewports instead of clipping.
  *
  * @param {object} props
  * @param {number} props.storeys Used to label the CHB basis (e.g. "(2 flr)").
@@ -285,12 +279,6 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
                     </TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>{material.quantityLabel}</TableCell>
                     <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{material.unit}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary', borderColor: 'divider', whiteSpace: 'nowrap' }}>
-                      {formatPeso(material.unitCost)}
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider', whiteSpace: 'nowrap' }}>
-                      {formatPeso(material.totalCost)}
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

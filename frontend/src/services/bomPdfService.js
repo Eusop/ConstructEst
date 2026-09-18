@@ -28,7 +28,7 @@ function hexToRgb(hex) {
  * @param {object} bom
  * @param {string} bom.projectName
  * @param {Array<{label: string, value: string}>} bom.projectInfo Human-readable project facts.
- * @param {Array<{material: string, category: string, quantityLabel: string, unit: string, unitPrice: number, amount: number}>} bom.lineItems
+ * @param {Array<{material: string, category: string, spec: string|null, available: boolean, quantityLabel: string, unit: string, unitPrice: number|null, amount: number|null}>} bom.lineItems
  * @param {number} bom.grandTotal
  * @param {Date} [bom.generatedAt]
  */
@@ -67,22 +67,23 @@ export function generateBomPdf({ projectName, projectInfo, lineItems, grandTotal
   autoTable(doc, {
     startY: infoY + 14,
     margin: { left: marginX, right: marginX },
-    head: [['Material', 'Category', 'Quantity', 'Unit', 'Unit Cost', 'Total Cost']],
+    head: [['Material', 'Category', 'Spec', 'Quantity', 'Unit', 'Unit Cost', 'Total Cost']],
     body: lineItems.map((item) => [
       item.material,
       item.category,
+      item.spec ?? '',
       item.quantityLabel,
       item.unit,
-      formatCurrency(item.unitPrice),
-      formatCurrency(item.amount),
+      item.available === false ? 'Not available' : formatCurrency(item.unitPrice),
+      item.available === false ? 'Not available' : formatCurrency(item.amount),
     ]),
     headStyles: { fillColor: brandBlue, textColor: [255, 255, 255], fontStyle: 'bold' },
     styles: { fontSize: 9, cellPadding: 7, textColor: [40, 40, 40] },
     alternateRowStyles: { fillColor: [246, 248, 252] },
     columnStyles: {
-      2: { halign: 'right' },
-      4: { halign: 'right' },
+      3: { halign: 'right' },
       5: { halign: 'right' },
+      6: { halign: 'right' },
     },
   });
 

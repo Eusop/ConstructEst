@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import { colors } from '../../../theme/palette';
 
@@ -28,9 +29,12 @@ function SummaryRow({ label, value, valueColor = 'common.white' }) {
  * @param {string} props.grandTotalLabel Formatted, e.g. "₱1,472,900".
  * @param {string} props.ceilingDeltaLabel e.g. "₱127,100 under ceiling".
  * @param {boolean} props.withinBudget
+ * @param {number} [props.missingCount] Materials the selected store doesn't carry —
+ *   when > 0, grandTotal/the budget check only cover what it does sell, so that's
+ *   disclosed here rather than left implicit.
  * @param {() => void} props.onDownloadPdf
  */
-function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceilingDeltaLabel, withinBudget, onDownloadPdf }) {
+function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceilingDeltaLabel, withinBudget, missingCount = 0, onDownloadPdf }) {
   const deltaColor = withinBudget ? colors.iconGreenFg : colors.iconRedFg;
 
   return (
@@ -54,6 +58,14 @@ function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceili
             <CheckCircleRoundedIcon sx={{ fontSize: 15, color: deltaColor }} />
             <Typography sx={{ fontSize: '0.8rem', color: deltaColor }}>{ceilingDeltaLabel}</Typography>
           </Stack>
+          {missingCount > 0 && (
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.5 }}>
+              <WarningAmberRoundedIcon sx={{ fontSize: 15, color: colors.orange }} />
+              <Typography sx={{ fontSize: '0.8rem', color: colors.orange }}>
+                Excludes {missingCount} item{missingCount === 1 ? '' : 's'} not sold at this store — total and budget check may be incomplete.
+              </Typography>
+            </Stack>
+          )}
         </Box>
 
         <Button

@@ -42,20 +42,23 @@ export async function getStoreOptimization(projectId) {
       );
 
       if (cheapest?.price == null) {
-        const [alternative] = await query(
-          `SELECT s.id, s.name
+        // Every other active store that actually carries it, not just the
+        // cheapest one — a store missing several items may need a
+        // different alternative per item, and showing only one option
+        // understates what's actually available.
+        const alternatives = await query(
+          `SELECT DISTINCT s.id, s.name
            FROM store_material_prices smp
            JOIN material_brands mb ON mb.id = smp.material_brand_id
            JOIN stores s ON s.id = smp.store_id
-           WHERE mb.material_key = ? AND smp.in_stock = 1 AND s.id != ?
-           ORDER BY smp.price ASC LIMIT 1`,
+           WHERE mb.material_key = ? AND smp.in_stock = 1 AND s.id != ? AND s.is_active = 1
+           ORDER BY s.name`,
           [material.material_key, store.id],
         );
         missingMaterials.push({
           materialKey: material.material_key,
           name: material.name,
-          suggestedStoreId: alternative?.id ?? null,
-          suggestedStoreName: alternative?.name ?? null,
+          availableAtStores: alternatives.map((s) => s.name),
         });
         continue;
       }
@@ -69,17 +72,25 @@ export async function getStoreOptimization(projectId) {
       address: store.address,
       lat: Number(store.lat),
       lng: Number(store.lng),
-      optimizedTotal: missingMaterials.length > 0 ? null : Math.round(optimizedTotal * 100) / 100,
+      // Partial total for whatever this store *does* carry — a store
+      // missing something is still worth showing/selecting, just not
+      // eligible for the "cheapest" badge (see isCheapest below), since its
+      // total is missing whatever the gap item would have cost.
+      optimizedTotal: Math.round(optimizedTotal * 100) / 100,
       inStock: missingMaterials.length === 0,
       missingMaterials,
     });
   }
 
-  const priced = results.filter((r) => r.optimizedTotal != null);
+  const priced = results.filter((r) => r.inStock);
   const cheapestTotal = priced.length > 0 ? Math.min(...priced.map((r) => r.optimizedTotal)) : null;
   return results
-    .map((r) => ({ ...r, isCheapest: r.optimizedTotal === cheapestTotal && cheapestTotal != null }))
-    .sort((a, b) => (a.optimizedTotal ?? Infinity) - (b.optimizedTotal ?? Infinity));
+    .map((r) => ({ ...r, isCheapest: r.inStock && r.optimizedTotal === cheapestTotal && cheapestTotal != null }))
+    // Fully-stocked stores first (cheapest-first among themselves), then
+    // partially-stocked ones after (also cheapest-first among themselves) —
+    // a partial total is missing cost, so it shouldn't be able to outrank a
+    // complete one just for being numerically lower.
+    .sort((a, b) => (a.inStock === b.inStock ? a.optimizedTotal - b.optimizedTotal : a.inStock ? -1 : 1));
 }
 
 /** Every brand option for one material at one store, feeds Brand
@@ -124,7 +135,7 @@ export async function computeBom(projectId, storeId) {
     let row;
     if (selectionByKey[material.material_key]) {
       [row] = await query(
-        `SELECT mb.brand, mb.category, smp.price
+        `SELECT mb.brand, mb.category, mb.spec, smp.price
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
          WHERE smp.store_id = ? AND smp.material_brand_id = ?`,
@@ -133,7 +144,7 @@ export async function computeBom(projectId, storeId) {
     }
     if (!row) {
       [row] = await query(
-        `SELECT mb.brand, mb.category, smp.price
+        `SELECT mb.brand, mb.category, mb.spec, smp.price
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
          WHERE smp.store_id = ? AND mb.material_key = ? AND smp.in_stock = 1
@@ -142,20 +153,28 @@ export async function computeBom(projectId, storeId) {
       );
     }
 
-    const unitPrice = row ? Number(row.price) : 0;
+    // No row at all means this store doesn't carry any brand of this
+    // material — distinct from a genuinely free material, so it's flagged
+    // rather than silently priced at ₱0 (see StoreLocatorPage/BomTable,
+    // which let a partially-stocked store be selected and need to show
+    // this honestly instead).
+    const available = Boolean(row);
+    const unitPrice = available ? Number(row.price) : null;
     lineItems.push({
       key: material.material_key,
       material: material.name,
       category: row?.category ?? null,
       brand: row?.brand ?? null,
+      spec: row?.spec ?? null,
+      available,
       quantity: Number(material.quantity),
       unit: material.unit,
       unitPrice,
-      amount: Math.round(unitPrice * Number(material.quantity) * 100) / 100,
+      amount: available ? Math.round(unitPrice * Number(material.quantity) * 100) / 100 : null,
     });
   }
 
-  const grandTotal = Math.round(lineItems.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
+  const grandTotal = Math.round(lineItems.reduce((sum, item) => sum + (item.amount ?? 0), 0) * 100) / 100;
   return { lineItems, grandTotal };
 }
 

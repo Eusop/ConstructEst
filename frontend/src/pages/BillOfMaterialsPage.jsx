@@ -128,6 +128,11 @@ function BillOfMaterialsPage() {
   }
 
   const { lineItems, grandTotal } = bom;
+  // The selected store may not carry everything (see StoreLocatorPage,
+  // which now allows picking a partially-stocked store) — grandTotal only
+  // covers what it does sell, so the budget check below needs to disclose
+  // that rather than silently comparing an incomplete total.
+  const missingCount = lineItems.filter((item) => item.available === false).length;
   // Price the Premium baseline off the same real per-store prices the fetched
   // BOM used, so the commodities (sand/gravel, which have no brand options and
   // would otherwise fall back to BASE_PRICING's flat literals) don't drag a
@@ -214,6 +219,7 @@ function BillOfMaterialsPage() {
             grandTotalLabel={formatPeso(grandTotal)}
             ceilingDeltaLabel={ceilingDeltaLabel}
             withinBudget={withinBudget}
+            missingCount={missingCount}
             onDownloadPdf={handleDownloadPdf}
           />
         </Stack>

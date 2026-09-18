@@ -34,9 +34,9 @@ function haversineKm(a, b) {
 
 /**
  * @param {Array<{storeId:number, name:string, address:string, lat:number, lng:number,
- *   optimizedTotal:number|null, inStock:boolean, isCheapest:boolean,
- *   missingMaterials:Array<{materialKey:string,name:string,suggestedStoreId:number|null,suggestedStoreName:string|null}>}>} stores
- *   Already sorted cheapest-first by the backend.
+ *   optimizedTotal:number, inStock:boolean, isCheapest:boolean,
+ *   missingMaterials:Array<{materialKey:string,name:string,availableAtStores:string[]}>}>} stores
+ *   Already sorted (fully-stocked, cheapest-first, then partially-stocked stores).
  * @param {{lat:number,lng:number}} [origin] The point to measure distance from — the
  *   user's real browser geolocation when available (see hooks/useUserLocation.js),
  *   else the fixed city reference point (CITY_CENTER, the previous fallback-only
@@ -49,7 +49,6 @@ export function loadStores(stores, origin = CITY_CENTER) {
     ...stores.map((store, index) => {
       const position = { lat: store.lat, lng: store.lng };
       const distanceKm = haversineKm(origin, position);
-      const missing = store.missingMaterials[0];
 
       return {
         id: store.storeId,
@@ -62,10 +61,14 @@ export function loadStores(stores, origin = CITY_CENTER) {
         travelTimeLabel: `~${Math.max(1, Math.round((distanceKm / 30) * 60))} min drive`,
         totalCost: store.optimizedTotal,
         isCheapest: store.isCheapest,
+        // "Fully stocked" — still selectable either way (see
+        // StoreLocatorPage/StoreListCard), this just gates the "Cheapest"
+        // badge/label and whether the missing-items warning shows at all.
         inStock: store.inStock,
         stockLabel: store.inStock ? 'All materials in stock' : `${store.missingMaterials.length} item(s) unavailable`,
-        outOfStockMaterial: missing?.name ?? null,
-        suggestedStoreName: missing?.suggestedStoreName ?? null,
+        // Full list, not just the first — StoreListCard lists every
+        // missing material, not just one.
+        missingMaterials: store.missingMaterials,
       };
     }),
   );

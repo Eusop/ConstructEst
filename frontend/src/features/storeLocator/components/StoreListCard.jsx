@@ -38,8 +38,9 @@ function BadgeNumber({ rank, color }) {
 
 /**
  * One store in the comparison list — click selects it (highlighting this
- * card and the matching map marker). Renders an out-of-stock variant when
- * the store can't fulfil the full material list.
+ * card and the matching map marker). Selectable either way; a store
+ * missing some materials still shows its (partial) total plus a warning
+ * listing what it can't supply, rather than being blocked from selection.
  *
  * @param {object} props
  * @param {object} props.store One entry from features/storeLocator/data/storesMock.
@@ -48,6 +49,8 @@ function BadgeNumber({ rank, color }) {
  * @param {() => void} props.onSelect
  */
 function StoreListCard({ store, badgeColor, selected, onSelect }) {
+  const availableAtStores = [...new Set(store.missingMaterials.flatMap((material) => material.availableAtStores ?? []))].sort();
+
   return (
     <Paper
       elevation={0}
@@ -61,11 +64,7 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
         borderRadius: 3,
         bgcolor: 'common.white',
         p: { xs: 1.5, sm: 2 },
-        // Still clickable when out of stock (onSelect fires the "why not"
-        // notification — see StoreLocatorPage's setSelectedStoreId guard)
-        // but visually signals it won't actually select, rather than
-        // looking identical to a normal, selectable card.
-        cursor: store.inStock ? 'pointer' : 'not-allowed',
+        cursor: 'pointer',
         border: '1.5px solid',
         borderColor: selected ? colors.iconGreenFg : 'divider',
         boxShadow: selected ? `0 0 0 3px ${colors.iconGreenBg}` : '0 2px 10px rgba(20, 30, 60, 0.06)',
@@ -85,57 +84,72 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
         )}
       </Stack>
 
-      {store.inStock ? (
-        <>
-          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: 'text.primary', mt: { xs: 0.75, sm: 1 } }}>
-            {formatPeso(store.totalCost)}
-          </Typography>
+      <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: 'text.primary', mt: { xs: 0.75, sm: 1 } }}>
+        {formatPeso(store.totalCost)}
+      </Typography>
 
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: { xs: 0.25, sm: 0.5 } }}>
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              <LocationOnRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-              <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{store.distanceLabel}</Typography>
-            </Stack>
-            <Link
-              href={directionsUrl(store)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(event) => event.stopPropagation()}
-              underline="hover"
-              sx={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: colors.accentBlue,
-                // Phone-only tap target. Scoped rather than applied flat so
-                // sm+ keeps the plain inline <a> box it has always been.
-                display: { xs: 'inline-flex', sm: 'inline' },
-                alignItems: { xs: 'center', sm: 'baseline' },
-                minHeight: { xs: 32, sm: 'auto' },
-                px: { xs: 0.75, sm: 0 },
-                mr: { xs: -0.75, sm: 0 },
-                my: { xs: -0.5, sm: 0 },
-              }}
-            >
-              Directions
-            </Link>
-          </Stack>
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: { xs: 0.25, sm: 0.5 } }}>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+          <LocationOnRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+          <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{store.distanceLabel}</Typography>
+        </Stack>
+        <Link
+          href={directionsUrl(store)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+          underline="hover"
+          sx={{
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            color: colors.accentBlue,
+            // Phone-only tap target. Scoped rather than applied flat so
+            // sm+ keeps the plain inline <a> box it has always been.
+            display: { xs: 'inline-flex', sm: 'inline' },
+            alignItems: { xs: 'center', sm: 'baseline' },
+            minHeight: { xs: 32, sm: 'auto' },
+            px: { xs: 0.75, sm: 0 },
+            mr: { xs: -0.75, sm: 0 },
+            my: { xs: -0.5, sm: 0 },
+          }}
+        >
+          Directions
+        </Link>
+      </Stack>
 
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: { xs: 0.25, sm: 0.5 } }}>
-            <CheckCircleRoundedIcon sx={{ fontSize: 14, color: colors.iconGreenFg }} />
-            <Typography sx={{ fontSize: '0.8rem', color: colors.iconGreenFg, fontWeight: 600 }}>{store.stockLabel}</Typography>
-          </Stack>
-        </>
-      ) : (
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: { xs: 0.25, sm: 0.5 } }}>
+        {store.inStock ? (
+          <CheckCircleRoundedIcon sx={{ fontSize: 14, color: colors.iconGreenFg }} />
+        ) : (
+          <WarningAmberRoundedIcon sx={{ fontSize: 14, color: colors.orange }} />
+        )}
+        <Typography sx={{ fontSize: '0.8rem', color: store.inStock ? colors.iconGreenFg : colors.orangeDark, fontWeight: 600 }}>
+          {store.stockLabel}
+        </Typography>
+      </Stack>
+
+      {/* Missing-items detail — still selectable (see StoreLocatorPage's
+          setSelectedStoreId, no longer blocked), this just makes clear what
+          this store can't supply before the user commits to it. Store names
+          are listed once as a deduplicated union across every missing item
+          (not repeated per item) — a store missing many materials that all
+          happen to be available at the same one or two alternatives reads
+          as one short line instead of that alternative's name repeated
+          once per item. */}
+      {store.missingMaterials.length > 0 && (
         <Box sx={{ mt: { xs: 1, sm: 1.25 }, bgcolor: colors.iconOrangeBg, borderRadius: 2, p: { xs: 1, sm: 1.25 } }}>
           <Stack direction="row" spacing={0.75}>
             <WarningAmberRoundedIcon sx={{ fontSize: 16, color: colors.orange, flexShrink: 0, mt: 0.1 }} />
-            <Typography sx={{ fontSize: '0.8rem', color: colors.orangeDark }}>
-              No {store.outOfStockMaterial} in stock. Try{' '}
-              <Box component="span" sx={{ fontWeight: 700 }}>
-                {store.suggestedStoreName}
-              </Box>{' '}
-              for this item.
-            </Typography>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontSize: '0.8rem', color: colors.orangeDark }}>
+                Missing: {store.missingMaterials.map((material) => material.name).join(', ')}.
+              </Typography>
+              {availableAtStores.length > 0 && (
+                <Typography sx={{ fontSize: '0.78rem', color: colors.orangeDark, fontWeight: 700, mt: 0.35 }}>
+                  Available at: {availableAtStores.join(', ')}.
+                </Typography>
+              )}
+            </Box>
           </Stack>
         </Box>
       )}

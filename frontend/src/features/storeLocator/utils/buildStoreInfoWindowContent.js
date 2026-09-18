@@ -28,7 +28,7 @@ function escapeHtml(value) {
 export function buildStoreInfoWindowContent(store) {
   const stockLine = store.inStock
     ? `<div style="color:${colors.iconGreenFg};font-weight:600;font-size:12px;margin-top:6px;">✓ ${escapeHtml(store.stockLabel)}</div>`
-    : `<div style="color:${colors.orange};font-weight:600;font-size:12px;margin-top:6px;">⚠ No ${escapeHtml(store.outOfStockMaterial)} in stock. Try ${escapeHtml(store.suggestedStoreName)} for this item.</div>`;
+    : `<div style="color:${colors.orange};font-weight:600;font-size:12px;margin-top:6px;">⚠ ${escapeHtml(store.stockLabel)}</div>`;
 
   // No per-material price breakdown at this level — GET /projects/:id/stores
   // only returns each store's aggregate optimized total (Table 20); the

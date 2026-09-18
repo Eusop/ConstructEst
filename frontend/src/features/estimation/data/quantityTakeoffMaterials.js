@@ -5,9 +5,11 @@
  * each render, so populating it here is all that's needed for the table to
  * show the real per-project take-off without changing the table itself.
  *
- * `unitCost` is each material's cheapest catalog price (see the backend's
- * loadCurrentEstimation) — an indicative cost shown before a store/brand is
- * chosen; the real priced total comes later from Brand Selection.
+ * `unitCost` is each material's cheapest catalog price overall (see the
+ * backend's loadCurrentEstimation) — kept here but no longer rendered by
+ * QuantityTakeoffTable (it was shown before any store/brand was picked,
+ * which implied a precision the app didn't actually have yet); the real
+ * priced total now only shows up from Store Locator onward.
  */
 import { formatQuantity } from '../../../utils/formatNumbers';
 

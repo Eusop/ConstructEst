@@ -106,20 +106,12 @@ function StoreLocatorPage() {
   // Centers the map on the user instead of the selected store when true,
   // set by the locate button, cleared once a store is picked again.
   const [focusOnUser, setFocusOnUser] = useState(false);
-  // Centralized here since both the list and map marker call this. An
-  // out-of-stock store can't be picked, explain why instead of just
-  // silently doing nothing.
+  // Centralized here since both the list and map marker call this. A store
+  // missing some materials is still selectable — StoreListCard already
+  // shows what it's missing, and the BOM page discloses it again once
+  // priced, so there's no need to block the pick itself.
   const setSelectedStoreId = (id) => {
     if (id === USER_LOCATION_MARKER_ID) return;
-    const target = STORES.find((store) => store.id === id);
-    if (target && !target.inStock) {
-      addNotification({
-        type: 'store_selected',
-        title: 'Store unavailable',
-        description: `${target.name} is missing ${target.outOfStockMaterial ?? 'a required material'}. Choose a fully-stocked store to continue.`,
-      });
-      return;
-    }
     setFocusOnUser(false);
     updateActiveProject({ selectedStoreId: id });
   };
@@ -236,9 +228,16 @@ function StoreLocatorPage() {
               // consistent page-padding above the bottom edge regardless of
               // phone height, and a long store list scrolls in here.
               minHeight: { xs: 0, sm: 260, md: 420 },
-              // Keeps the inner scroll feeling native on touch: momentum,
-              // and no scroll-chaining to the page when the list bottoms out.
-              overscrollBehavior: { xs: 'contain', sm: 'auto' },
+              // 'contain' was tried here on xs to stop the inner list's
+              // scroll from chaining into the page once it bottoms out, but
+              // it backfires when the list doesn't actually have enough
+              // content to scroll internally (e.g. the 3-card mobile
+              // preview): the browser still treats it as a scroll boundary
+              // and swallows the touch gesture instead of falling back to
+              // the page, so a finger starting on the card couldn't scroll
+              // anything at all. 'auto' (the default, same as sm+) lets
+              // that fallback happen normally.
+              overscrollBehavior: 'auto',
               WebkitOverflowScrolling: { xs: 'touch', sm: 'auto' },
             }}
           >

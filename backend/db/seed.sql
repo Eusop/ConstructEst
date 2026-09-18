@@ -77,9 +77,9 @@ INSERT INTO material_brands (material_key, material_name, unit, brand, spec, bas
 ('plywood', 'Plywood', 'pcs', 'Federation', '1/2" 4x8ft', 780, 4, 'Formwork', 0),
 ('plywood', 'Plywood', 'pcs', 'Basilisa', '1/2" 4x8ft marine', 920, 5, 'Formwork', 0),
 
-('lumber', 'Lumber', 'pcs', 'Local Coco Lumber', '2"x2"x10ft', 80, 3, 'Formwork', 0),
-('lumber', 'Lumber', 'pcs', 'Goodwood', '2"x2"x10ft', 95, 4, 'Formwork', 0),
-('lumber', 'Lumber', 'pcs', 'Primewood', '2"x2"x10ft', 115, 5, 'Formwork', 0),
+('lumber', 'Lumber', 'bd.ft.', 'Local Coco Lumber', '2"x2"x10ft', 24, 3, 'Formwork', 0),
+('lumber', 'Lumber', 'bd.ft.', 'Goodwood', '2"x2"x10ft', 28.5, 4, 'Formwork', 0),
+('lumber', 'Lumber', 'bd.ft.', 'Primewood', '2"x2"x10ft', 34.5, 5, 'Formwork', 0),
 
 ('steelProps', 'Steel Props', 'pcs', 'Generic Steel Props', 'Adjustable, 3m', 1250, 3, 'Formwork', 0),
 ('steelProps', 'Steel Props', 'pcs', 'FormWorks PH', 'Adjustable, 3m', 1450, 4, 'Formwork', 0),
