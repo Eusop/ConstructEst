@@ -170,6 +170,26 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             {getInitials(userName)}
           </Avatar>
 
+          {/* Mobile only: compact icon-only version of the New Project
+              button above (that one's hidden below `md`), same action and
+              color, just sized down to fit next to the profile icon. */}
+          <IconButton
+            component={RouterLink}
+            to={ROUTES.NEW_PROJECT}
+            aria-label="New Project"
+            sx={{
+              display: { xs: 'flex', md: 'none' },
+              flexShrink: 0,
+              width: 30,
+              height: 30,
+              bgcolor: colors.accentBlue,
+              color: 'common.white',
+              '&:hover': { bgcolor: colors.accentBlueDark },
+            }}
+          >
+            <AddRoundedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+
           {/* Mobile/tablet (below `md`): moved up from the old bottom tab
               bar — icon-only (no label), centered on the row like the
               hamburger/title beside it. */}
