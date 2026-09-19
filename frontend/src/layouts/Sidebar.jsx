@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
-import Badge from '@mui/material/Badge';
 import Divider from '@mui/material/Divider';
 import Collapse from '@mui/material/Collapse';
 import Drawer from '@mui/material/Drawer';
@@ -17,14 +16,11 @@ import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import SellRoundedIcon from '@mui/icons-material/SellRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import BrandMark from '../components/BrandMark';
 import { colors } from '../theme/palette';
 import { ROUTES } from '../routes/paths';
-import { useNotifications } from '../context/NotificationsContext';
 import { useUser } from '../context/UserContext';
 
 export const SIDEBAR_WIDTH_OPEN = 248;
@@ -46,9 +42,7 @@ const WORKSPACE_ITEMS = [
 ];
 
 const UTILITY_ITEMS = [
-  { label: 'Notifications', icon: NotificationsRoundedIcon, to: ROUTES.NOTIFICATIONS },
   { label: 'Profile', icon: PersonRoundedIcon, to: ROUTES.PROFILE },
-  { label: 'Help', icon: HelpOutlineRoundedIcon, href: '#' },
 ];
 
 // Icon size stays fixed regardless of `open`, only the label's opacity/
@@ -58,14 +52,7 @@ function RowContent({ item, open, active, trailing }) {
   const Icon = item.icon;
   return (
     <>
-      {Icon && (
-        <Badge
-          badgeContent={item.badge}
-          sx={{ '& .MuiBadge-badge': { bgcolor: colors.orange, color: 'common.white', fontSize: 10, minWidth: 16, height: 16 } }}
-        >
-          <Icon sx={{ fontSize: 20, flexShrink: 0 }} />
-        </Badge>
-      )}
+      {Icon && <Icon sx={{ fontSize: 20, flexShrink: 0 }} />}
       <Typography
         sx={{
           fontSize: '0.9rem',
@@ -265,12 +252,7 @@ function Sidebar({ open, onClose }) {
   const location = useLocation();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [manualExpanded, setManualExpanded] = useState(null);
-  const { unreadCount } = useNotifications();
   const { logout } = useUser();
-
-  const utilityItems = UTILITY_ITEMS.map((item) =>
-    item.label === 'Notifications' ? { ...item, badge: unreadCount || undefined } : item,
-  );
 
   // Keeps a nav item highlighted on its nested routes too, not just exact matches.
   const isActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`);
@@ -341,7 +323,7 @@ function Sidebar({ open, onClose }) {
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 2, flexShrink: 0 }} />
 
       <Stack spacing={0.5}>
-        {utilityItems.map((item) => (
+        {UTILITY_ITEMS.map((item) => (
           <NavRow
             key={item.label}
             item={item}

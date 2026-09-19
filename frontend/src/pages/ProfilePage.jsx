@@ -16,7 +16,6 @@ import ProfileSectionHeader from '../features/profile/components/ProfileSectionH
 import PersonalInformationSection from '../features/profile/components/PersonalInformationSection';
 import ChangePasswordSection from '../features/profile/components/ChangePasswordSection';
 import { useUser } from '../context/UserContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
@@ -94,7 +93,6 @@ function validatePassword(form) {
 function ProfilePage() {
   const profile = useUser();
   const { updateProfile } = profile;
-  const { addNotification } = useNotifications();
   const { showToast } = useToast();
   const isMobile = useIsMobile();
 
@@ -165,11 +163,6 @@ function ProfilePage() {
     setIsSavingPassword(true);
     try {
       await changePasswordRequest({ currentPassword: form.currentPassword, newPassword: form.newPassword });
-      addNotification({
-        type: 'profile_updated',
-        title: 'Password changed',
-        description: 'Your password was updated. Check your email for a confirmation.',
-      });
       showToast('Password changed', 'success');
       // Clearing these is deliberate, not a glitch: the app never holds a
       // password, so there is nothing to leave in the boxes afterwards.
@@ -200,11 +193,6 @@ function ProfilePage() {
       // header picks up the new name without a refetch.
       updateProfile({ userName: user.userName, email: user.email });
 
-      addNotification({
-        type: 'profile_updated',
-        title: 'Profile updated',
-        description: 'Your profile details were updated.',
-      });
       showToast('Profile updated', 'success');
 
       setSavedForm((prev) => ({ ...prev, fullName: form.fullName, email: form.email }));

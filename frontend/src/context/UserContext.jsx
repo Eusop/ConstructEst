@@ -14,7 +14,7 @@ const HEARTBEAT_INTERVAL_MS = 45_000;
 /**
  * The signed-in user's identity. `userName` is set once on successful
  * sign-up/sign-in (see SignUpForm/LoginForm) and read wherever the app
- * greets the user (see WelcomeBanner). `employeeId`/`email` are additionally
+ * greets the user (see WelcomeCard). `employeeId`/`email` are additionally
  * captured at sign-up for the Profile page to display/edit; `avatarUrl` is
  * only ever set from the Profile page itself. Mounted above the
  * dashboard's own providers in App.jsx since it needs to survive

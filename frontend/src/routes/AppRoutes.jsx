@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import SignUpPage from '../pages/SignUpPage';
 import VerifyEmailPage from '../pages/VerifyEmailPage';
@@ -16,11 +15,9 @@ import StoreLocatorPage from '../pages/StoreLocatorPage';
 import BrandSelectionPage from '../pages/BrandSelectionPage';
 import BillOfMaterialsPage from '../pages/BillOfMaterialsPage';
 import ProfilePage from '../pages/ProfilePage';
-import NotificationsPage from '../pages/NotificationsPage';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { ProjectsProvider } from '../context/ProjectsContext';
 import { DashboardActivityProvider } from '../context/DashboardActivityContext';
-import { NotificationsProvider } from '../context/NotificationsContext';
 import RequireRole from './RequireRole';
 import AdminLayout from '../admin/layouts/AdminLayout';
 import AdminDashboardPage from '../admin/pages/AdminDashboardPage';
@@ -37,7 +34,8 @@ import { ROUTES, ADMIN_ROUTES } from './paths';
 function AppRoutes() {
   return (
     <Routes>
-      <Route path={ROUTES.HOME} element={<LandingPage />} />
+      {/* No public marketing Landing Page — "/" goes straight to Login. */}
+      <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
       <Route path={ROUTES.LOGIN} element={<LoginPage />} />
       <Route path={ROUTES.SIGNUP} element={<SignUpPage />} />
       <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
@@ -62,11 +60,9 @@ function AppRoutes() {
         element={
           <RequireRole role="user" redirectTo={ADMIN_ROUTES.DASHBOARD}>
             <DashboardActivityProvider>
-              <NotificationsProvider>
-                <ProjectsProvider>
-                  <DashboardLayout />
-                </ProjectsProvider>
-              </NotificationsProvider>
+              <ProjectsProvider>
+                <DashboardLayout />
+              </ProjectsProvider>
             </DashboardActivityProvider>
           </RequireRole>
         }
@@ -81,25 +77,19 @@ function AppRoutes() {
         <Route path={ROUTES.BRAND_SELECTION} element={<BrandSelectionPage />} />
         <Route path={ROUTES.BILL_OF_MATERIALS} element={<BillOfMaterialsPage />} />
         <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
-        <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
       </Route>
 
       {/* Admin Module: entirely separate layout/nav from the User Module
           above. Gated by RequireRole so a non-admin session can never render
           these pages, and an admin session is kept out of the User Module's
-          layout route (see LoginForm's role-based redirect). NotificationsProvider
-          is mounted only so the reused ProfilePage's addNotification call has
-          a provider to talk to — the Admin Module has no notifications
-          page/bell of its own. */}
+          layout route (see LoginForm's role-based redirect). */}
       <Route
         element={
           <RequireRole role="admin" redirectTo={ROUTES.DASHBOARD}>
             <AdminToastProvider>
               <AdminActivityProvider>
                 <AdminStoresProvider>
-                  <NotificationsProvider>
-                    <AdminLayout />
-                  </NotificationsProvider>
+                  <AdminLayout />
                 </AdminStoresProvider>
               </AdminActivityProvider>
             </AdminToastProvider>

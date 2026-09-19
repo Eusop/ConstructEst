@@ -11,7 +11,6 @@ import IncompleteBomState from '../features/billOfMaterials/components/Incomplet
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { computeTierTotal } from '../features/brandSelection/utils/computeBom';
 import { loadBrandCatalog } from '../features/brandSelection/data/brandOptionsMock';
 import { STORES, loadStores } from '../features/storeLocator/data/storesMock';
@@ -61,7 +60,6 @@ function toDisplayLineItems(lineItems) {
 function BillOfMaterialsPage() {
   const { activeProject, refreshActiveProjectEstimation } = useProjects();
   const { logActivity } = useDashboardActivity();
-  const { addNotification } = useNotifications();
   const [loadedForKey, setLoadedForKey] = useState(null);
   const [bom, setBom] = useState(null);
 
@@ -167,11 +165,6 @@ function BillOfMaterialsPage() {
       grandTotal,
     });
     logActivity({ type: 'pdf_downloaded', message: `Downloaded PDF report for ${activeProject.projectName}` });
-    addNotification({
-      type: 'pdf_downloaded',
-      title: 'PDF report downloaded',
-      description: `Bill of Materials report for ${activeProject.projectName} was downloaded.`,
-    });
   };
 
   return (

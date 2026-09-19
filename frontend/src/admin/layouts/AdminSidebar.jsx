@@ -99,8 +99,7 @@ function NavRow({ item, open, active, onClick, onNavigate }) {
  * and nav-row styling as the User Module's Sidebar (see layouts/Sidebar.jsx),
  * but with the Admin-only nav list (Dashboard, User Management, Hardware
  * Stores, Materials & Brands, Activity Log, Estimation Settings, Profile,
- * Logout) and no dependency on NotificationsContext, which the Admin layout
- * doesn't mount.
+ * Logout).
  *
  * Responsive behavior mirrors the User Module's Sidebar exactly: desktop
  * (`md` and up) renders as a normal flex sibling that pushes content over;

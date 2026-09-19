@@ -16,7 +16,6 @@ import CalibrationFactorsCard from '../features/settings/components/CalibrationF
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import MobileTabSwitcher from '../components/MobileTabSwitcher';
 import { useProjects } from '../context/ProjectsContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { apiRequest } from '../services/apiClient';
 import { PARSED_MEASUREMENTS, loadParsedProject } from '../features/projects/data/parsedProjectMock';
 import { loadQuantityTakeoff } from '../features/estimation/data/quantityTakeoffMaterials';
@@ -54,7 +53,6 @@ function toUiFactors(constants) {
  */
 function MaterialEstimationPage() {
   const { activeProject, updateActiveProject, refreshActiveProjectEstimation } = useProjects();
-  const { addNotification } = useNotifications();
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [savedFactors, setSavedFactors] = useState(null);
@@ -150,12 +148,6 @@ function MaterialEstimationPage() {
       setDraftIncludeRoofing(project.includeRoofing);
       loadParsedProject(estimation);
       loadQuantityTakeoff(estimation.materials);
-
-      addNotification({
-        type: 'calibration_updated',
-        title: 'Estimate recalculated',
-        description: `${activeProject.projectName}'s quantity take-off was recomputed with the updated factors and design parameters.`,
-      });
     } finally {
       setIsRecalculating(false);
     }

@@ -7,6 +7,7 @@ import Tooltip from '@mui/material/Tooltip';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import ProjectIcon from './ProjectIcon';
 import StatusChip from './StatusChip';
+import { isProjectComplete } from '../utils/projectStatus';
 import { colors } from '../../../theme/palette';
 
 /**
@@ -22,6 +23,14 @@ import { colors } from '../../../theme/palette';
  * @param {() => void} props.onDeleteRequest
  */
 function ProjectCard({ project, active, onSelect, onDeleteRequest }) {
+  // Display-only simplification of the real status (Parsing/Estimated/
+  // Optimized/Failed, see ProjectsContext) down to the two labels the
+  // Projects page shows (see isProjectComplete for what "Complete" means).
+  // The underlying `project.status` itself is untouched: every other page
+  // (Material Estimation, Bill of Materials, Brand Selection, ...) still
+  // reads and checks against the real value.
+  const statusLabel = isProjectComplete(project) ? 'Complete' : 'Incomplete';
+
   return (
     <Paper
       elevation={0}
@@ -66,7 +75,7 @@ function ProjectCard({ project, active, onSelect, onDeleteRequest }) {
             mt: { xs: 1, sm: 0 },
           }}
         >
-          <StatusChip label={project.status} />
+          <StatusChip label={statusLabel} />
 
           <Tooltip title="Delete project">
             <IconButton

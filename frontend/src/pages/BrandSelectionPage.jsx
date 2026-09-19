@@ -15,7 +15,6 @@ import RecommendedBrandsSummary from '../features/brandSelection/components/Reco
 import ManualBrandTable from '../features/brandSelection/components/ManualBrandTable';
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { OPTIMIZATION_TIERS, loadBrandCatalog } from '../features/brandSelection/data/brandOptionsMock';
 import { computeBom } from '../features/brandSelection/utils/computeBom';
 import { apiRequest } from '../services/apiClient';
@@ -36,7 +35,6 @@ import { formatPeso } from '../utils/formatNumbers';
 function BrandSelectionPage() {
   const { activeProject, updateActiveProject } = useProjects();
   const { logActivity } = useDashboardActivity();
-  const { addNotification } = useNotifications();
   const navigate = useNavigate();
 
   const storeId = activeProject?.selectedStoreId ?? null;
@@ -131,16 +129,6 @@ function BrandSelectionPage() {
         message: `Selected brands (${mode === 'automatic' ? OPTIMIZATION_TIERS[tier].label : 'Manual'}) for ${activeProject.projectName}`,
       });
       logActivity({ type: 'bom_generated', message: `Generated Bill of Materials for ${activeProject.projectName}` });
-      addNotification({
-        type: 'brand_selection_completed',
-        title: 'Brand selection completed',
-        description: `Brands selected (${mode === 'automatic' ? OPTIMIZATION_TIERS[tier].label : 'Manual'}) for ${activeProject.projectName}.`,
-      });
-      addNotification({
-        type: 'bom_generated',
-        title: 'Bill of Materials generated',
-        description: `${activeProject.projectName}'s Bill of Materials is ready to view or download.`,
-      });
       navigate(ROUTES.BILL_OF_MATERIALS);
     } finally {
       setIsSaving(false);
@@ -178,15 +166,24 @@ function BrandSelectionPage() {
         </Stack>
       ) : (
         <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
-          <ManualBrandTable choices={choices} onChoiceChange={handleManualChoiceChange} storeId={storeId} lineItems={lineItems} />
+          <ManualBrandTable
+            choices={choices}
+            onChoiceChange={handleManualChoiceChange}
+            storeId={storeId}
+            lineItems={lineItems}
+            grandTotal={grandTotal}
+            onContinue={handleContinue}
+            isSaving={isSaving}
+          />
 
           {/* Mobile only: a real white card (shadow, no fill-color-on-fill-
               color blending) with the total called out in its own accent
               box, then a full-width button — vs. before, where the card's
               own background was nearly the same light blue as the page
               behind it, so it read as plain floating text with no card
-              boundary at all rather than an actual card. sm+ keeps the
-              single merged card below (side-by-side layout), unchanged. */}
+              boundary at all rather than an actual card. sm+ now has its
+              own equivalent footer built into ManualBrandTable's own card
+              instead of a separate one here (see that component). */}
           <Paper
             elevation={0}
             sx={{ display: { xs: 'block', sm: 'none' }, borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: 2 }}
@@ -215,43 +212,6 @@ function BrandSelectionPage() {
             >
               Continue to Bill of Materials
             </Button>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{
-              display: { xs: 'none', sm: 'block' },
-              borderRadius: 3,
-              bgcolor: colors.iconBlueBg,
-              p: 2,
-            }}
-          >
-            <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography sx={{ fontSize: '0.78rem', color: colors.iconBlueFg, fontWeight: 600 }}>
-                  Estimated total
-                </Typography>
-                <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: 'text.primary' }}>
-                  {formatPeso(grandTotal)}
-                </Typography>
-              </Box>
-
-              <Button
-                onClick={handleContinue}
-                variant="contained"
-                disableElevation
-                disabled={isSaving}
-                endIcon={<ArrowForwardRoundedIcon />}
-                sx={{
-                  bgcolor: colors.accentBlue,
-                  '&:hover': { bgcolor: colors.accentBlueDark },
-                  flexShrink: 0,
-                  fontSize: '1.05rem',
-                }}
-              >
-                Continue to Bill of Materials
-              </Button>
-            </Stack>
           </Paper>
         </Stack>
       )}

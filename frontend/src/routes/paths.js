@@ -16,7 +16,6 @@ export const ROUTES = {
   BRAND_SELECTION: '/projects/brand-selection',
   BILL_OF_MATERIALS: '/projects/bill-of-materials',
   PROFILE: '/profile',
-  NOTIFICATIONS: '/notifications',
 };
 
 /** Routes for the Admin Module — kept separate from ROUTES so admin/user navigation never cross. */

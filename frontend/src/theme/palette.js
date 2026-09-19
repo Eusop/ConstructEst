@@ -9,10 +9,6 @@ export const colors = {
   brandBlueDark: '#12336E', // "Construct" wordmark
   brandBlueLight: '#5C9BD6', // "Est" wordmark
 
-  // Background scene blues
-  bgBlue: '#1E52A6',
-  bgBlueDeep: '#143C88',
-
   // Brand orange (call-to-action)
   orange: '#F7931E',
   orangeDark: '#E07E0A',
@@ -46,5 +42,4 @@ export const colors = {
   // Landing page accent blue (primary CTAs: Get started, Upload a DXF, Upload DXF step)
   accentBlue: '#2563EB',
   accentBlueDark: '#1D4ED8',
-  navMuted: '#4B5563', // nav link colour, kept subtler than the Sign in link
 };

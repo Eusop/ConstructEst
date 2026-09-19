@@ -1,12 +1,8 @@
-import { Link as RouterLink } from 'react-router-dom';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import FolderRoundedIcon from '@mui/icons-material/FolderRounded';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
 
 /**
@@ -50,17 +46,6 @@ function EmptyProjectsState() {
             Create your first project to begin estimating construction materials.
           </Typography>
         </Box>
-
-        <Button
-          component={RouterLink}
-          to={ROUTES.NEW_PROJECT}
-          variant="contained"
-          disableElevation
-          startIcon={<AddRoundedIcon />}
-          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
-        >
-          Create New Project
-        </Button>
       </Stack>
     </Paper>
   );

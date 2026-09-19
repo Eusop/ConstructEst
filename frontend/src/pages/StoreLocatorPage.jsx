@@ -18,7 +18,6 @@ import NoActiveProjectState from '../features/projects/components/NoActiveProjec
 import { STORES, CITY_LOCATION, DISTANCE_IS_FROM_USER, loadStores } from '../features/storeLocator/data/storesMock';
 import { buildStoreInfoWindowContent } from '../features/storeLocator/utils/buildStoreInfoWindowContent';
 import { useProjects } from '../context/ProjectsContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { apiRequest } from '../services/apiClient';
 import { ROUTES } from '../routes/paths';
@@ -46,7 +45,6 @@ const MOBILE_PREVIEW_COUNT = 3;
 
 function StoreLocatorPage() {
   const { activeProject, updateActiveProject } = useProjects();
-  const { addNotification } = useNotifications();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -309,16 +307,7 @@ function StoreLocatorPage() {
               a disabled button. */}
           <Box component="span" sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Button
-              onClick={() => {
-                if (selectedStore) {
-                  addNotification({
-                    type: 'store_selected',
-                    title: 'Store selected',
-                    description: `${selectedStore.name} selected for ${activeProject.projectName}.`,
-                  });
-                }
-                navigate(ROUTES.BRAND_SELECTION);
-              }}
+              onClick={() => navigate(ROUTES.BRAND_SELECTION)}
               variant="contained"
               disableElevation
               disabled={!selectedStoreId}

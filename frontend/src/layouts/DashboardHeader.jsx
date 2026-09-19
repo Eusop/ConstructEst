@@ -4,24 +4,21 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
-import Badge from '@mui/material/Badge';
 import Avatar from '@mui/material/Avatar';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import { colors } from '../theme/palette';
 import { ROUTES } from '../routes/paths';
 import { useUser } from '../context/UserContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { getInitials } from '../utils/getInitials';
 
 /**
  * App top bar shared by all authenticated pages: sidebar toggle, page
  * title (or breadcrumb trail for nested pages), a persistent "New Project"
- * action, and the notifications / profile actions.
+ * action, and the profile action.
  *
  * @param {object} props
  * @param {() => void} props.onToggleSidebar Called when the menu button is clicked.
@@ -35,7 +32,6 @@ import { getInitials } from '../utils/getInitials';
  */
 function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, breadcrumbs, headerBadge }) {
   const { userName, avatarUrl } = useUser();
-  const { unreadCount } = useNotifications();
 
   return (
     <Box
@@ -153,22 +149,7 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             New Project
           </Button>
 
-          {/* Desktop (`md`+): icon-only bell + colored avatar, as before. */}
-          <IconButton
-            component={RouterLink}
-            to={ROUTES.NOTIFICATIONS}
-            aria-label="Notifications"
-            size="small"
-            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-          >
-            <Badge
-              badgeContent={unreadCount}
-              max={99}
-              sx={{ '& .MuiBadge-badge': { bgcolor: colors.orange, color: 'common.white', fontSize: 10, minWidth: 16, height: 16 } }}
-            >
-              <NotificationsRoundedIcon sx={{ color: 'text.secondary' }} />
-            </Badge>
-          </IconButton>
+          {/* Desktop (`md`+): colored avatar, as before. */}
           <Avatar
             component={RouterLink}
             to={ROUTES.PROFILE}
@@ -191,44 +172,23 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
 
           {/* Mobile/tablet (below `md`): moved up from the old bottom tab
               bar — icon-only (no label), centered on the row like the
-              hamburger/title beside them. */}
-          <Stack
-            direction="row"
-            spacing={1.75}
-            sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', flexShrink: 0 }}
+              hamburger/title beside it. */}
+          <Box
+            component={RouterLink}
+            to={ROUTES.PROFILE}
+            aria-label="Profile"
+            sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', justifyContent: 'center', flexShrink: 0, textDecoration: 'none' }}
           >
-            <Box
-              component={RouterLink}
-              to={ROUTES.NOTIFICATIONS}
-              aria-label="Notifications"
-              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary', textDecoration: 'none' }}
+            {/* Same colored-avatar treatment as the desktop header's
+                Profile icon (see the `md`+ Avatar above) — just sized
+                down to fit this compact spot. */}
+            <Avatar
+              src={avatarUrl ?? undefined}
+              sx={{ width: 30, height: 30, bgcolor: colors.accentBlue, fontSize: '0.72rem', fontWeight: 700 }}
             >
-              <Badge
-                badgeContent={unreadCount}
-                max={99}
-                sx={{ '& .MuiBadge-badge': { bgcolor: colors.orange, color: 'common.white', fontSize: 9, minWidth: 15, height: 15 } }}
-              >
-                <NotificationsRoundedIcon sx={{ fontSize: 22 }} />
-              </Badge>
-            </Box>
-
-            <Box
-              component={RouterLink}
-              to={ROUTES.PROFILE}
-              aria-label="Profile"
-              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
-            >
-              {/* Same colored-avatar treatment as the desktop header's
-                  Profile icon (see the `md`+ Avatar above) — just sized
-                  down to fit this compact spot. */}
-              <Avatar
-                src={avatarUrl ?? undefined}
-                sx={{ width: 30, height: 30, bgcolor: colors.accentBlue, fontSize: '0.72rem', fontWeight: 700 }}
-              >
-                {getInitials(userName)}
-              </Avatar>
-            </Box>
-          </Stack>
+              {getInitials(userName)}
+            </Avatar>
+          </Box>
         </Stack>
       </Stack>
     </Box>

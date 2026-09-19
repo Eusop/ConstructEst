@@ -114,6 +114,17 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         // unlike its sibling and the card below it, causing its left/right
         // edges to not reliably line up with them.
         flex: 1,
+        // A flex item's default `min-width` is `auto`, not `0` — meaning
+        // the browser won't shrink it below its content's own min-content
+        // width. This card's 2-column grid of TextFields (see the group
+        // fields below) has a wider min-content width than its sibling
+        // (CalibrationFactorsCard, just sliders, which shrink to anything),
+        // so without this override the flex row would refuse to shrink
+        // this card down to its actual `flex: 1` half-share, overflowing
+        // the row instead — which is what actually broke the left/right
+        // alignment the comment above already describes, not the missing
+        // `flex: 1` alone.
+        minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
       }}

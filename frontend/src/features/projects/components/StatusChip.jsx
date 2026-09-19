@@ -2,20 +2,22 @@ import Box from '@mui/material/Box';
 import { colors } from '../../../theme/palette';
 
 const STATUS_COLORS = {
-  Within: { bg: colors.iconGreenBg, fg: colors.iconGreenFg },
-  Over: { bg: colors.iconRedBg, fg: colors.iconRedFg },
-  Estimated: { bg: colors.iconBlueBg, fg: colors.iconBlueFg },
-  Optimized: { bg: colors.iconGreenBg, fg: colors.iconGreenFg },
-  Parsing: { bg: colors.iconOrangeBg, fg: colors.iconOrangeFg },
-  Shared: { bg: colors.iconPurpleBg, fg: colors.iconPurpleFg },
+  Complete: { bg: colors.iconGreenBg, fg: colors.iconGreenFg },
+  Incomplete: { bg: 'grey.100', fg: 'text.secondary' },
 };
 
 /**
- * Small colour-coded status pill, used for both the "Budget" and "Status"
- * table columns. Falls back to a neutral grey tone for unknown values.
+ * Small colour-coded status pill for the Projects page's project cards
+ * (see ProjectCard, its only consumer). "Complete" only for a project with
+ * a saved brand selection and generated Bill of Materials (`status ===
+ * 'Optimized'` in ProjectsContext); every other project state — still
+ * parsing, estimated but no brand selection yet, or failed to parse — reads
+ * "Incomplete". ProjectCard is what maps the real project status into one
+ * of these two labels; this component just renders whichever it's given.
+ * Falls back to a neutral grey tone for any other, unexpected label.
  *
  * @param {object} props
- * @param {string} props.label One of the known status keywords (Within, Over, Estimated, ...).
+ * @param {'Complete' | 'Incomplete'} props.label
  */
 function StatusChip({ label }) {
   const { bg, fg } = STATUS_COLORS[label] ?? { bg: 'grey.100', fg: 'text.secondary' };

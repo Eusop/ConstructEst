@@ -1,5 +1,6 @@
 import { useState, Children } from 'react';
 import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 
@@ -11,10 +12,26 @@ import Tab from '@mui/material/Tab';
  * (only `display` toggles), so neither one's internal state — a slider
  * value, an open accordion — resets when switching tabs.
  *
- * `md` and up render both children exactly as the parent already lays them
- * out (side by side or stacked, whichever the parent's own breakpoint
- * says) — this component adds nothing there beyond the tab bar itself,
- * which is hidden.
+ * `md` and up show both children side by side (or stacked below `lg`, if
+ * there isn't room yet) via this component's own inner Stack — both
+ * breakpoints live here now, not split between this file and each caller.
+ * They used to be: the caller wrapped this whole component in its own
+ * `Stack direction={{ xs: 'column', lg: 'row' }}`, with the `md`-vs-tabs
+ * switch handled here. That worked visually but had a real bug: this
+ * component used to return a bare Fragment (Tabs, then the content Boxes,
+ * as separate top-level elements), so the *caller's* Stack saw the Tabs bar
+ * as a real DOM sibling preceding the first content Box — and MUI Stack's
+ * `spacing` applies margin to any child with a preceding sibling via a
+ * plain CSS sibling selector, which doesn't care whether that sibling is
+ * `display: none`. At `md`+ (Tabs hidden, spacing switched to margin-left
+ * for row layout) that meant the first content Box quietly got an extra
+ * phantom margin-left the second one didn't, shifting the whole row right
+ * of where it should align with unrelated sibling content elsewhere on the
+ * page. Returning one real wrapping Box here — with Tabs' own spacing
+ * self-contained (`mb`) and the content row in its own inner Stack — means
+ * a caller's Stack (if it still wraps this in one, unnecessary now but
+ * harmless) only ever sees a single child, so it has no sibling to add
+ * phantom spacing around in the first place.
  *
  * @param {object} props
  * @param {[string, string]} props.labels Tab labels, one per child.
@@ -25,7 +42,7 @@ function MobileTabSwitcher({ labels, children }) {
   const items = Children.toArray(children);
 
   return (
-    <>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
       <Tabs
         value={active}
         onChange={(event, value) => setActive(value)}
@@ -54,12 +71,14 @@ function MobileTabSwitcher({ labels, children }) {
         ))}
       </Tabs>
 
-      {items.map((child, index) => (
-        <Box key={labels[index]} sx={{ display: { xs: index === active ? 'flex' : 'none', md: 'flex' }, flex: 1, minWidth: 0 }}>
-          {child}
-        </Box>
-      ))}
-    </>
+      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ flex: 1, minWidth: 0, alignItems: 'stretch' }}>
+        {items.map((child, index) => (
+          <Box key={labels[index]} sx={{ display: { xs: index === active ? 'flex' : 'none', md: 'flex' }, flex: 1, minWidth: 0 }}>
+            {child}
+          </Box>
+        ))}
+      </Stack>
+    </Box>
   );
 }
 

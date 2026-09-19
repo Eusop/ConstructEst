@@ -1,17 +1,16 @@
 import { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ProjectCard from '../features/projects/components/ProjectCard';
+import ProjectStatusFilter from '../features/projects/components/ProjectStatusFilter';
 import EmptyProjectsState from '../features/projects/components/EmptyProjectsState';
 import TypedConfirmDialog from '../components/TypedConfirmDialog';
 import { useProjects } from '../context/ProjectsContext';
 import { useToast } from '../context/ToastContext';
+import { isProjectComplete } from '../features/projects/utils/projectStatus';
 import { ROUTES } from '../routes/paths';
-import { colors } from '../theme/palette';
 
 /**
  * Projects: the full list of created projects. Clicking a card makes it
@@ -23,9 +22,19 @@ function ProjectsPage() {
   const { projects, activeProjectId, setActiveProject, deleteProject } = useProjects();
   const { showToast } = useToast();
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
 
   const pendingDeleteProject = projects.find((project) => project.id === pendingDeleteId) ?? null;
+
+  // Same Complete/Incomplete split ProjectCard's own status tag uses (see
+  // isProjectComplete) — this just decides which cards are shown, the tag
+  // itself is unchanged.
+  const filteredProjects = projects.filter((project) => {
+    if (statusFilter === 'complete') return isProjectComplete(project);
+    if (statusFilter === 'incomplete') return !isProjectComplete(project);
+    return true;
+  });
 
   const handleConfirmDelete = async () => {
     try {
@@ -42,8 +51,21 @@ function ProjectsPage() {
     navigate(ROUTES.MATERIAL_ESTIMATION);
   };
 
+  // Same root cause and fix as ProjectResultsPage: `flex: 1, minHeight: 0`
+  // makes this Stack stretch to fill the remaining viewport height, which
+  // is exactly what EmptyProjectsState wants (it centers itself within
+  // that height) — but once there are enough project cards to make this
+  // page taller than the viewport, that same stretch is what silently
+  // absorbed DashboardLayout's own bottom padding instead of letting it
+  // show below the last card, leaving the list flush against the bottom
+  // edge. Scoped to only the empty case (`projects.length === 0`) rather
+  // than removed outright, so the empty state keeps its current stretched/
+  // centered look exactly as before — the populated list just gets plain
+  // natural-height flow instead, the same fix already applied there.
+  const fillsViewport = projects.length === 0;
+
   return (
-    <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+    <Stack spacing={2.5} sx={{ flex: fillsViewport ? 1 : 'unset', minHeight: fillsViewport ? 0 : 'auto', minWidth: 0 }}>
       {projects.length > 0 && (
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -55,24 +77,20 @@ function ProjectsPage() {
             <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Select a project to make it active.</Typography>
           </Box>
 
-          <Button
-            component={RouterLink}
-            to={ROUTES.NEW_PROJECT}
-            variant="contained"
-            disableElevation
-            startIcon={<AddRoundedIcon />}
-            sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark }, flexShrink: 0 }}
-          >
-            New project
-          </Button>
+          <ProjectStatusFilter value={statusFilter} onChange={setStatusFilter} />
         </Stack>
       )}
 
       {projects.length === 0 ? (
         <EmptyProjectsState />
+      ) : filteredProjects.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary' }}>No projects match this filter.</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mt: 0.5 }}>Try a different status filter.</Typography>
+        </Box>
       ) : (
         <Stack spacing={1.5}>
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}

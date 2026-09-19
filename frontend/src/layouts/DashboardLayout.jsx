@@ -18,7 +18,6 @@ const PAGE_HEADERS = {
   [ROUTES.DASHBOARD]: { title: 'Dashboard' },
   [ROUTES.PROJECTS]: { title: 'Projects' },
   [ROUTES.PROFILE]: { title: 'Profile' },
-  [ROUTES.NOTIFICATIONS]: { title: 'Notifications' },
 };
 
 // New Project's header changes by screen size instead of a fixed entry

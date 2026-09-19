@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import ProjectDetailsCard from '../features/projects/components/ProjectDetailsCard';
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { ROUTES } from '../routes/paths';
 import { isRequired } from '../utils/validators';
 
@@ -50,7 +49,6 @@ function NewProjectPage() {
     createProjectFromDraft,
   } = useProjects();
   const { incrementTotalProjects, logActivity } = useDashboardActivity();
-  const { addNotification } = useNotifications();
   const [touched, setTouched] = useState({});
   const navigate = useNavigate();
 
@@ -73,11 +71,6 @@ function NewProjectPage() {
     if (!canSubmit) return;
     incrementTotalProjects();
     logActivity({ type: 'project_created', message: `New project ${draft.projectName} created` });
-    addNotification({
-      type: 'project_created',
-      title: 'Project created',
-      description: `${draft.projectName} was created and is ready for a floor plan.`,
-    });
     createProjectFromDraft();
     navigate(ROUTES.PROJECT_PROCESSING);
   };

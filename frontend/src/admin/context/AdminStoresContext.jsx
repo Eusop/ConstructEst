@@ -207,17 +207,11 @@ export function AdminStoresProvider({ children }) {
 
   const activeStore = useMemo(() => stores.find((store) => store.id === activeStoreId) ?? null, [stores, activeStoreId]);
 
-  const totalBrandsConfigured = useMemo(
-    () => stores.reduce((sum, store) => sum + (store.stockedBrandCount ?? 0), 0),
-    [stores],
-  );
-
   const value = useMemo(
     () => ({
       stores,
       activeStoreId,
       activeStore,
-      totalBrandsConfigured,
       setActiveStoreId,
       ensureStoreCatalogLoaded,
       addStore,
@@ -235,7 +229,6 @@ export function AdminStoresProvider({ children }) {
       stores,
       activeStoreId,
       activeStore,
-      totalBrandsConfigured,
       setActiveStoreId,
       ensureStoreCatalogLoaded,
       addStore,

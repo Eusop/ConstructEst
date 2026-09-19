@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
-import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
+import AdminWelcomeCard from '../components/AdminWelcomeCard';
 import StatCard from '../../features/dashboard/components/StatCard';
+import ProjectStatsSection from '../../features/dashboard/components/ProjectStatsSection';
 import RecentActivity from '../../features/dashboard/components/RecentActivity';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminStores } from '../context/AdminStoresContext';
@@ -14,29 +16,30 @@ import { formatRelativeTime } from '../../utils/formatRelativeTime';
 import { ADMIN_ROUTES } from '../../routes/paths';
 import { colors } from '../../theme/palette';
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function getFormattedDate() {
-  const now = new Date();
-  return now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
-}
-
 /**
- * Admin dashboard: system-wide stat cards + a recent-activity feed. Every
- * number here is either real (Total/Active Users, from GET /api/admin/users)
- * or admin-session data that starts at zero (Hardware Stores, Materials &
- * Brands configured — see AdminStoresContext) — nothing is seeded/fake, per
- * the spec. Recent activity is empty until the admin actually does
- * something in Users/Stores/Materials/Settings (see logActivity calls there).
+ * Admin dashboard: desktop/tablet keeps its own unchanged 2x2 grid
+ * (AdminWelcomeCard top-left, then the 3 stat cards filling the rest in DOM
+ * order — Total Users top-right, Active Users bottom-left, Hardware Stores
+ * bottom-right). Phones get the same mobile treatment as the User Module's
+ * Dashboard instead (see pages/DashboardPage): AdminWelcomeCard full-width,
+ * then the same 3 stat cards as a swipeable carousel (ProjectStatsSection,
+ * shared and content-agnostic — just given Admin's own stats here) rather
+ * than a cramped 2-per-row grid. Branches in JS rather than pure responsive
+ * CSS because the two are genuinely different structures, same reasoning as
+ * DashboardPage's own isTabletUp split.
+ *
+ * Every stat number here is either real (Total/Active Users, from GET
+ * /api/admin/users) or admin-session data that starts at zero (Hardware
+ * Stores — see AdminStoresContext) — nothing is seeded/fake, per the spec.
+ * Recent activity is empty until the admin actually does something in
+ * Users/Stores/Materials/Settings (see logActivity calls there).
  */
 function AdminDashboardPage() {
+  const theme = useTheme();
+  const isTabletUp = useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true });
+
   const { activities } = useAdminActivity();
-  const { stores, totalBrandsConfigured } = useAdminStores();
+  const { stores } = useAdminStores();
   const [userCounts, setUserCounts] = useState({ total: 0, active: 0 });
 
   useEffect(() => {
@@ -55,39 +58,31 @@ function AdminDashboardPage() {
     };
   }, [activities.length]);
 
-  const stats = [
-    {
-      label: 'Total Users',
-      icon: GroupRoundedIcon,
-      iconBg: colors.iconBlueBg,
-      iconFg: colors.iconBlueFg,
-      value: String(userCounts.total),
-      viewAllTo: ADMIN_ROUTES.USERS,
-    },
-    {
-      label: 'Active Users',
-      icon: CheckCircleRoundedIcon,
-      iconBg: colors.iconGreenBg,
-      iconFg: colors.iconGreenFg,
-      value: String(userCounts.active),
-    },
-    {
-      label: 'Hardware Stores',
-      icon: StorefrontRoundedIcon,
-      iconBg: colors.iconOrangeBg,
-      iconFg: colors.iconOrangeFg,
-      value: String(stores.length),
-      viewAllTo: ADMIN_ROUTES.STORES,
-    },
-    {
-      label: 'Materials & Brands Configured',
-      icon: CategoryRoundedIcon,
-      iconBg: colors.iconPurpleBg,
-      iconFg: colors.iconPurpleFg,
-      value: String(totalBrandsConfigured),
-      viewAllTo: ADMIN_ROUTES.MATERIALS,
-    },
-  ];
+  const totalUsersStat = {
+    label: 'Total Users',
+    icon: GroupRoundedIcon,
+    iconBg: colors.iconBlueBg,
+    iconFg: colors.iconBlueFg,
+    value: String(userCounts.total),
+    viewAllTo: ADMIN_ROUTES.USERS,
+  };
+  const activeUsersStat = {
+    label: 'Active Users',
+    icon: CheckCircleRoundedIcon,
+    iconBg: colors.iconGreenBg,
+    iconFg: colors.iconGreenFg,
+    value: String(userCounts.active),
+  };
+  const hardwareStoresStat = {
+    label: 'Hardware Stores',
+    icon: StorefrontRoundedIcon,
+    iconBg: colors.iconOrangeBg,
+    iconFg: colors.iconOrangeFg,
+    value: String(stores.length),
+    viewAllTo: ADMIN_ROUTES.STORES,
+  };
+
+  const stats = [totalUsersStat, activeUsersStat, hardwareStoresStat];
 
   const displayActivities = activities.map((activity) => ({
     id: activity.id,
@@ -100,24 +95,34 @@ function AdminDashboardPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <Box sx={{ mb: 2.5 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>{getGreeting()}, Admin</Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>System overview: {getFormattedDate()}</Typography>
-      </Box>
-
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
-          gap: 2.5,
-          mb: 2.5,
-          flexShrink: 0,
-        }}
-      >
-        {stats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
-        ))}
-      </Box>
+      {isTabletUp ? (
+        // Tablet/desktop: unchanged 2x2 grid.
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 2.5,
+            mb: 2.5,
+            flexShrink: 0,
+          }}
+        >
+          <AdminWelcomeCard />
+          {stats.map((stat) => (
+            <StatCard key={stat.label} {...stat} />
+          ))}
+        </Box>
+      ) : (
+        // Phones: full-width greeting, then the same swipeable carousel
+        // treatment as the User Module's Dashboard (see ProjectStatsSection).
+        <>
+          <Box sx={{ mb: 2.5, flexShrink: 0 }}>
+            <AdminWelcomeCard />
+          </Box>
+          <Box sx={{ mb: 2.5, flexShrink: 0 }}>
+            <ProjectStatsSection stats={stats} />
+          </Box>
+        </>
+      )}
 
       <RecentActivity activities={displayActivities} />
     </Box>

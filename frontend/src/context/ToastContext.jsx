@@ -12,9 +12,8 @@ const ToastContext = createContext(null);
  *
  * Mounted once at the very root (see App.jsx), *outside* every route/role
  * gate, so it's available on the unauthenticated Login/Sign up pages too —
- * unlike NotificationsContext (persisted bell feed, User Module only) and
- * AdminToastContext (Admin Module only), this one has no login requirement
- * and nothing is kept once dismissed.
+ * unlike AdminToastContext (Admin Module only), this one has no login
+ * requirement and nothing is kept once dismissed.
  */
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'error' });

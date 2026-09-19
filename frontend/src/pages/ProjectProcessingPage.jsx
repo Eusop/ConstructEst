@@ -20,7 +20,6 @@ import ProjectSummaryCard from '../features/projects/components/ProjectSummaryCa
 import { useSimulatedParsing } from '../features/projects/hooks/useSimulatedParsing';
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
-import { useNotifications } from '../context/NotificationsContext';
 import { useToast } from '../context/ToastContext';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
@@ -117,7 +116,6 @@ function buildSteps(draft) {
 function ProjectProcessingPage() {
   const { activeProject, deleteProject, activeProjectId } = useProjects();
   const { incrementEstimationsDone, logActivity } = useDashboardActivity();
-  const { addNotification } = useNotifications();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const steps = buildSteps(activeProject ?? {});
@@ -131,16 +129,6 @@ function ProjectProcessingPage() {
       incrementEstimationsDone();
       logActivity({ type: 'dxf_parsed', message: `Uploaded DXF ${activeProject?.file?.name ?? 'floor plan'}` });
       logActivity({ type: 'estimation_completed', message: `Completed material estimation for ${activeProject?.projectName}` });
-      addNotification({
-        type: 'dxf_parsed',
-        title: 'Parsing completed',
-        description: `${activeProject?.projectName ?? 'Your project'}: floor plan parsed successfully.`,
-      });
-      addNotification({
-        type: 'estimation_completed',
-        title: 'Material estimation completed',
-        description: `Material estimation for ${activeProject?.projectName ?? 'your project'} is ready. Pick a store to continue.`,
-      });
       navigate(ROUTES.PROJECT_RESULTS);
     }, 500);
     return () => clearTimeout(timeout);
@@ -233,8 +221,7 @@ function ProjectProcessingPage() {
                   You can keep working
                 </Typography>
                 <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
-                  Parsing continues in the background. We&apos;ll open the results automatically when it&apos;s done, or
-                  notify you.
+                  Parsing continues in the background. We&apos;ll open the results automatically when it&apos;s done.
                 </Typography>
               </Box>
             </Paper>
