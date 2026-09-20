@@ -19,6 +19,7 @@ or, on failure:
   { "error": "human-readable message" }
 with a non-zero exit code.
 """
+import hashlib
 import json
 import sys
 
@@ -32,6 +33,11 @@ from formulas import compute_materials
 def fail(message):
     print(json.dumps({"error": message}))
     sys.exit(1)
+
+
+def _file_hash(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
 
 def read_and_validate(dxf_path, label):
@@ -88,6 +94,16 @@ def main():
     include_roofing = bool(payload.get("includeRoofing", True))
     constants = payload.get("constants") or {}
     overrides = payload.get("overrides") or {}
+
+    # Zero-ambiguity guard: the same file uploaded to both slots would
+    # otherwise silently compute up to 4 floors' worth of columns/roofing
+    # while storeys still reads "2" — there's no legitimate reason two
+    # different floors' DXFs would ever be byte-identical.
+    if second_floor_dxf_path and _file_hash(dxf_path) == _file_hash(second_floor_dxf_path):
+        fail("The same file was uploaded for both the ground floor and second floor. Each "
+             "floor needs its own DXF file — re-upload the second floor separately, or "
+             "remove it and let the system estimate the 2nd floor from the ground floor "
+             "instead.")
 
     geometry = read_and_validate(dxf_path, "DXF file")
     geometry2 = read_and_validate(second_floor_dxf_path, "second floor DXF") if second_floor_dxf_path else None

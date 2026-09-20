@@ -74,7 +74,12 @@ still an unreviewed candidate for that same process:
 import math
 
 WALL_HEIGHT_PER_STOREY_M = 3.0
-# Used only when a DXF has no COLUMN layer at all. Previously this sat behind
+# Fallback only — the resolved per-storey height used everywhere (walls,
+# stairs, scaffolding's building-height default) is `floor_to_floor_h`
+# (overrides.get("floorToFloorHeight", WALL_HEIGHT_PER_STOREY_M)), so a
+# user's override actually reaches every height-driven material instead of
+# only some of them.
+# DEFAULT_COLUMN_COUNT below is used only when a DXF has no COLUMN layer at all. Previously this sat behind
 # an `overrides.get("fallbackColumnCount", 4)` lookup, but "fallbackColumnCount"
 # was never a real override key (it is not in designOverrides.service.js's
 # FIELDS, not a DB column, and not a UI field), so the literal 4 was always
@@ -202,6 +207,14 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     rebar_weight_by_category = {category: 0.0 for category in SOURCE_CATEGORIES}
 
     # --- Table 12: Wall materials -----------------------------------------
+    # floor_to_floor_h drives every per-storey height in the take-off (walls
+    # here, stairs and scaffolding's building-height default further down) —
+    # previously walls alone stayed hardcoded to WALL_HEIGHT_PER_STOREY_M
+    # even when a user overrode floorToFloorHeight for a taller-than-default
+    # storey, so CHB/wall cement/wall sand/wall rebar silently kept using
+    # 3.0m while stairs and scaffolding correctly picked up the override.
+    floor_to_floor_h = overrides.get("floorToFloorHeight", WALL_HEIGHT_PER_STOREY_M)
+
     # Each storey uses its own floor's real wall run/openings when a second
     # floor's DXF was supplied (storey index 1 -> geometry2); otherwise the
     # ground floor's geometry is reused for every storey, exactly as before.
@@ -213,7 +226,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         storey_door_area_m2 = storey_geometry["door_area_m2"]
         storey_window_area_m2 = storey_geometry["window_area_m2"]
 
-        gross_wall_area = storey_wall_length_m * WALL_HEIGHT_PER_STOREY_M
+        gross_wall_area = storey_wall_length_m * floor_to_floor_h
         net_wall_area = max(gross_wall_area - storey_door_area_m2 - storey_window_area_m2, 0.0)
 
         acc.add("hollowBlocks", net_wall_area * 12.5 * 1.05, "Wall area / coverage", storey_category)
@@ -221,8 +234,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         acc.add("sand", net_wall_area * 0.0435, "Wall area x mortar rate", storey_category)
 
         vertical_bars = ceil_int(storey_wall_length_m / 0.60) + 1
-        horizontal_bars = ceil_int(WALL_HEIGHT_PER_STOREY_M / 0.60) + 1
-        wall_rebar_length_m = vertical_bars * WALL_HEIGHT_PER_STOREY_M + horizontal_bars * storey_wall_length_m
+        horizontal_bars = ceil_int(floor_to_floor_h / 0.60) + 1
+        wall_rebar_length_m = vertical_bars * floor_to_floor_h + horizontal_bars * storey_wall_length_m
         rebar_weight_by_category[storey_category] += wall_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
 
     # --- Table 13: Slab materials ------------------------------------------
@@ -308,7 +321,9 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
 
     # --- Table 18: Stair materials (2-storey only) --------------------------
     if storeys >= 2:
-        floor_to_floor_h = overrides.get("floorToFloorHeight", 3.0)
+        # floor_to_floor_h already resolved above (Table 12) — reused here
+        # rather than re-derived, so a floorToFloorHeight override can't
+        # drift between the two sections.
         stair_width = overrides.get("stairWidth", 0.90)
         risers = ceil_int(floor_to_floor_h / 0.18)
         treads = max(risers - 1, 0)
@@ -329,7 +344,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # approximation, unchanged.
     total_floor_area_m2 = floor_area_m2 + geometry2["floor_area_m2"] if geometry2 is not None else floor_area_m2 * storeys
 
-    building_height = overrides.get("buildingHeight", storeys * WALL_HEIGHT_PER_STOREY_M)
+    building_height = overrides.get("buildingHeight", storeys * floor_to_floor_h)
     acc.add("scaffolding", (floor_perimeter_m * building_height) / (1.8 * 1.2), "Perimeter x height / coverage", "shared")
     acc.add("steelProps", total_floor_area_m2 / 1.0, "Slab area / coverage per prop", "shared")
 

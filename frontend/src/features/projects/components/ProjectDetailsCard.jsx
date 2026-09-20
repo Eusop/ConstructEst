@@ -178,6 +178,10 @@ function ProjectDetailsCard({
 
         <Box>
           <Typography sx={FIELD_LABEL_SX}>Floor plan (2D AutoCAD DXF)</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mb: 1 }}>
+            This file should represent exactly one floor's geometry. A file with more than one
+            floor drawn on the same layers can overstate quantities like columns and roofing.
+          </Typography>
           <DxfDropzone
             file={form.file}
             fileValidation={fileValidation}
@@ -192,8 +196,7 @@ function ProjectDetailsCard({
             <Typography sx={FIELD_LABEL_SX}>Second floor plan (optional)</Typography>
             <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mb: 1 }}>
               Upload it for more accurate materials, or leave blank to estimate the 2nd floor from the ground
-              floor. If your file already includes both floors, either upload it here alone, or split each
-              floor into its own DXF in your CAD software for the most accurate result.
+              floor.
             </Typography>
             <DxfDropzone
               file={form.secondFloorFile}
