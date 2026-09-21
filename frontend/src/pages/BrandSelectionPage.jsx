@@ -15,7 +15,7 @@ import RecommendedBrandsSummary from '../features/brandSelection/components/Reco
 import ManualBrandTable from '../features/brandSelection/components/ManualBrandTable';
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
-import { OPTIMIZATION_TIERS, loadBrandCatalog } from '../features/brandSelection/data/brandOptionsMock';
+import { OPTIMIZATION_TIERS, loadBrandCatalog } from '../features/brandSelection/data/brandOptionsCache';
 import { computeBom } from '../features/brandSelection/utils/computeBom';
 import { apiRequest } from '../services/apiClient';
 import { ROUTES } from '../routes/paths';
@@ -28,7 +28,7 @@ import { formatPeso } from '../utils/formatNumbers';
  * per-material dropdowns. Only usable once the active project has a
  * selected store — the available brands and prices come from that store's
  * real catalog (GET /api/projects/:id/brand-catalog), loaded into
- * brandOptionsMock so OptimizationTierCards/RecommendedBrandsSummary/
+ * brandOptionsCache so OptimizationTierCards/RecommendedBrandsSummary/
  * ManualBrandTable/computeBom all resolve against real data unchanged.
  * "Continue" persists the choice via POST /api/projects/:id/brand-selection.
  */

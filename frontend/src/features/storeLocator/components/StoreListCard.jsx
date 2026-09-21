@@ -43,7 +43,7 @@ function BadgeNumber({ rank, color }) {
  * listing what it can't supply, rather than being blocked from selection.
  *
  * @param {object} props
- * @param {object} props.store One entry from features/storeLocator/data/storesMock.
+ * @param {object} props.store One entry from features/storeLocator/data/storesCache.
  * @param {string} props.badgeColor
  * @param {boolean} props.selected
  * @param {() => void} props.onSelect

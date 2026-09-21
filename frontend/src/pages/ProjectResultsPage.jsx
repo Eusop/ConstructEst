@@ -11,7 +11,7 @@ import FloorPlanPreviewCard from '../features/projects/components/FloorPlanPrevi
 import ExtractedMeasurementsCard from '../features/projects/components/ExtractedMeasurementsCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import { useProjects } from '../context/ProjectsContext';
-import { loadParsedProject } from '../features/projects/data/parsedProjectMock';
+import { loadParsedProject } from '../features/projects/data/parsedProjectCache';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
 
@@ -19,7 +19,7 @@ import { colors } from '../theme/palette';
  * Shown once parsing finishes: a snapshot of the active project's parsed
  * floor plan and extracted measurements. Reads the active project from
  * ProjectsContext; if its estimation isn't already in memory (e.g. after a
- * reload), fetches it once and feeds it into parsedProjectMock, same as
+ * reload), fetches it once and feeds it into parsedProjectCache, same as
  * MaterialEstimationPage.
  */
 function ProjectResultsPage() {

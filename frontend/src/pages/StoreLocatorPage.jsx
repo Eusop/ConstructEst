@@ -15,7 +15,7 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import MapView from '../components/MapView';
 import StoreListCard from '../features/storeLocator/components/StoreListCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
-import { STORES, CITY_LOCATION, DISTANCE_IS_FROM_USER, loadStores } from '../features/storeLocator/data/storesMock';
+import { STORES, CITY_LOCATION, DISTANCE_IS_FROM_USER, loadStores } from '../features/storeLocator/data/storesCache';
 import { buildStoreInfoWindowContent } from '../features/storeLocator/utils/buildStoreInfoWindowContent';
 import { useProjects } from '../context/ProjectsContext';
 import { useUserLocation } from '../hooks/useUserLocation';

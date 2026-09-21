@@ -3,7 +3,7 @@ import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import { colors } from '../../../theme/palette';
-import { PARSED_MEASUREMENTS } from '../data/parsedProjectMock';
+import { PARSED_MEASUREMENTS } from '../data/parsedProjectCache';
 
 function MeasurementCell({ label, value }) {
   return (

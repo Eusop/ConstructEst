@@ -23,7 +23,7 @@ function escapeHtml(value) {
  * a component — kept in Store Locator's own utils since the generic
  * MapView component has no knowledge of what a "store" is.
  *
- * @param {object} store One entry from features/storeLocator/data/storesMock.
+ * @param {object} store One entry from features/storeLocator/data/storesCache.
  */
 export function buildStoreInfoWindowContent(store) {
   const stockLine = store.inStock

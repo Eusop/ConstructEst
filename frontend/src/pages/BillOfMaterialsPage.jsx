@@ -12,9 +12,9 @@ import NoActiveProjectState from '../features/projects/components/NoActiveProjec
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
 import { computeTierTotal } from '../features/brandSelection/utils/computeBom';
-import { loadBrandCatalog } from '../features/brandSelection/data/brandOptionsMock';
-import { STORES, loadStores } from '../features/storeLocator/data/storesMock';
-import { loadParsedProject, formatQuantityLabel } from '../features/projects/data/parsedProjectMock';
+import { loadBrandCatalog } from '../features/brandSelection/data/brandOptionsCache';
+import { STORES, loadStores } from '../features/storeLocator/data/storesCache';
+import { loadParsedProject, formatQuantityLabel } from '../features/projects/data/parsedProjectCache';
 import { apiRequest } from '../services/apiClient';
 import { generateBomPdf } from '../services/bomPdfService';
 import { ROUTES } from '../routes/paths';

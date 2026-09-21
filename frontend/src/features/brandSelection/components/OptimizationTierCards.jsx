@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import DiamondRoundedIcon from '@mui/icons-material/DiamondRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
-import { OPTIMIZATION_TIERS } from '../data/brandOptionsMock';
+import { OPTIMIZATION_TIERS } from '../data/brandOptionsCache';
 import { computeTierTotal } from '../utils/computeBom';
 import { colors } from '../../../theme/palette';
 import { formatPeso } from '../../../utils/formatNumbers';

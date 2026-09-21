@@ -17,7 +17,7 @@ import NoActiveProjectState from '../features/projects/components/NoActiveProjec
 import MobileTabSwitcher from '../components/MobileTabSwitcher';
 import { useProjects } from '../context/ProjectsContext';
 import { apiRequest } from '../services/apiClient';
-import { PARSED_MEASUREMENTS, loadParsedProject } from '../features/projects/data/parsedProjectMock';
+import { PARSED_MEASUREMENTS, loadParsedProject } from '../features/projects/data/parsedProjectCache';
 import { loadQuantityTakeoff } from '../features/estimation/data/quantityTakeoffMaterials';
 import { SYSTEM_DEFAULT_FACTORS } from '../features/settings/data/calibrationDefaults';
 import { ROUTES } from '../routes/paths';

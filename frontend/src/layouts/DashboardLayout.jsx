@@ -7,7 +7,7 @@ import DashboardHeader from './DashboardHeader';
 import SelectedStoreBadge from '../features/brandSelection/components/SelectedStoreBadge';
 import { useToggle } from '../hooks/useToggle';
 import { useProjects } from '../context/ProjectsContext';
-import { STORES } from '../features/storeLocator/data/storesMock';
+import { STORES } from '../features/storeLocator/data/storesCache';
 import { colors } from '../theme/palette';
 import { ROUTES } from '../routes/paths';
 

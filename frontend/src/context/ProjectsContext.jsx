@@ -61,7 +61,7 @@ function toContextProject(serverProject, extra = {}) {
  * returned — pages that need it (Results, Material Estimation, ...) fetch
  * it themselves if it's still null (e.g. after a reload) via
  * `refreshActiveProjectEstimation`, then feed it to the relevant
- * feature/data module (see e.g. features/projects/data/parsedProjectMock).
+ * feature/data module (see e.g. features/projects/data/parsedProjectCache).
  */
 export function ProjectsProvider({ children }) {
   const [projects, setProjects] = useState([]);

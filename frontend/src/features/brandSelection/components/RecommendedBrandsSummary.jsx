@@ -7,7 +7,7 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
-import { BRAND_MATERIAL_SHORT_LABELS, OPTIMIZATION_TIERS, getStoreBrandOptions, getAvailableMaterialKeys } from '../data/brandOptionsMock';
+import { BRAND_MATERIAL_SHORT_LABELS, OPTIMIZATION_TIERS, getStoreBrandOptions, getAvailableMaterialKeys } from '../data/brandOptionsCache';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 import { formatPeso } from '../../../utils/formatNumbers';

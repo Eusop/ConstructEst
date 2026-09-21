@@ -1,5 +1,5 @@
-import { MATERIALS } from '../../projects/data/parsedProjectMock';
-import { BASE_PRICING, OPTIMIZATION_TIERS, getStoreBrandOptions } from '../data/brandOptionsMock';
+import { MATERIALS } from '../../projects/data/parsedProjectCache';
+import { BASE_PRICING, OPTIMIZATION_TIERS, getStoreBrandOptions } from '../data/brandOptionsCache';
 
 function resolveBrandOption(storeId, materialKey, optionId) {
   return getStoreBrandOptions(storeId, materialKey)?.find((option) => option.id === optionId) ?? null;
