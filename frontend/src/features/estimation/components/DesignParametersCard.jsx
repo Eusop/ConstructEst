@@ -60,7 +60,22 @@ const GROUPS = [
 // other field's placeholder is the real value the engine will fall back
 // to, computed for `storeys` when known (a project), or shown as both
 // the 1-storey/2-storey variants when it isn't (the admin's global page).
-function fieldPlaceholder(fieldKey, storeys) {
+//
+// `effectiveDefaults`, when given, takes priority over the hardcoded
+// literals below — it's the project's real effective fallback chain
+// (project override -> admin's global default -> engine's own hardcoded
+// default), fetched live from the backend. Without it, this placeholder
+// used to always show formulas.py's hardcoded literal even when an admin
+// had configured a different global default, so leaving a field blank
+// looked like it would use one number but silently used another. Only a
+// project page can pass this (the admin global page IS the thing setting
+// that global default, so its own placeholder correctly stays the
+// hardcoded engine fallback — there's no more-global level above it).
+function fieldPlaceholder(fieldKey, storeys, effectiveDefaults) {
+  if (effectiveDefaults) {
+    const value = effectiveDefaults[fieldKey];
+    if (value != null) return String(value);
+  }
   if (storeys != null) {
     const value = getEngineDefaults(storeys)[fieldKey];
     return value != null ? String(value) : 'Auto';
@@ -88,8 +103,13 @@ function fieldPlaceholder(fieldKey, storeys) {
  *   footing defaults separately for 1-storey vs 2-storey buildings. Omit (or pass null)
  *   on pages with no specific project in context (e.g. admin global defaults), where
  *   both variants are shown instead.
+ * @param {Record<string, number|null>|null} [props.effectiveDefaults] The project's real
+ *   effective fallback chain (project override -> admin's global default -> engine's
+ *   hardcoded default), fetched live from the backend — takes priority over the hardcoded
+ *   literal placeholder when a field has a value here. Omit on pages with no specific
+ *   project (e.g. the admin global page, which IS the global default being set).
  */
-function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null }) {
+function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null, effectiveDefaults = null }) {
   const isMobile = useIsMobile();
   const handleFieldChange = (key, rawValue) => {
     if (rawValue === '') {
@@ -187,7 +207,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                     size="small"
                     value={overrides[field.key] ?? ''}
                     onChange={(event) => handleFieldChange(field.key, event.target.value)}
-                    placeholder={fieldPlaceholder(field.key, storeys)}
+                    placeholder={fieldPlaceholder(field.key, storeys, effectiveDefaults)}
                     slotProps={{
                       inputLabel: { shrink: true },
                       input: { endAdornment: <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{field.unit}</Typography> },

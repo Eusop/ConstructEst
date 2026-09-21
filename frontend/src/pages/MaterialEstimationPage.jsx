@@ -59,6 +59,12 @@ function MaterialEstimationPage() {
   const [draftFactors, setDraftFactors] = useState(null);
   const [savedOverrides, setSavedOverrides] = useState(null);
   const [draftOverrides, setDraftOverrides] = useState(null);
+  // What the engine will actually use for any field left blank (this
+  // project's saved override -> admin's global default -> formulas.py's
+  // hardcoded default) — lets Design Parameters show the real effective
+  // value as its placeholder instead of always the hardcoded literal, which
+  // silently went stale whenever an admin set a different global default.
+  const [effectiveDefaults, setEffectiveDefaults] = useState(null);
   const [savedIncludeRoofing, setSavedIncludeRoofing] = useState(null);
   const [draftIncludeRoofing, setDraftIncludeRoofing] = useState(null);
   const [isRecalculating, setIsRecalculating] = useState(false);
@@ -77,7 +83,7 @@ function MaterialEstimationPage() {
       setDraftIncludeRoofing(activeProject.includeRoofing);
 
       try {
-        const [{ constants }, { overrides }] = await Promise.all([
+        const [{ constants }, { overrides, effectiveDefaults: fetchedEffectiveDefaults }] = await Promise.all([
           apiRequest(`/projects/${activeProject.id}/constants`),
           apiRequest(`/projects/${activeProject.id}/design-overrides`),
         ]);
@@ -87,12 +93,16 @@ function MaterialEstimationPage() {
         setDraftFactors(uiFactors);
         setSavedOverrides(overrides);
         setDraftOverrides(overrides);
+        setEffectiveDefaults(fetchedEffectiveDefaults ?? null);
       } catch {
         if (!cancelled) {
           setSavedFactors(SYSTEM_DEFAULT_FACTORS);
           setDraftFactors(SYSTEM_DEFAULT_FACTORS);
           setSavedOverrides(EMPTY_OVERRIDES);
           setDraftOverrides(EMPTY_OVERRIDES);
+          // Left null on failure — DesignParametersCard falls back to its
+          // own hardcoded-literal placeholder rather than showing nothing.
+          setEffectiveDefaults(null);
         }
       }
 
@@ -226,6 +236,7 @@ function MaterialEstimationPage() {
             onOverrideChange={updateOverride}
             onResetAll={handleResetOverrides}
             storeys={activeProject.storeys}
+            effectiveDefaults={effectiveDefaults}
           />
           <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />
         </MobileTabSwitcher>

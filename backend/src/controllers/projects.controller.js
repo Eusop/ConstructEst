@@ -216,8 +216,20 @@ async function persistEstimation(projectId, engineResult) {
 export const getProjectDesignOverrides = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
-  const overrides = await getDesignOverrides(project.id);
-  res.json({ overrides });
+  // `overrides` is this project's own saved values only (null where unset —
+  // see getDesignOverrides's own doc comment). `effectiveDefaults` is what
+  // the engine will actually use for any field left blank (project override
+  // -> admin's global default -> formulas.py's hardcoded default) — a
+  // regular user can't call the admin-only /admin/design-overrides endpoint
+  // to see the global default themselves, so without this, Design
+  // Parameters' placeholder text fell back to a static hardcoded mirror
+  // (engineDefaultParameters.js) that never reflected an admin's actual
+  // configured global override.
+  const [overrides, effectiveDefaults] = await Promise.all([
+    getDesignOverrides(project.id),
+    getEffectiveDesignOverrides(project.id),
+  ]);
+  res.json({ overrides, effectiveDefaults });
 });
 
 export const putProjectDesignOverrides = asyncHandler(async (req, res) => {

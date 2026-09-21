@@ -30,12 +30,18 @@ still an unreviewed candidate for that same process:
     10mm for walls and the ground slab, 12mm for the suspended (2nd floor)
     slab. Stairs still use the 10mm rate too, but that one's still an
     unvalidated assumption — his form didn't state a stair diameter.
-  - Column rebar is a known gap, not yet an assumption: columns contribute
-    concrete (Table 14) but no reinforcement at all today, even though his
-    form confirmed column rebar diameters (12mm 1-storey / 16mm 2-storey) —
-    implying Table 14 expects a column rebar formula this engine doesn't
-    have yet. Deliberately deferred (a real formula to design, not a rate
-    swap) rather than bundled into the diameter fix above.
+  - Column rebar is now computed (previously a known gap — no reinforcement
+    at all). Diameter is confirmed by his validation (12mm 1-storey / 16mm
+    2-storey). Bar count per column is NOT yet confirmed by him — it's set
+    to 4 (both storey types), based on the National Structural Code of the
+    Philippines' general minimum-reinforcement rules for columns (a flat
+    minimum of 4 longitudinal bars for a rectangular tied column, and
+    separately a minimum 1% gross-area steel ratio — worked against this
+    system's own column sizes, the 1% ratio needs fewer than 4 bars either
+    way, so the flat minimum governs both cases). See docs/nscp-citations.md
+    for the full research and sources. Sent to Engr. Espiritu as an open
+    question (confirm-or-correct) — COLUMN_REBAR_BAR_COUNT below should be
+    updated once he replies, same as the diameter mapping above.
   - Footing plan dimensions default to 0.60m x 0.60m per column (paper
     gives a default depth only, not width/length).
   - Total beam run length is approximated as the wall run length (or, with
@@ -91,6 +97,17 @@ DEFAULT_COLUMN_COUNT = 4
 # the suspended (2nd floor) slab.
 REBAR_UNIT_WEIGHT_10MM_KG_PER_M = 0.617
 REBAR_UNIT_WEIGHT_12MM_KG_PER_M = 0.889
+# 16mm, same d^2/162 formula — used for 2-storey column rebar (Engr.
+# Espiritu's validated column diameter for that case).
+REBAR_UNIT_WEIGHT_16MM_KG_PER_M = 1.580
+
+# Bar count per column, both storey types — NOT yet confirmed by Engr.
+# Espiritu (unlike the diameters below, which are). Sourced from NSCP's
+# general minimum-reinforcement rules for columns, not this paper — see the
+# docstring above and docs/nscp-citations.md for the full derivation.
+COLUMN_REBAR_BAR_COUNT = 4
+# Column rebar diameter per storey type — this half IS validated.
+COLUMN_REBAR_DIAMETER_MM = {1: 12, 2: 16}
 
 # NSCP 2016 moderate slope, rise:run = 1:3 -> sqrt(rise^2 + run^2) / run = sqrt(10) / 3
 PITCH_MULTIPLIER = math.sqrt(10) / 3
@@ -280,6 +297,18 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     col_h = overrides.get("columnHeight", col_h)
     column_volume = col_w * col_d * col_h * column_count
     acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count", "shared")
+
+    # Column rebar — diameter is Engr. Espiritu-validated (12mm 1-storey /
+    # 16mm 2-storey); bar count (COLUMN_REBAR_BAR_COUNT) is not yet
+    # confirmed by him, see the module docstring and docs/nscp-citations.md.
+    # "shared" category, same as the concrete above — one column runs
+    # continuously through every floor, not a separate one per floor.
+    column_rebar_diameter_mm = COLUMN_REBAR_DIAMETER_MM[2 if storeys >= 2 else 1]
+    column_rebar_unit_weight = (
+        REBAR_UNIT_WEIGHT_16MM_KG_PER_M if column_rebar_diameter_mm == 16 else REBAR_UNIT_WEIGHT_12MM_KG_PER_M
+    )
+    column_rebar_length_m = column_count * COLUMN_REBAR_BAR_COUNT * col_h
+    rebar_weight_by_category["shared"] += column_rebar_length_m * column_rebar_unit_weight
 
     # --- Table 15: Beam materials (beam run length approximated from wall run) ---
     beam_w = overrides.get("beamWidth", 0.20)
