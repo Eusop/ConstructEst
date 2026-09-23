@@ -1,6 +1,6 @@
 /**
  * Mirrors the engine's own hardcoded fallback defaults (backend/engine/
- * formulas.py — verified against the capstone paper's Tables 14/15/17/18)
+ * formulas.py — verified against the capstone paper's Tables 14/15/17/18/19)
  * so the Design Parameters UI can show the real number that will actually
  * be used instead of a generic "Auto" placeholder.
  *
@@ -25,6 +25,13 @@ export function getEngineDefaults(storeys) {
     floorToFloorHeight: 3.0,
     stairWidth: 0.90,
     buildingHeight: storeys != null ? storeys * 3.0 : null,
+    scaffoldingSetWidth: 1.8,
+    scaffoldingSetHeight: 1.2,
+    scaffoldingSetCount: null, // derived from perimeter x height / coverage, not a fixed default
+    riserHeight: 0.18,
+    treadDepth: 0.25,
+    waistThickness: 0.15,
+    stairRebarSpacing: 0.15,
   };
 }
 

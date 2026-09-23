@@ -353,18 +353,29 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         # floor_to_floor_h already resolved above (Table 12) — reused here
         # rather than re-derived, so a floorToFloorHeight override can't
         # drift between the two sections.
+        # Table 18's own text: "All values are tunable from the Estimation
+        # Calibration Settings based upon the actual design plan" — riser
+        # height, tread depth, waist thickness and rebar spacing are now
+        # overridable like stairWidth already was.
         stair_width = overrides.get("stairWidth", 0.90)
-        risers = ceil_int(floor_to_floor_h / 0.18)
+        riser_height = overrides.get("riserHeight", 0.18)
+        tread_depth = overrides.get("treadDepth", 0.25)
+        waist_thickness = overrides.get("waistThickness", 0.15)
+        stair_rebar_spacing = overrides.get("stairRebarSpacing", 0.15)
+        risers = ceil_int(floor_to_floor_h / riser_height)
         treads = max(risers - 1, 0)
-        run = treads * 0.25
+        run = treads * tread_depth
         slant = math.hypot(floor_to_floor_h, run)
         slab_area = slant * stair_width
-        slab_volume = slab_area * 0.15
-        step_volume = 0.5 * 0.18 * 0.25 * stair_width * risers
+        slab_volume = slab_area * waist_thickness
+        step_volume = 0.5 * riser_height * tread_depth * stair_width * risers
         acc.add_concrete_mix(slab_volume + step_volume, cement_factor, "Stair slab + step volume", "shared")
         # Diameter unspecified by the expert validation form for stairs —
         # 10mm stays a documented assumption here, same as before.
-        stair_rebar_length_m = (ceil_int(slant / 0.15) + 1) * stair_width + (ceil_int(stair_width / 0.15) + 1) * slant
+        stair_rebar_length_m = (
+            (ceil_int(slant / stair_rebar_spacing) + 1) * stair_width
+            + (ceil_int(stair_width / stair_rebar_spacing) + 1) * slant
+        )
         rebar_weight_by_category["shared"] += stair_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
 
     # --- Table 19: Scaffolding & Formwork ------------------------------------
@@ -374,7 +385,26 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     total_floor_area_m2 = floor_area_m2 + geometry2["floor_area_m2"] if geometry2 is not None else floor_area_m2 * storeys
 
     building_height = overrides.get("buildingHeight", storeys * floor_to_floor_h)
-    acc.add("scaffolding", (floor_perimeter_m * building_height) / (1.8 * 1.2), "Perimeter x height / coverage", "shared")
+    # Default coverage per standard scaffolding frame set (Table 19: 1.8m x
+    # 1.2m) — overridable since the real question open with the engineer is
+    # whether that default should instead reflect a real local product's
+    # size (see docs/nscp-citations.md / the scaffolding question already
+    # sent). The formula itself is unaffected; only which coverage area it
+    # divides by can now be corrected without editing code.
+    scaffolding_set_width = overrides.get("scaffoldingSetWidth", 1.8)
+    scaffolding_set_height = overrides.get("scaffoldingSetHeight", 1.2)
+    computed_scaffolding_sets = (floor_perimeter_m * building_height) / (scaffolding_set_width * scaffolding_set_height)
+    # Same idea as columnCount: a direct set-count override (e.g. an actual
+    # contractor quote) skips the perimeter/height/coverage formula entirely
+    # rather than requiring the width/height fields to be reverse-engineered
+    # to reproduce a known number.
+    scaffolding_set_count_override = overrides.get("scaffoldingSetCount")
+    acc.add(
+        "scaffolding",
+        scaffolding_set_count_override if scaffolding_set_count_override is not None else computed_scaffolding_sets,
+        "Manual override" if scaffolding_set_count_override is not None else "Perimeter x height / coverage",
+        "shared",
+    )
     acc.add("steelProps", total_floor_area_m2 / 1.0, "Slab area / coverage per prop", "shared")
 
     column_perimeter = 2 * (col_w + col_d)

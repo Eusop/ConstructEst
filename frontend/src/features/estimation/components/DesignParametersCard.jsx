@@ -46,12 +46,21 @@ const GROUPS = [
     fields: [
       { key: 'floorToFloorHeight', label: 'Floor-to-floor height', unit: 'm', step: 0.1 },
       { key: 'stairWidth', label: 'Stair width', unit: 'm', step: 0.05 },
+      { key: 'riserHeight', label: 'Riser height', unit: 'm', step: 0.01 },
+      { key: 'treadDepth', label: 'Tread depth', unit: 'm', step: 0.01 },
+      { key: 'waistThickness', label: 'Waist thickness', unit: 'm', step: 0.01 },
+      { key: 'stairRebarSpacing', label: 'Stair rebar spacing', unit: 'm', step: 0.01 },
     ],
   },
   {
-    key: 'building',
-    label: 'Building',
-    fields: [{ key: 'buildingHeight', label: 'Building height (scaffolding)', unit: 'm', step: 0.1 }],
+    key: 'scaffolding',
+    label: 'Scaffolding',
+    fields: [
+      { key: 'buildingHeight', label: 'Building height', unit: 'm', step: 0.1 },
+      { key: 'scaffoldingSetWidth', label: 'Scaffold set width', unit: 'm', step: 0.01 },
+      { key: 'scaffoldingSetHeight', label: 'Scaffold set height', unit: 'm', step: 0.01 },
+      { key: 'scaffoldingSetCount', label: 'Scaffold set count (overrides the above)', unit: 'sets', step: 1 },
+    ],
   },
 ];
 

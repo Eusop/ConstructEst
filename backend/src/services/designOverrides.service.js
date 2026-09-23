@@ -16,6 +16,13 @@ const FIELDS = [
   ['floorToFloorHeight', 'floor_to_floor_height'],
   ['stairWidth', 'stair_width'],
   ['buildingHeight', 'building_height'],
+  ['scaffoldingSetWidth', 'scaffolding_set_width'],
+  ['scaffoldingSetHeight', 'scaffolding_set_height'],
+  ['riserHeight', 'riser_height'],
+  ['treadDepth', 'tread_depth'],
+  ['waistThickness', 'waist_thickness'],
+  ['stairRebarSpacing', 'stair_rebar_spacing'],
+  ['scaffoldingSetCount', 'scaffolding_set_count'],
 ];
 
 function toApiShape(row) {

@@ -231,6 +231,13 @@ CREATE TABLE project_design_overrides (
   floor_to_floor_height DECIMAL(6, 3) NULL,
   stair_width DECIMAL(6, 3) NULL,
   building_height DECIMAL(6, 3) NULL,
+  scaffolding_set_width DECIMAL(6, 3) NULL,
+  scaffolding_set_height DECIMAL(6, 3) NULL,
+  riser_height DECIMAL(6, 3) NULL,
+  tread_depth DECIMAL(6, 3) NULL,
+  waist_thickness DECIMAL(6, 3) NULL,
+  stair_rebar_spacing DECIMAL(6, 3) NULL,
+  scaffolding_set_count SMALLINT UNSIGNED NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_design_overrides_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE KEY uq_design_overrides_project (project_id)
