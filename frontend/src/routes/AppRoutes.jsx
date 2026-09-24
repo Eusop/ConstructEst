@@ -19,6 +19,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { ProjectsProvider } from '../context/ProjectsContext';
 import { DashboardActivityProvider } from '../context/DashboardActivityContext';
 import RequireRole from './RequireRole';
+import RedirectIfAuthenticated from './RedirectIfAuthenticated';
 import AdminLayout from '../admin/layouts/AdminLayout';
 import AdminDashboardPage from '../admin/pages/AdminDashboardPage';
 import AdminUsersPage from '../admin/pages/AdminUsersPage';
@@ -36,8 +37,8 @@ function AppRoutes() {
     <Routes>
       {/* No public marketing Landing Page — "/" goes straight to Login. */}
       <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
-      <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-      <Route path={ROUTES.SIGNUP} element={<SignUpPage />} />
+      <Route path={ROUTES.LOGIN} element={<RedirectIfAuthenticated><LoginPage /></RedirectIfAuthenticated>} />
+      <Route path={ROUTES.SIGNUP} element={<RedirectIfAuthenticated><SignUpPage /></RedirectIfAuthenticated>} />
       <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
       {/* Public: someone who forgot their password can't sign in first. */}
       <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
