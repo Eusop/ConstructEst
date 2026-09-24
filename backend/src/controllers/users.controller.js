@@ -5,6 +5,7 @@ import { query } from '../config/db.js';
 import { toPublicUser } from '../utils/serializers.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { isValidPassword, PASSWORD_RULE_MESSAGE } from '../utils/passwordPolicy.js';
 import { AVATAR_DIR } from '../middleware/upload.js';
 import { sendPasswordChangedEmail } from '../services/mailer.service.js';
 
@@ -29,9 +30,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
 export const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  if (!newPassword || String(newPassword).length < 6) {
-    throw new HttpError(400, 'New password must be at least 6 characters.');
-  }
+  if (!isValidPassword(newPassword)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
   const [user] = await query('SELECT * FROM users WHERE id = ?', [req.user.id]);
   if (!user || !bcrypt.compareSync(currentPassword || '', user.password_hash)) {

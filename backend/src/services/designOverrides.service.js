@@ -23,6 +23,8 @@ const FIELDS = [
   ['waistThickness', 'waist_thickness'],
   ['stairRebarSpacing', 'stair_rebar_spacing'],
   ['scaffoldingSetCount', 'scaffolding_set_count'],
+  ['columnWidthSecond', 'column_width_second'],
+  ['columnDepthSecond', 'column_depth_second'],
 ];
 
 function toApiShape(row) {

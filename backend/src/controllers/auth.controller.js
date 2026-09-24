@@ -5,6 +5,7 @@ import { signToken } from '../services/token.service.js';
 import { toPublicUser } from '../utils/serializers.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { isValidPassword, PASSWORD_RULE_MESSAGE } from '../utils/passwordPolicy.js';
 import { sendVerificationCodeEmail, sendPasswordResetCodeEmail, sendPasswordChangedEmail } from '../services/mailer.service.js';
 
 function isValidEmail(value) {
@@ -32,7 +33,7 @@ export const register = asyncHandler(async (req, res) => {
   if (!firstName || !lastName) throw new HttpError(400, 'First and last name are required.');
   if (!employeeId || String(employeeId).length < 3) throw new HttpError(400, 'Employee ID must be at least 3 characters.');
   if (!isValidEmail(email)) throw new HttpError(400, 'A valid email is required.');
-  if (!password || String(password).length < 6) throw new HttpError(400, 'Password must be at least 6 characters.');
+  if (!isValidPassword(password)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
   const passwordHash = bcrypt.hashSync(password, 10);
   const code = generateVerificationCode();
@@ -253,9 +254,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   const { email, code, newPassword } = req.body;
   if (!isValidEmail(email)) throw new HttpError(400, 'A valid email is required.');
   if (!isValidCode(code)) throw new HttpError(400, 'Enter the 6-digit code.');
-  if (!newPassword || String(newPassword).length < 6) {
-    throw new HttpError(400, 'New password must be at least 6 characters.');
-  }
+  if (!isValidPassword(newPassword)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
   const [user] = await query('SELECT * FROM users WHERE email = ?', [email]);
   if (!user) throw new HttpError(400, 'That code has expired. Request a new one.', 'CODE_EXPIRED');

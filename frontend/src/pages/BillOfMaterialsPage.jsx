@@ -135,7 +135,12 @@ function BillOfMaterialsPage() {
   // BOM used, so the commodities (sand/gravel, which have no brand options and
   // would otherwise fall back to BASE_PRICING's flat literals) don't drag a
   // stale number into the saving figure.
-  const realUnitPrices = Object.fromEntries(lineItems.map((item) => [item.key, item.unitPrice]));
+  // Lumber's BOM line is converted to pieces, so its unit price is per piece
+  // while computeBom.js prices the take-off's board feet: leave it out and let
+  // that side use the catalog's per-board-foot brand price instead.
+  const realUnitPrices = Object.fromEntries(
+    lineItems.filter((item) => !item.pieceConversion).map((item) => [item.key, item.unitPrice]),
+  );
   const premiumTotal = computeTierTotal('premium', storeId, realUnitPrices);
   const saving = Math.max(0, premiumTotal - grandTotal);
 

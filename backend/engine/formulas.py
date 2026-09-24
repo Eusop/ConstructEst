@@ -32,16 +32,28 @@ still an unreviewed candidate for that same process:
     unvalidated assumption — his form didn't state a stair diameter.
   - Column rebar is now computed (previously a known gap — no reinforcement
     at all). Diameter is confirmed by his validation (12mm 1-storey / 16mm
-    2-storey). Bar count per column is NOT yet confirmed by him — it's set
-    to 4 (both storey types), based on the National Structural Code of the
-    Philippines' general minimum-reinforcement rules for columns (a flat
-    minimum of 4 longitudinal bars for a rectangular tied column, and
-    separately a minimum 1% gross-area steel ratio — worked against this
-    system's own column sizes, the 1% ratio needs fewer than 4 bars either
-    way, so the flat minimum governs both cases). See docs/nscp-citations.md
-    for the full research and sources. Sent to Engr. Espiritu as an open
-    question (confirm-or-correct) — COLUMN_REBAR_BAR_COUNT below should be
-    updated once he replies, same as the diameter mapping above.
+    2-storey). Bar count per column is set to 4 (both storey types), based on
+    the National Structural Code of the Philippines' general minimum rules
+    (a flat minimum of 4 longitudinal bars for a rectangular tied column,
+    plus a 1% gross-area ratio that needs fewer than 4 bars at this system's
+    column sizes). See docs/nscp-citations.md. Engr. Espiritu's reply: 4 x
+    12mm is acceptable ONLY for a bungalow with no provision for a second
+    floor. The 2-storey 4 x 16mm count is NOT expert-validated — it depends
+    on the structural design (he also said there is no valid default column
+    size or spacing for 2-storey), so it stays an editable assumption.
+  - Column concrete, rebar and formwork are per floor level when a second
+    floor's own DXF is given (his reply: columns are not always footing-to-
+    roof; size can shrink upstairs, columns can be planted or stop at a
+    balcony): each floor uses its own detected COLUMN count, the total height
+    is split evenly per floor, and the second floor can take its own
+    width/depth override. Footings stay ground-floor only. The single-file
+    path is unchanged (one member of total height x ground count).
+  - Angle bar quantity is doubled per his reply ("doubled and in a larger
+    size"). The larger size (up to 2") is a catalog spec/price matter and is
+    not changed here.
+  - Roofing adds one scaffold layer (one set height) to the scaffold height —
+    he said roofing needs taller scaffolds but gave no figure, so the extra
+    layer is our own assumption.
   - Footing plan dimensions default to 0.60m x 0.60m per column (paper
     gives a default depth only, not width/length).
   - Total beam run length is approximated as the wall run length (or, with
@@ -191,10 +203,13 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     window_area_m2 = geometry["window_area_m2"]
     floor_area_m2 = geometry["floor_area_m2"]
     floor_perimeter_m = geometry["floor_perimeter_m"]
-    # Ground floor's own COLUMN layer only, even with a second floor's DXF
-    # given — a column is one continuous member from footing to roof, not a
-    # separate one per floor, so the 2nd floor's COLUMN layer (if it even has
-    # one) isn't a second count to add.
+    # Ground floor's own COLUMN layer. This is the count used for footings
+    # (foundation level) and for the ground floor's column segment. When a
+    # second floor's DXF is given, its own COLUMN layer is counted separately
+    # for the second floor's segment (Table 14 section below) — Engr.
+    # Espiritu: columns are not always footing-to-roof (they can shrink at
+    # upper floors, start "planted" at a higher level, or stop at a balcony),
+    # so estimation is per floor level.
     detected_column_count = geometry["column_count"]
     if overrides.get("columnCount") is not None:
         column_count = overrides["columnCount"]
@@ -291,23 +306,46 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             rebar_weight_by_category[suspended_category] += suspended_slab_rebar_length_m * REBAR_UNIT_WEIGHT_12MM_KG_PER_M
 
     # --- Table 14: Column materials -----------------------------------------
-    col_w, col_d, col_h = default_column_size(storeys)
+    col_w, col_d, _ = default_column_size(storeys)
     col_w = overrides.get("columnWidth", col_w)
     col_d = overrides.get("columnDepth", col_d)
-    col_h = overrides.get("columnHeight", col_h)
-    column_volume = col_w * col_d * col_h * column_count
-    acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count", "shared")
+    # Total column height across all floors; the default follows the
+    # (overridable) floor-to-floor height instead of a fixed 3.0/6.0, which is
+    # numerically identical at the defaults.
+    total_col_h = overrides.get("columnHeight", storeys * floor_to_floor_h)
+
+    # (width, depth, height, count) per floor level that has its own columns.
+    # With a second floor's own DXF: one segment per floor, each using that
+    # floor's own detected count (falling back to the ground count if the
+    # second file has no COLUMN layer, as before), an optional separate
+    # 2nd-floor size, and the total height split evenly. Single-file path:
+    # unchanged — one member of total height x ground count.
+    if geometry2 is not None:
+        segment_h = total_col_h / storeys
+        second_count = geometry2["column_count"] or column_count
+        col_w2 = overrides.get("columnWidthSecond")
+        col_d2 = overrides.get("columnDepthSecond")
+        column_floors = [
+            (col_w, col_d, segment_h, column_count),
+            (col_w if col_w2 is None else col_w2, col_d if col_d2 is None else col_d2, segment_h, second_count),
+        ]
+    else:
+        column_floors = [(col_w, col_d, total_col_h, column_count)]
+
+    column_volume = sum(w * d * h * n for w, d, h, n in column_floors)
+    acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count (per floor)", "shared")
 
     # Column rebar — diameter is Engr. Espiritu-validated (12mm 1-storey /
-    # 16mm 2-storey); bar count (COLUMN_REBAR_BAR_COUNT) is not yet
-    # confirmed by him, see the module docstring and docs/nscp-citations.md.
-    # "shared" category, same as the concrete above — one column runs
-    # continuously through every floor, not a separate one per floor.
+    # 16mm 2-storey). Bar count (COLUMN_REBAR_BAR_COUNT) is validated only for
+    # a bungalow with no second-floor provision (his Reply 3); for 2-storey it
+    # depends on the structural design and is NOT validated, see the module
+    # docstring and docs/nscp-citations.md. "shared" category, same as the
+    # concrete above.
     column_rebar_diameter_mm = COLUMN_REBAR_DIAMETER_MM[2 if storeys >= 2 else 1]
     column_rebar_unit_weight = (
         REBAR_UNIT_WEIGHT_16MM_KG_PER_M if column_rebar_diameter_mm == 16 else REBAR_UNIT_WEIGHT_12MM_KG_PER_M
     )
-    column_rebar_length_m = column_count * COLUMN_REBAR_BAR_COUNT * col_h
+    column_rebar_length_m = sum(n * COLUMN_REBAR_BAR_COUNT * h for _w, _d, h, n in column_floors)
     rebar_weight_by_category["shared"] += column_rebar_length_m * column_rebar_unit_weight
 
     # --- Table 15: Beam materials (beam run length approximated from wall run) ---
@@ -338,7 +376,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         acc.add("purlins", ceil_int(purlin_run_m / 0.60) + 1, "Roof run / purlin spacing", "roofing")
         acc.add("ridge", ceil_int(roof_ridge_length_m / 1.8), "Ridge length / piece length", "roofing")
         acc.add("flashing", ceil_int(roof_perimeter_m / 1.8), "Roof perimeter / piece length", "roofing")
-        acc.add("angleBar", ceil_int(roof_perimeter_m / 6.0), "Roof perimeter / piece length (approximation)", "roofing")
+        # Doubled per Engr. Espiritu (Reply 1: angle bar can be used for the
+        # truss "but doubled and in a larger size"). The larger size (up to 2")
+        # is a catalog spec/price question, not a quantity, and is not changed
+        # here. Still a perimeter approximation until TRUSS layers are read.
+        acc.add("angleBar", ceil_int(roof_perimeter_m / 6.0) * 2, "Roof perimeter / piece length x 2 (double angle, per engineer)", "roofing")
         acc.add("gutter", ceil_int(roof_perimeter_m / 1.8), "Roof eave length / piece length (approximated from roof perimeter)", "roofing")
 
     # --- Table 17: Footing materials ----------------------------------------
@@ -384,7 +426,6 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # approximation, unchanged.
     total_floor_area_m2 = floor_area_m2 + geometry2["floor_area_m2"] if geometry2 is not None else floor_area_m2 * storeys
 
-    building_height = overrides.get("buildingHeight", storeys * floor_to_floor_h)
     # Default coverage per standard scaffolding frame set (Table 19: 1.8m x
     # 1.2m) — overridable since the real question open with the engineer is
     # whether that default should instead reflect a real local product's
@@ -393,6 +434,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # divides by can now be corrected without editing code.
     scaffolding_set_width = overrides.get("scaffoldingSetWidth", 1.8)
     scaffolding_set_height = overrides.get("scaffoldingSetHeight", 1.2)
+    building_height = overrides.get("buildingHeight", storeys * floor_to_floor_h)
+    # Roofing work needs taller scaffolds (Engr. Espiritu, Reply 1). He gave no
+    # number, so one extra layer (one set height) is our own assumption, added
+    # only when roofing is on and the height wasn't overridden directly.
+    if include_roofing and "buildingHeight" not in overrides:
+        building_height += scaffolding_set_height
     computed_scaffolding_sets = (floor_perimeter_m * building_height) / (scaffolding_set_width * scaffolding_set_height)
     # Same idea as columnCount: a direct set-count override (e.g. an actual
     # contractor quote) skips the perimeter/height/coverage formula entirely
@@ -407,11 +454,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     )
     acc.add("steelProps", total_floor_area_m2 / 1.0, "Slab area / coverage per prop", "shared")
 
-    column_perimeter = 2 * (col_w + col_d)
+    column_formwork_area = sum(2 * (w + d) * h * n for w, d, h, n in column_floors)
     beam_perimeter = 2 * (beam_w + beam_d)
     formwork_area = (
         total_floor_area_m2
-        + (column_perimeter * col_h * column_count)
+        + column_formwork_area
         + (beam_perimeter * beam_length_total)
     )
     acc.add("plywood", formwork_area / 1.22, "Formwork area / sheet coverage (per Table 19's stated rate)", "shared")

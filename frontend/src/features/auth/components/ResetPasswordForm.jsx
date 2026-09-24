@@ -13,7 +13,7 @@ import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import PasswordField from '../../../components/PasswordField';
 import PasswordStrengthMeter from '../../../components/PasswordStrengthMeter';
 import { forgotPasswordRequest, resetPasswordRequest } from '../../../services/authService';
-import { isValidEmail, isStrongPassword, passwordsMatch } from '../../../utils/validators';
+import { isValidEmail, isStrongPassword, passwordsMatch, PASSWORD_RULE_MESSAGE } from '../../../utils/validators';
 import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
 
@@ -78,7 +78,7 @@ function ResetPasswordForm() {
       return;
     }
     if (!isStrongPassword(newPassword)) {
-      setError('New password must be at least 6 characters.');
+      setError(`New password: ${PASSWORD_RULE_MESSAGE.toLowerCase()}.`);
       return;
     }
     if (!passwordsMatch(newPassword, confirmPassword)) {

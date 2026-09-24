@@ -13,16 +13,23 @@ import FormTextField from './FormTextField';
  *   to reveal/hide the typed password. Off by default so existing usages
  *   are unaffected.
  */
-function PasswordField({ showToggle = false, ...rest }) {
+function PasswordField({ showToggle = false, sx, ...rest }) {
   const [visible, setVisible] = useState(false);
 
   if (!showToggle) {
-    return <FormTextField type="password" {...rest} />;
+    return <FormTextField type="password" sx={sx} {...rest} />;
   }
 
   return (
     <FormTextField
       type={visible ? 'text' : 'password'}
+      // Edge draws its own reveal (eye) button inside every password input;
+      // with this component's own toggle that showed two eye icons side by
+      // side. Hide the browser's so only ours remains.
+      sx={[
+        { '& input::-ms-reveal, & input::-ms-clear': { display: 'none' } },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
       endAdornment={
         <IconButton
           onClick={() => setVisible((prev) => !prev)}

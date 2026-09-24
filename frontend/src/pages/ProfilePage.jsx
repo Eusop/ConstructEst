@@ -18,7 +18,7 @@ import ChangePasswordSection from '../features/profile/components/ChangePassword
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { isRequired, isValidEmail, passwordsMatch, isStrongPassword } from '../utils/validators';
+import { isRequired, isValidEmail, passwordsMatch, isStrongPassword, PASSWORD_RULE_MESSAGE } from '../utils/validators';
 import { updateProfileRequest, changePasswordRequest, uploadAvatarRequest, removeAvatarRequest } from '../services/usersService';
 import { resolveAssetUrl } from '../services/apiClient';
 import { colors } from '../theme/palette';
@@ -67,7 +67,7 @@ function validatePassword(form) {
   if (!isRequired(form.newPassword)) {
     errors.newPassword = 'New password is required';
   } else if (!isStrongPassword(form.newPassword)) {
-    errors.newPassword = 'Must be at least 6 characters';
+    errors.newPassword = PASSWORD_RULE_MESSAGE;
   }
 
   if (!isRequired(form.confirmPassword)) {

@@ -16,7 +16,7 @@ import { signUpRequest, checkAvailability } from '../../../services/authService'
 import { useToast } from '../../../context/ToastContext';
 import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
-import { isRequired, passwordsMatch, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword } from '../../../utils/validators';
+import { isRequired, passwordsMatch, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../../utils/validators';
 
 // How long to wait after the last keystroke before pinging the server for
 // "is this already taken" — long enough that normal typing never triggers a
@@ -65,7 +65,7 @@ function validate(form) {
   if (!isRequired(form.password)) {
     errors.password = 'Password is required';
   } else if (!isStrongPassword(form.password)) {
-    errors.password = 'Must be at least 6 characters';
+    errors.password = PASSWORD_RULE_MESSAGE;
   }
 
   if (!isRequired(form.confirmPassword)) {

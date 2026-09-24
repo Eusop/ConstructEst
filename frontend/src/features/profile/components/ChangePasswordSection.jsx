@@ -88,12 +88,10 @@ function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBl
         </Box>
       </Stack>
 
-      {/* Was "8-16 characters with uppercase, lowercase, a number, and a
-          special character", which no longer matched anything: the rule is
-          just a 6-character minimum, enforced by isStrongPassword here and by
-          changePassword on the server. */}
+      {/* Rule: 8+ characters with a letter and a number, enforced by
+          isStrongPassword here and by changePassword on the server. */}
       <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: -1.5 }}>
-        At least 6 characters. We will email you whenever your password changes.
+        At least 8 characters with a letter and a number. We will email you whenever your password changes.
       </Typography>
 
       {/* This section saves on its own, separate from the page's "Save

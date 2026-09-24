@@ -1,6 +1,50 @@
 import { query } from '../config/db.js';
 import { HttpError } from '../middleware/errorHandler.js';
 
+// Scaffolding is bought new at retail (canvass: no rental or used rate exists,
+// and the engineer confirmed contractors price per lot), but a frame set is
+// reused across projects, so charging one project the full purchase price
+// overstates its cost. Engr. Espiritu: assuming a number of projects to
+// recover the investment is acceptable. The default of 10 uses is our own
+// assumption, not an expert-validated figure; set it per deployment with the
+// SCAFFOLDING_REUSE_COUNT env var. Quantities are untouched, only the price
+// read at every pricing site below goes through effectivePrice().
+const SCAFFOLDING_REUSE_COUNT = Number(process.env.SCAFFOLDING_REUSE_COUNT) || 10;
+
+function effectivePrice(materialKey, price) {
+  if (materialKey !== 'scaffolding') return price;
+  return Math.round((price / SCAFFOLDING_REUSE_COUNT) * 100) / 100;
+}
+
+function effectiveSpec(materialKey, spec) {
+  if (materialKey !== 'scaffolding') return spec;
+  return `${spec ?? ''}, price / ${SCAFFOLDING_REUSE_COUNT} uses`.replace(/^, /, '');
+}
+
+// The take-off keeps lumber in board feet (Table 19: formwork area x 3 bd.ft
+// per m2, expert-validated), and the catalog stores its price per board foot
+// (migration 016), but hardware stores sell it by the piece in a stated size
+// (e.g. 2x2x10). The procurement BOM converts back to whole pieces using the
+// size in the brand's spec, so it lists something a store can actually be
+// asked for. Returns null when the spec has no readable size, in which case
+// the line stays in board feet.
+function boardFeetPerPiece(spec) {
+  const match = /(\d+(?:\.\d+)?)\s*"?\s*x\s*(\d+(?:\.\d+)?)\s*"?\s*x\s*(\d+(?:\.\d+)?)\s*(?:ft|')?/i.exec(spec ?? '');
+  if (!match) return null;
+  const [thicknessIn, widthIn, lengthFt] = [match[1], match[2], match[3]].map(Number);
+  const perPiece = (thicknessIn * widthIn * lengthFt) / 12;
+  return perPiece > 0 ? perPiece : null;
+}
+
+// Cost of one take-off line, priced the same way computeBom prices its BOM
+// line (lumber in whole pieces), so the Store Locator's total and the BOM's
+// grand total keep agreeing.
+function lineCost(materialKey, quantity, unitPrice, spec) {
+  const perPiece = materialKey === 'lumber' ? boardFeetPerPiece(spec) : null;
+  if (!perPiece) return unitPrice * quantity;
+  return Math.ceil(quantity / perPiece) * (Math.round(unitPrice * perPiece * 100) / 100);
+}
+
 async function getQuantityTakeoff(projectId) {
   const rows = await query(
     `SELECT eli.material_key, eli.name, eli.quantity, eli.unit
@@ -34,10 +78,11 @@ export async function getStoreOptimization(projectId) {
 
     for (const material of materials) {
       const [cheapest] = await query(
-        `SELECT MIN(smp.price) AS price
+        `SELECT smp.price, mb.spec
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
-         WHERE smp.store_id = ? AND mb.material_key = ? AND smp.in_stock = 1`,
+         WHERE smp.store_id = ? AND mb.material_key = ? AND smp.in_stock = 1
+         ORDER BY smp.price ASC LIMIT 1`,
         [store.id, material.material_key],
       );
 
@@ -63,7 +108,12 @@ export async function getStoreOptimization(projectId) {
         continue;
       }
 
-      optimizedTotal += Number(cheapest.price) * Number(material.quantity);
+      optimizedTotal += lineCost(
+        material.material_key,
+        Number(material.quantity),
+        effectivePrice(material.material_key, Number(cheapest.price)),
+        cheapest.spec,
+      );
     }
 
     results.push({
@@ -110,7 +160,11 @@ export async function getBrandCatalog(projectId, storeId) {
       [material.material_key, storeId],
     );
     if (options.length > 0) {
-      catalog[material.material_key] = options.map((o) => ({ ...o, price: Number(o.price) }));
+      catalog[material.material_key] = options.map((o) => ({
+        ...o,
+        spec: effectiveSpec(material.material_key, o.spec),
+        price: effectivePrice(material.material_key, Number(o.price)),
+      }));
     }
   }
 
@@ -159,18 +213,31 @@ export async function computeBom(projectId, storeId) {
     // which let a partially-stocked store be selected and need to show
     // this honestly instead).
     const available = Boolean(row);
-    const unitPrice = available ? Number(row.price) : null;
+    let unitPrice = available ? effectivePrice(material.material_key, Number(row.price)) : null;
+    let quantity = Number(material.quantity);
+    let unit = material.unit;
+    let pieceConversion = null;
+
+    const bdFtPerPiece = available && material.material_key === 'lumber' ? boardFeetPerPiece(row.spec) : null;
+    if (bdFtPerPiece) {
+      pieceConversion = { takeoffQuantity: quantity, takeoffUnit: unit, boardFeetPerPiece: Math.round(bdFtPerPiece * 1000) / 1000 };
+      quantity = Math.ceil(quantity / bdFtPerPiece);
+      unitPrice = Math.round(unitPrice * bdFtPerPiece * 100) / 100;
+      unit = 'pcs';
+    }
+
     lineItems.push({
       key: material.material_key,
       material: material.name,
       category: row?.category ?? null,
       brand: row?.brand ?? null,
-      spec: row?.spec ?? null,
+      spec: available ? effectiveSpec(material.material_key, row.spec) : null,
       available,
-      quantity: Number(material.quantity),
-      unit: material.unit,
+      quantity,
+      unit,
       unitPrice,
-      amount: available ? Math.round(unitPrice * Number(material.quantity) * 100) / 100 : null,
+      amount: available ? Math.round(unitPrice * quantity * 100) / 100 : null,
+      ...(pieceConversion ? { pieceConversion } : {}),
     });
   }
 

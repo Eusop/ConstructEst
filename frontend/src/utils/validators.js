@@ -58,23 +58,26 @@ export function getEmployeeIdHint(value) {
   return missing.length > 0 ? `Needs to ${missing.join(', ')}` : null;
 }
 
-// Just a minimum length — matches the backend's actual requirement
-// (auth.controller.js's register only checks `password.length < 6`, no
-// composition rule at all). Used to require 8-16 chars plus upper/lower/
-// number/symbol, which was stricter than the backend and blocked simple
-// passwords the account with real access control (bcrypt + a real DB row)
-// doesn't actually need.
+// 8+ characters with at least one letter and one number. Mirrors the
+// backend's passwordPolicy.js (used on register, reset, change and admin
+// create-user); login is not checked against it, so older accounts that were
+// created under the 6-character rule can still sign in. Deliberately not the
+// old 8-16 chars + upper/lower/number/symbol rule, which was stricter than
+// this project needs.
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_RULE_MESSAGE = `Must be at least ${PASSWORD_MIN_LENGTH} characters with a letter and a number`;
+
 export function isStrongPassword(value) {
-  return value.length >= 6;
+  return value.length >= PASSWORD_MIN_LENGTH && /[A-Za-z]/.test(value) && /[0-9]/.test(value);
 }
 
 /**
  * Live strength rating for a password-in-progress — still checks the same
  * 5 criteria (broken out per-criterion for a checklist UI, plus a 0-5 score
- * and Weak/Fair/Strong label) even though only `length` is actually
- * required to pass (see isStrongPassword above) — this is guidance, not a
- * gate, so a password field can nudge toward something stronger without
- * blocking a simple one that already meets the real minimum.
+ * and Weak/Fair/Strong label) even though only length, a letter and a number
+ * are actually required to pass (see isStrongPassword above) — the rest is
+ * guidance, not a gate, so a password field can nudge toward something
+ * stronger without blocking one that already meets the real minimum.
  *
  * @param {string} value
  * @returns {{ criteria: {length:boolean, upper:boolean, lower:boolean, number:boolean, symbol:boolean},
@@ -82,7 +85,7 @@ export function isStrongPassword(value) {
  */
 export function getPasswordStrength(value) {
   const criteria = {
-    length: value.length >= 6,
+    length: value.length >= PASSWORD_MIN_LENGTH,
     upper: /[A-Z]/.test(value),
     lower: /[a-z]/.test(value),
     number: /[0-9]/.test(value),

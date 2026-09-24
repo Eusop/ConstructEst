@@ -12,7 +12,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormTextField from '../../components/FormTextField';
 import PasswordField from '../../components/PasswordField';
 import PasswordStrengthMeter from '../../components/PasswordStrengthMeter';
-import { isRequired, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword } from '../../utils/validators';
+import { isRequired, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../utils/validators';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useAdminToast } from '../context/AdminToastContext';
 import { colors } from '../../theme/palette';
@@ -36,7 +36,7 @@ function validate(form, isEdit) {
   else if (!isValidEmail(form.email)) errors.email = 'Enter a valid email address';
   if (!isEdit) {
     if (!isRequired(form.password)) errors.password = 'Password is required';
-    else if (!isStrongPassword(form.password)) errors.password = 'Must be at least 6 characters';
+    else if (!isStrongPassword(form.password)) errors.password = PASSWORD_RULE_MESSAGE;
   }
   return errors;
 }

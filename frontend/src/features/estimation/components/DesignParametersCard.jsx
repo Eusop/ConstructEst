@@ -4,6 +4,7 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
+import Alert from '@mui/material/Alert';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -26,6 +27,10 @@ const GROUPS = [
       { key: 'columnDepth', label: 'Column depth', unit: 'm', step: 0.01 },
       { key: 'columnHeight', label: 'Column height', unit: 'm', step: 0.1 },
       { key: 'columnCount', label: 'Column count', unit: 'pcs', step: 1 },
+      // Only meaningful with a separate second-floor DXF; hidden on a
+      // 1-storey project, shown on the admin page (storeys unknown).
+      { key: 'columnWidthSecond', label: '2nd floor column width', unit: 'm', step: 0.01, twoStoreyOnly: true },
+      { key: 'columnDepthSecond', label: '2nd floor column depth', unit: 'm', step: 0.01, twoStoreyOnly: true },
       { key: 'beamWidth', label: 'Beam width', unit: 'm', step: 0.01 },
       { key: 'beamDepth', label: 'Beam depth', unit: 'm', step: 0.01 },
       { key: 'beamLength', label: 'Beam total length', unit: 'm', step: 0.5 },
@@ -80,7 +85,13 @@ const GROUPS = [
 // project page can pass this (the admin global page IS the thing setting
 // that global default, so its own placeholder correctly stays the
 // hardcoded engine fallback — there's no more-global level above it).
-function fieldPlaceholder(fieldKey, storeys, effectiveDefaults) {
+function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) {
+  // The second floor's column size falls back to whatever the ground floor
+  // uses (a value typed in the ground field counts, even before saving).
+  if (fieldKey === 'columnWidthSecond' && overrides.columnWidth != null) return String(overrides.columnWidth);
+  if (fieldKey === 'columnDepthSecond' && overrides.columnDepth != null) return String(overrides.columnDepth);
+  if (fieldKey === 'columnWidthSecond') return fieldPlaceholder('columnWidth', storeys, effectiveDefaults);
+  if (fieldKey === 'columnDepthSecond') return fieldPlaceholder('columnDepth', storeys, effectiveDefaults);
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
     if (value != null) return String(value);
@@ -120,6 +131,7 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults) {
  */
 function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null, effectiveDefaults = null }) {
   const isMobile = useIsMobile();
+  const showTwoStoreyNotice = storeys != null && storeys >= 2 && overrides.columnWidth == null && overrides.columnDepth == null;
   const handleFieldChange = (key, rawValue) => {
     if (rawValue === '') {
       onOverrideChange(key, null);
@@ -208,7 +220,13 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                   gap: 2,
                 }}
               >
-                {group.fields.map((field) => (
+                {group.key === 'columnsAndBeams' && showTwoStoreyNotice && (
+                  <Alert severity="info" sx={{ gridColumn: '1 / -1', fontSize: '0.8rem' }}>
+                    No valid default exists for 2-storey column sizes: the grayed-out numbers are only
+                    an assumption. Enter the sizes from the structural plan (per floor, if they differ).
+                  </Alert>
+                )}
+                {group.fields.filter((field) => !field.twoStoreyOnly || storeys == null || storeys >= 2).map((field) => (
                   <TextField
                     key={field.key}
                     label={field.label}
@@ -216,7 +234,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                     size="small"
                     value={overrides[field.key] ?? ''}
                     onChange={(event) => handleFieldChange(field.key, event.target.value)}
-                    placeholder={fieldPlaceholder(field.key, storeys, effectiveDefaults)}
+                    placeholder={fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides)}
                     slotProps={{
                       inputLabel: { shrink: true },
                       input: { endAdornment: <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{field.unit}</Typography> },

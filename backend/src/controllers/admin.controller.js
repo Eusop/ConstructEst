@@ -5,6 +5,7 @@ import { query } from '../config/db.js';
 import { toPublicUser } from '../utils/serializers.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { isValidPassword, PASSWORD_RULE_MESSAGE } from '../utils/passwordPolicy.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
 import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
 import { UPLOAD_DIR } from '../middleware/upload.js';
@@ -64,6 +65,7 @@ export const createUser = asyncHandler(async (req, res) => {
     throw new HttpError(400, 'firstName, lastName, employeeId, email, and password are required.');
   }
   if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
+  if (!isValidPassword(password)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
   const passwordHash = bcrypt.hashSync(password, 10);
   // Set email_verified_at right away, unlike self-registration. An admin

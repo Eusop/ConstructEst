@@ -16,6 +16,9 @@ export function getEngineDefaults(storeys) {
     columnDepth: isTwoStorey ? 0.25 : 0.20,
     columnHeight: isTwoStorey ? 6.0 : 3.0,
     columnCount: null, // taken from the DXF's own detected column count, not a fixed default
+    // Second floor falls back to the ground floor's own size (see fieldPlaceholder)
+    columnWidthSecond: isTwoStorey ? 0.25 : 0.20,
+    columnDepthSecond: isTwoStorey ? 0.25 : 0.20,
     beamWidth: 0.20,
     beamDepth: 0.30,
     beamLength: null, // derived from wall run length x storeys, not a fixed default
