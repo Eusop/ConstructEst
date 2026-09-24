@@ -70,7 +70,10 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
   // SignUpForm.jsx for the same fix and fuller explanation).
   const showError = (field) => {
     const hasContent = form[field]?.trim().length > 0;
-    return Boolean(errors[field]) && (hasContent || touched[field] || submitAttempted);
+    // Returns the message itself (or '') so the same value drives both the
+    // error state and the helper text; it used to return `true`, so a field
+    // turned red without saying why.
+    return errors[field] && (hasContent || touched[field] || submitAttempted) ? errors[field] : '';
   };
 
   useEffect(() => {

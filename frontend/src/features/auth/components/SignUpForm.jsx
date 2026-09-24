@@ -160,7 +160,10 @@ function SignUpForm() {
   // fresh, untouched field doesn't show "required" the moment the page loads.
   const showError = (field) => {
     const hasContent = form[field]?.trim().length > 0;
-    return Boolean(errors[field]) && (hasContent || touched[field] || submitAttempted);
+    // Returns the message itself (or '') so it can be used both as a boolean
+    // for the error state and as the helper text. It used to return `true`,
+    // which turned the field red without ever saying why.
+    return errors[field] && (hasContent || touched[field] || submitAttempted) ? errors[field] : '';
   };
 
   // A field's effective error merges its sync validation with the async
