@@ -195,7 +195,7 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
             Drag your .dxf file here, or <Link component="span" sx={{ fontWeight: 700 }}>browse</Link>
           </Typography>
           <Typography sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' }, color: 'text.secondary', mt: 0.5 }}>
-            {helperText ?? 'One plan per project · standard layers (WALLS, FLOOR_AREA, ROOF)'}
+            {helperText ?? 'One floor per file · see layer names above'}
           </Typography>
         </Box>
 

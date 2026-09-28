@@ -24,6 +24,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import EmptyState from '../components/EmptyState';
@@ -31,7 +32,7 @@ import UserFormDialog from '../components/UserFormDialog';
 import TypedConfirmDialog from '../../components/TypedConfirmDialog';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
-import { listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, verifyAdminUser } from '../services/adminService';
+import { listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, verifyAdminUser, deleteAdminUser } from '../services/adminService';
 import { getInitials } from '../../utils/getInitials';
 import { colors } from '../../theme/palette';
 
@@ -238,6 +239,10 @@ function AdminUsersPage() {
   // Approving a pending self-registered account is gated behind typing
   // ACTIVATE — see handleVerify.
   const [pendingVerifyUser, setPendingVerifyUser] = useState(null);
+  // Deleting is permanent (unlike deactivate) — gated behind typing DELETE.
+  // Admin accounts never reach this state; the button that would set it is
+  // disabled for them (backend also rejects it, see deleteUser).
+  const [pendingDeleteUser, setPendingDeleteUser] = useState(null);
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
 
@@ -340,6 +345,26 @@ function AdminUsersPage() {
       load();
     } catch (error) {
       showToast(error.message || 'Could not activate this user. Try again.', 'warning');
+      throw error;
+    }
+  };
+
+  const handleDelete = (user) => setPendingDeleteUser(user);
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteAdminUser(pendingDeleteUser.id);
+      logActivity({
+        message: `Deleted user account: ${pendingDeleteUser.userName}`,
+        icon: DeleteOutlineRoundedIcon,
+        iconBg: colors.iconRedBg,
+        iconFg: colors.iconRedFg,
+      });
+      showToast('User deleted', 'success');
+      setPendingDeleteUser(null);
+      load();
+    } catch (error) {
+      showToast(error.message || 'Could not delete this user. Try again.', 'warning');
       throw error;
     }
   };
@@ -516,6 +541,17 @@ function AdminUsersPage() {
                             </span>
                           </Tooltip>
                         )}
+                        {/* Same admin protection as Deactivate — permanent,
+                            unlike deactivate, so it's also gated behind a
+                            typed-DELETE confirm below rather than firing
+                            straight from this click. */}
+                        <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deleted' : 'Delete'}>
+                          <span>
+                            <IconButton size="small" disabled={isAdminAccount(user)} onClick={() => handleDelete(user)}>
+                              <DeleteOutlineRoundedIcon fontSize="small" color={isAdminAccount(user) ? 'disabled' : 'error'} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -558,6 +594,22 @@ function AdminUsersPage() {
         confirmLabel="Yes, Activate"
         onCancel={() => setPendingVerifyUser(null)}
         onConfirm={handleConfirmVerify}
+      />
+
+      <TypedConfirmDialog
+        key={pendingDeleteUser?.id ? `delete-${pendingDeleteUser.id}` : 'delete-closed'}
+        open={Boolean(pendingDeleteUser)}
+        title="Delete user"
+        confirmWord="DELETE"
+        message={
+          <UserProfileReview
+            user={pendingDeleteUser}
+            intro="This permanently deletes this account and every project and estimate they own. This cannot be undone."
+          />
+        }
+        confirmLabel="Yes, Delete"
+        onCancel={() => setPendingDeleteUser(null)}
+        onConfirm={handleConfirmDelete}
       />
 
       {/* Mobile only — opened from UserMobileCard's kebab button. */}
@@ -608,6 +660,19 @@ function AdminUsersPage() {
             </ListItemText>
           </MenuItem>
         )}
+        {/* Same admin protection as the desktop table above. */}
+        <MenuItem
+          disabled={Boolean(rowMenu && isAdminAccount(rowMenu.user))}
+          onClick={() => {
+            handleDelete(rowMenu.user);
+            closeRowMenu();
+          }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineRoundedIcon fontSize="small" color={rowMenu && isAdminAccount(rowMenu.user) ? 'disabled' : 'error'} />
+          </ListItemIcon>
+          <ListItemText>{rowMenu && isAdminAccount(rowMenu.user) ? 'Admins cannot be deleted' : 'Delete'}</ListItemText>
+        </MenuItem>
       </Menu>
     </Stack>
   );

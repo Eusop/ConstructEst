@@ -21,7 +21,9 @@ export function getEngineDefaults(storeys) {
     columnDepthSecond: isTwoStorey ? 0.25 : 0.20,
     beamWidth: 0.20,
     beamDepth: 0.30,
-    beamLength: null, // derived from wall run length x storeys, not a fixed default
+    beamLength: null, // from the BEAM layer, else wall run length — not a fixed default
+    beamRebarLength: null, // no default: zero unless entered from the beam schedule
+    beamRebarDiameterMm: 12, // bar size used when a beam rebar length is entered
     footingWidth: 0.60,
     footingLength: 0.60,
     footingDepth: isTwoStorey ? 2.0 : 1.5,

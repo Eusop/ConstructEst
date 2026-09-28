@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { uploadQuotation } from '../middleware/upload.js';
 import {
-  listUsers, createUser, updateUser, setUserActive, verifyUser,
+  listUsers, createUser, updateUser, setUserActive, verifyUser, deleteUser,
   listMaterials, createMaterial, updateMaterial, deleteMaterial,
   createStore, updateStore, deleteStore, setStoreActive,
   getStoreCatalog, upsertStoreMaterialPrice, removeStoreMaterialPrice, downloadQuotation,
@@ -21,6 +21,7 @@ router.post('/users', createUser);
 router.put('/users/:id', updateUser);
 router.patch('/users/:id/status', setUserActive);
 router.patch('/users/:id/verify', verifyUser);
+router.delete('/users/:id', deleteUser);
 
 // Read-only, no create/update/delete route for this. Entries only get
 // written as a side effect of the admin actions above.

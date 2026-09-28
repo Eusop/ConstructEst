@@ -11,6 +11,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import { getEngineDefaults, getEngineDefaultsBothVariants } from '../data/engineDefaultParameters';
+import MemberScheduleHelper from './MemberScheduleHelper';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 
@@ -34,6 +35,10 @@ const GROUPS = [
       { key: 'beamWidth', label: 'Beam width', unit: 'm', step: 0.01 },
       { key: 'beamDepth', label: 'Beam depth', unit: 'm', step: 0.01 },
       { key: 'beamLength', label: 'Beam total length', unit: 'm', step: 0.5 },
+      // From the project's own beam schedule, so project page only: a
+      // global default here would give every project the same schedule.
+      { key: 'beamRebarLength', label: 'Beam rebar total length', unit: 'm', step: 1, projectOnly: true },
+      { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', step: 1, projectOnly: true },
     ],
   },
   {
@@ -92,6 +97,9 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
   if (fieldKey === 'columnDepthSecond' && overrides.columnDepth != null) return String(overrides.columnDepth);
   if (fieldKey === 'columnWidthSecond') return fieldPlaceholder('columnWidth', storeys, effectiveDefaults);
   if (fieldKey === 'columnDepthSecond') return fieldPlaceholder('columnDepth', storeys, effectiveDefaults);
+  // Blank here means no beam rebar at all (there's no computed default),
+  // not an automatic value — "Auto" would suggest the opposite.
+  if (fieldKey === 'beamRebarLength') return 'None (from schedule)';
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
     if (value != null) return String(value);
@@ -226,7 +234,10 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                     an assumption. Enter the sizes from the structural plan (per floor, if they differ).
                   </Alert>
                 )}
-                {group.fields.filter((field) => !field.twoStoreyOnly || storeys == null || storeys >= 2).map((field) => (
+                {group.fields
+                  .filter((field) => !field.twoStoreyOnly || storeys == null || storeys >= 2)
+                  .filter((field) => !field.projectOnly || storeys != null)
+                  .map((field) => (
                   <TextField
                     key={field.key}
                     label={field.label}
@@ -243,6 +254,14 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                   />
                 ))}
               </Box>
+              {group.key === 'columnsAndBeams' && storeys != null && (
+                <MemberScheduleHelper
+                  onApply={(totalLengthM, diameterMm) => {
+                    onOverrideChange('beamRebarLength', totalLengthM);
+                    onOverrideChange('beamRebarDiameterMm', diameterMm);
+                  }}
+                />
+              )}
             </AccordionDetails>
           </Accordion>
         ))}

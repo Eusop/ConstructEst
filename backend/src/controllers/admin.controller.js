@@ -161,6 +161,27 @@ export const verifyUser = asyncHandler(async (req, res) => {
   res.json({ message: 'User verified.' });
 });
 
+export const deleteUser = asyncHandler(async (req, res) => {
+  const [target] = await query('SELECT first_name, last_name, employee_id, access_role FROM users WHERE id = ?', [req.params.id]);
+  if (!target) throw new HttpError(404, 'User not found.');
+  // Same blanket rule as setUserActive: no admin account can be deactivated
+  // OR deleted, by anyone, including themselves. Deleting a user cascades to
+  // every project/estimation/notification they own (all ON DELETE CASCADE,
+  // see schema.sql) — fine and desired for a regular user, but an admin's
+  // own admin_activity_log entries also cascade via admin_user_id, and that
+  // table is meant to be a permanent, append-only record (see
+  // 007_admin_activity_log.sql). Blocking admin deletion entirely keeps that
+  // table's immutability guarantee intact and sidesteps the self-delete
+  // question by construction, since the caller's own row is always an admin.
+  if (target.access_role === 'admin') {
+    throw new HttpError(403, 'Admin accounts cannot be deleted. Change the role to user first, then delete.');
+  }
+  const name = `${target.first_name} ${target.last_name} (${target.employee_id})`;
+  await query('DELETE FROM users WHERE id = ?', [req.params.id]);
+  await logAdminActivity(req.user.id, 'user_management', 'user_deleted', `Deleted user account: ${name}`);
+  res.status(204).end();
+});
+
 // --- Material brands -----------------------------------------------------
 
 export const listMaterials = asyncHandler(async (req, res) => {

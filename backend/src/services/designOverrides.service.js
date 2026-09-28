@@ -25,6 +25,8 @@ const FIELDS = [
   ['scaffoldingSetCount', 'scaffolding_set_count'],
   ['columnWidthSecond', 'column_width_second'],
   ['columnDepthSecond', 'column_depth_second'],
+  ['beamRebarLength', 'beam_rebar_length'],
+  ['beamRebarDiameterMm', 'beam_rebar_diameter_mm'],
 ];
 
 function toApiShape(row) {

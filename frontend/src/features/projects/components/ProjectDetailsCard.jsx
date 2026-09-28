@@ -10,6 +10,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import FormTextField from '../../../components/FormTextField';
 import DxfDropzone from './DxfDropzone';
+import LayerNamesGuide from './LayerNamesGuide';
 import { colors } from '../../../theme/palette';
 
 // Mirrors BrandModeToggle's pill-track segmented-control styling, for a
@@ -182,6 +183,7 @@ function ProjectDetailsCard({
             This file should represent exactly one floor's geometry. A file with more than one
             floor drawn on the same layers can overstate quantities like columns and roofing.
           </Typography>
+          <LayerNamesGuide />
           <DxfDropzone
             file={form.file}
             fileValidation={fileValidation}
@@ -204,7 +206,7 @@ function ProjectDetailsCard({
               onFileSelect={onSecondFloorFileSelect}
               onFileRemove={onSecondFloorFileRemove}
               onFileValidation={onSecondFloorFileValidation}
-              helperText="Second floor (optional) · standard layers (WALLS, FLOOR_AREA, ROOF)"
+              helperText="Second floor (optional) · same layer names as above"
             />
           </Box>
         )}

@@ -20,6 +20,12 @@ export const setAdminUserActive = (id, isActive) =>
 /** Approves a pending self-registered account — sets it verified + active in one step. */
 export const verifyAdminUser = (id) => apiRequest(`/admin/users/${id}/verify`, { method: 'PATCH' });
 
+/** Permanently deletes a user and everything they own (projects, estimates,
+ * notifications — see admin.controller.js's deleteUser). Admin accounts are
+ * rejected server-side (403), so this should only ever be called for a
+ * regular user. */
+export const deleteAdminUser = (id) => apiRequest(`/admin/users/${id}`, { method: 'DELETE' });
+
 export const getGlobalConstants = () => apiRequest('/admin/estimation-constants');
 
 export const updateGlobalConstants = (body) => apiRequest('/admin/estimation-constants', { method: 'PUT', body });

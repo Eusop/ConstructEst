@@ -22,6 +22,7 @@ const EMPTY_OVERRIDES = {
   scaffoldingSetWidth: null, scaffoldingSetHeight: null, scaffoldingSetCount: null,
   riserHeight: null, treadDepth: null, waistThickness: null, stairRebarSpacing: null,
   columnWidthSecond: null, columnDepthSecond: null,
+  beamRebarLength: null, beamRebarDiameterMm: null,
 };
 
 function toApiShape(factors) {

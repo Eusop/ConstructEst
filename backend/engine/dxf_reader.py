@@ -3,6 +3,15 @@ DXF geometry extraction — reads the TCC layer convention documented in the
 capstone paper (Table 22): WALL, DOOR, WINDOW, COLUMN, STAIR, ROOF, FLOOR.
 All source coordinates are millimeters (Table 23); every length/area
 returned here is already converted to meters / square meters.
+
+Also reads the optional layers from Engr. Espiritu's later recommended
+notation (Reply 4, Sep 2026 — see docs/expert-feedback.md): COL as another
+name for COLUMN, and BEAM, CANTBEAM and TRUSS. The optional ones are never
+required — a file without them returns 0 for each and computes exactly as
+before. FTG and FTBEAM from the same notation aren't read yet. Keep the
+layer-names guide on the upload page
+(frontend/src/features/projects/components/LayerNamesGuide.jsx) in sync with
+LAYER_ALIASES.
 """
 import math
 import re
@@ -16,10 +25,14 @@ LAYER_ALIASES = {
     "wall": "WALL", "walls": "WALL",
     "door": "DOOR", "doors": "DOOR",
     "window": "WINDOW", "windows": "WINDOW",
-    "column": "COLUMN", "columns": "COLUMN",
+    "column": "COLUMN", "columns": "COLUMN", "col": "COLUMN",
     "stair": "STAIR", "stairs": "STAIR",
     "roof": "ROOF", "roofing": "ROOF",
     "floor": "FLOOR", "floor_area": "FLOOR",
+    # Optional layers (Reply 4's notation).
+    "beam": "BEAM", "beams": "BEAM",
+    "cantbeam": "CANTBEAM",
+    "truss": "TRUSS", "trusses": "TRUSS",
 }
 
 # Splits a layer name into tokens on any run of non-alphanumeric characters,
@@ -163,6 +176,34 @@ def chain_segments(segments):
     return loops
 
 
+def member_run_length(msp, layer):
+    """Total length of the members (beams, trusses) drawn on a layer.
+
+    A member is expected as a centerline: a LINE or an open polyline, whose
+    drawn length is used as-is. A closed polyline is taken as the member's
+    outline (a rectangle drawn at its width), so only its longest side counts
+    — adding the perimeter would roughly double every member. A member drawn
+    as two parallel edge lines still counts twice; that can't be told apart
+    from two real members, so the upload guide asks for centerlines instead.
+    """
+    total = 0.0
+    for e in entities_on_layer(msp, layer):
+        if e.dxftype() == "LINE":
+            p1 = (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M)
+            p2 = (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)
+            total += segment_length(p1, p2)
+        elif e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
+            points = polyline_points(e)
+            if len(points) < 2:
+                continue
+            if is_closed_polyline(e):
+                xmin, ymin, xmax, ymax = bounding_box(points)
+                total += max(xmax - xmin, ymax - ymin)
+            else:
+                total += polyline_length(points, closed=False)
+    return total
+
+
 def extract_geometry(doc):
     msp = doc.modelspace()
 
@@ -236,11 +277,11 @@ def extract_geometry(doc):
     door_area_m2 = opening_area("DOOR", STANDARD_DOOR_HEIGHT_M)
     window_area_m2 = opening_area("WINDOW", STANDARD_WINDOW_HEIGHT_M)
 
-    # Only closed LWPOLYLINE/POLYLINE footprints count as a real column —
-    # standard practice draws a column as one closed rectangle (RECTANG/
-    # PLINE), never as loose LINE segments. Counting every raw entity on the
-    # layer overcounted by including a stray unjoined LINE left over from
-    # drafting that wasn't a column at all.
+    # Only LWPOLYLINE/POLYLINE entities count as a column — standard practice
+    # draws a column as one rectangle (RECTANG/PLINE), never as loose LINE
+    # segments. Counting every raw entity on the layer overcounted by
+    # including a stray unjoined LINE left over from drafting. (The closed
+    # flag isn't checked: any polyline on the layer counts.)
     column_count = sum(1 for e in entities_on_layer(msp, "COLUMN") if e.dxftype() in ("LWPOLYLINE", "POLYLINE"))
 
     roof_perimeter_m = 0.0
@@ -279,6 +320,14 @@ def extract_geometry(doc):
         xmin, ymin, xmax, ymax = floor_bounds
         roof_perimeter_m = 2 * ((xmax - xmin) + (ymax - ymin))
 
+    # Optional layers — all 0 when the layer isn't in the file.
+    beam_length_m = member_run_length(msp, "BEAM")
+    cantbeam_length_m = member_run_length(msp, "CANTBEAM")
+    # truss_count isn't used by formulas.py yet; it's the count Reply 4 asks
+    # for, kept for when there's a rule turning trusses into angle bar pieces.
+    truss_count = sum(1 for e in entities_on_layer(msp, "TRUSS") if e.dxftype() in ("LINE", "LWPOLYLINE", "POLYLINE"))
+    truss_length_m = member_run_length(msp, "TRUSS")
+
     return {
         "wall_length_m": wall_length_m,
         "door_area_m2": door_area_m2,
@@ -290,4 +339,8 @@ def extract_geometry(doc):
         "roof_perimeter_m": roof_perimeter_m,
         "roof_ridge_length_m": roof_ridge_length_m,
         "floor_bounds": floor_bounds,
+        "beam_length_m": beam_length_m,
+        "cantbeam_length_m": cantbeam_length_m,
+        "truss_count": truss_count,
+        "truss_length_m": truss_length_m,
     }
