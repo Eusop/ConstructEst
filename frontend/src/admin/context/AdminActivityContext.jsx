@@ -12,9 +12,9 @@ import { colors } from '../../theme/palette';
 
 const AdminActivityContext = createContext(null);
 
-// Maps the backend's `action` values (see admin.controller.js's
-// logAdminActivity calls) onto the same icon/color trio the in-session
-// entries carry, so a fetched row and a just-happened one render identically.
+// Maps the backend's `action` values (see logAdminActivity calls in
+// admin.controller.js) to the same icon/color as in-session entries, so fetched
+// and just-happened rows look the same.
 const ACTION_STYLES = {
   user_created: { icon: AddRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg },
   user_updated: { icon: EditRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg },
@@ -29,8 +29,7 @@ const ACTION_STYLES = {
   brand_created: { icon: AddRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg },
   brand_updated: { icon: EditRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg },
   brand_deleted: { icon: DeleteOutlineRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg },
-  // Price changes are the ones that carry a quotation file (see
-  // upsertStoreMaterialPrice), so they are worth being visually distinct.
+  // Price changes carry a quotation file (see upsertStoreMaterialPrice), so they stand out.
   store_price_changed: { icon: SwapHorizRoundedIcon, iconBg: colors.iconOrangeBg, iconFg: colors.iconOrangeFg },
   store_price_removed: { icon: DeleteOutlineRoundedIcon, iconBg: colors.iconRedBg, iconFg: colors.iconRedFg },
 };
@@ -48,16 +47,10 @@ function toActivity(entry) {
 }
 
 /**
- * The Admin Dashboard's "Recent system activity" feed.
- *
- * Entries come from two places. On mount it fetches the persisted
- * admin_activity_log (the same rows the Activity Log page shows), which is
- * what makes the panel meaningful right after logging in — it used to be
- * plain `useState([])` with no fetch at all, so it was blank on every load
- * and only filled while you clicked around, losing everything on refresh.
- * `logActivity` still prepends a local entry the instant an admin does
- * something, so the feed updates immediately rather than waiting for a
- * refetch; those entries and the fetched ones are shaped identically.
+ * The Admin Dashboard's "Recent system activity" feed. On mount it fetches the
+ * saved admin_activity_log (the same rows as the Activity Log page), so the
+ * panel isn't blank after login. `logActivity` still adds a local entry right
+ * away so the feed updates without a refetch; both kinds have the same shape.
  */
 export function AdminActivityProvider({ children }) {
   const [activities, setActivities] = useState([]);
@@ -67,13 +60,13 @@ export function AdminActivityProvider({ children }) {
     listAdminActivityLog({ limit: 20 })
       .then(({ entries }) => {
         if (cancelled) return;
-        // Appended after anything already logged this session, so a just-taken
-        // action stays on top even if the fetch resolves after it.
+        // Appended after anything logged this session, so a new action stays on
+        // top even if the fetch resolves after it.
         setActivities((prev) => [...prev, ...entries.map(toActivity)]);
       })
       .catch(() => {
-        // A failed fetch just leaves the feed as it was; the dashboard already
-        // renders an empty state and nothing else on the page depends on it.
+        // A failed fetch leaves the feed as it was; the dashboard has an empty
+        // state and nothing else depends on it.
       });
     return () => {
       cancelled = true;

@@ -11,12 +11,9 @@ import { useUser } from '../../context/UserContext';
 import { getInitials } from '../../utils/getInitials';
 
 /**
- * Admin Module top bar — same shell as the User Module's DashboardHeader
- * (sidebar toggle, page title, avatar linking to Profile) but deliberately
- * without the "New Project" action (not an admin concept) or the
- * "Add User" button that the reference mockup showed here: creating users
- * belongs on the User Management page itself (see AdminUsersPage), not the
- * global header.
+ * Admin top bar: same shell as the User Module's DashboardHeader (sidebar
+ * toggle, page title, avatar linking to Profile), without "New Project" (not an
+ * admin concept). Creating users belongs on the User Management page, not here.
  */
 function AdminHeader({ onToggleSidebar, title = 'Dashboard' }) {
   const { userName, avatarUrl } = useUser();

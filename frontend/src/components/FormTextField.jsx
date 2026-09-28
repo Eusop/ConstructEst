@@ -2,11 +2,9 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 
 /**
- * Reusable outlined text field with the ConstructEst form styling
- * (full width, placeholder-driven, rounded borders from the theme).
- *
- * Forwards every extra prop straight to MUI's TextField, so it stays as
- * flexible as the underlying component (value, onChange, type, name, etc.).
+ * Outlined text field with the ConstructEst form styling (full width,
+ * placeholder-driven, rounded borders from the theme). Extra props go straight
+ * to MUI's TextField.
  *
  * @param {object} props
  * @param {string} [props.placeholder] Placeholder text shown inside the field.

@@ -6,8 +6,7 @@ CREATE DATABASE IF NOT EXISTS constructest CHARACTER SET utf8mb4 COLLATE utf8mb4
 USE constructest;
 
 -- ---------------------------------------------------------------------------
--- Users. Two access roles only (`user`, `admin`) per the project's confirmed
--- design — homeowner/engineer are both `user`.
+-- Users. Two access roles (`user`, `admin`). Homeowner and engineer are both `user`.
 -- ---------------------------------------------------------------------------
 CREATE TABLE users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -19,32 +18,26 @@ CREATE TABLE users (
   access_role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
   avatar_url VARCHAR(500) NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
-  -- Self-registered accounts start unverified (register sets this to 0
-  -- explicitly); admin-created accounts and every pre-existing row take the
-  -- column default (1) — see db/migrations/008_users_is_verified.sql.
+  -- Self-registered accounts start unverified (register sets 0). Admin-created
+  -- accounts and existing rows use the default (1). See migration 008.
   is_verified TINYINT(1) NOT NULL DEFAULT 1,
-  -- Independent of is_verified above: confirms the *email address itself*
-  -- was proven real by the owner typing back a code sent to it. NULL until
-  -- confirmed, then set once and never cleared. See
-  -- db/migrations/012_users_email_verification.sql and auth.controller.js's
-  -- register/verifyEmail/resendVerificationCode.
+  -- Independent of is_verified. Set once when the owner types back the code
+  -- sent to their email, never cleared. See migration 012 and
+  -- auth.controller.js (register, verifyEmail, resendVerificationCode).
   email_verified_at TIMESTAMP NULL,
   email_verification_code CHAR(6) NULL,
   email_verification_expires_at TIMESTAMP NULL,
   email_verification_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
   email_verification_last_sent_at TIMESTAMP NULL,
-  -- Separate from the email_verification_* set above so the two flows can't
-  -- overwrite each other's live code: an account that registered but never
-  -- typed its signup code can still request a password reset. See
-  -- db/migrations/014_users_password_reset.sql and auth.controller.js's
-  -- forgotPassword/resetPassword.
+  -- Separate from the email_verification_* columns so the two flows can't
+  -- overwrite each other's code. See migration 014 and auth.controller.js
+  -- (forgotPassword, resetPassword).
   password_reset_code CHAR(6) NULL,
   password_reset_expires_at TIMESTAMP NULL,
   password_reset_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
   password_reset_last_sent_at TIMESTAMP NULL,
-  -- "Online now" presence for the Admin Module — set on every successful
-  -- login and refreshed by a heartbeat while a session stays open (see
-  -- migrations/015_users_last_seen.sql). NULL means never logged in.
+  -- "Online now" for the admin module. Set on login and refreshed by the
+  -- heartbeat (migration 015). NULL means never logged in.
   last_seen_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -71,10 +64,9 @@ CREATE TABLE projects (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------
--- Estimation results: one row per computed run of the rule-based engine for
--- a project (re-running after a calibration change adds a new row rather
--- than overwriting, matching FR-9/FR-17's "previously saved estimations are
--- not retroactively affected").
+-- Estimation results: one row per engine run for a project. Re-running after
+-- a calibration change adds a new row, so saved estimations are not changed
+-- (FR-9/FR-17).
 -- ---------------------------------------------------------------------------
 CREATE TABLE estimation_results (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -83,18 +75,16 @@ CREATE TABLE estimation_results (
   floor_area DECIMAL(10, 2) NULL,          -- m^2
   roof_area DECIMAL(10, 2) NULL,           -- m^2
   rooms_detected SMALLINT UNSIGNED NULL,
-  -- Additional detail the DXF engine already computes alongside the figures
-  -- above — see engine/formulas.py's `measurements` dict and the "Detailed
-  -- extraction information" section on the Results page.
+  -- Extra details the engine computes (see formulas.py `measurements`), shown
+  -- in "Detailed extraction information" on the Results page.
   door_area DECIMAL(10, 2) NULL,           -- m^2
   window_area DECIMAL(10, 2) NULL,         -- m^2
   column_count SMALLINT UNSIGNED NULL,
   floor_perimeter DECIMAL(10, 2) NULL,     -- meters
   roof_perimeter DECIMAL(10, 2) NULL,      -- meters
   roof_ridge_length DECIMAL(10, 2) NULL,   -- meters
-  -- Per-floor breakdown, populated only when a real second-floor DXF was
-  -- uploaded (see engine/formulas.py's geometry2/measurements.groundFloor
-  -- and .secondFloor) — NULL for every single-file project.
+  -- Per-floor breakdown, only filled when a second floor DXF was uploaded
+  -- (see formulas.py measurements.groundFloor and .secondFloor). NULL otherwise.
   ground_wall_length DECIMAL(10, 2) NULL,
   ground_floor_area DECIMAL(10, 2) NULL,
   second_wall_length DECIMAL(10, 2) NULL,
@@ -117,18 +107,15 @@ CREATE TABLE estimation_line_items (
   quantity DECIMAL(12, 3) NOT NULL,
   unit VARCHAR(30) NOT NULL,
   basis VARCHAR(255) NULL,
-  -- {ground, second, roofing, shared} -> amount (see formulas.py's
-  -- SOURCE_CATEGORIES) — lets the Quantity Take-off's "By source" view
-  -- group this material without touching `quantity`, which every existing
-  -- consumer (pricing, BOM, optimization) still reads unchanged.
+  -- {ground, second, roofing, shared} -> amount (see SOURCE_CATEGORIES in
+  -- formulas.py). Used by the "By source" view without changing `quantity`.
   source_breakdown JSON NULL,
   CONSTRAINT fk_line_item_estimation FOREIGN KEY (estimation_id) REFERENCES estimation_results(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------
--- Material brand catalog (admin-managed). `is_commodity` marks sand/gravel:
--- priced flat, never shown in Brand Selection, matching BASE_PRICING's split
--- in brandOptionsMock.js.
+-- Material brand catalog (admin-managed). `is_commodity` marks sand and gravel,
+-- which are priced flat and never shown in Brand Selection.
 -- ---------------------------------------------------------------------------
 CREATE TABLE material_brands (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -155,10 +142,9 @@ CREATE TABLE stores (
   address VARCHAR(255) NOT NULL,
   lat DECIMAL(10, 6) NOT NULL,
   lng DECIMAL(10, 6) NOT NULL,
-  -- Deactivated stores drop out of the Store Locator comparison entirely
-  -- (see optimization.service.js's getStoreOptimization) but stay visible
-  -- and editable in the Admin Module — mirrors users' is_active, reversible
-  -- via the same typed DEACTIVATE/REACTIVATE confirmation pattern.
+  -- Deactivated stores drop out of Store Locator (see getStoreOptimization in
+  -- optimization.service.js) but stay editable in the admin module. Same idea
+  -- as users' is_active.
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -166,8 +152,8 @@ CREATE TABLE stores (
 ALTER TABLE projects
   ADD CONSTRAINT fk_projects_store FOREIGN KEY (selected_store_id) REFERENCES stores(id) ON DELETE SET NULL;
 
--- A store may carry only some brands (partial store entries, per FR-17) —
--- absence of a row here means "not carried", not "price 0".
+-- A store may carry only some brands (FR-17). No row means "not carried",
+-- not "price 0".
 CREATE TABLE store_material_prices (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   store_id INT UNSIGNED NOT NULL,
@@ -211,9 +197,8 @@ CREATE TABLE estimation_constants (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------
--- Per-project structural design parameter overrides — see
--- db/migrations/001_project_design_overrides.sql for the full rationale.
--- Every column NULL means "use the engine's built-in default".
+-- Per-project structural parameter overrides (rationale in migration 001).
+-- NULL in a column means "use the engine's default".
 -- ---------------------------------------------------------------------------
 CREATE TABLE project_design_overrides (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -273,11 +258,10 @@ CREATE TABLE activity_log (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------
--- Admin activity backlog — a separate, persisted, append-only audit trail
--- for Admin Module actions (distinct from the User Module's activity_log
--- above). Categorized into User Management / Store Management (see the
--- Admin Activity Log page). No UPDATE/DELETE route is ever exposed for this
--- table — immutability, even to the admin, is structural.
+-- Admin activity log: a separate, append-only audit trail for admin actions
+-- (not the User Module's activity_log above). Split into User Management and
+-- Store Management. No UPDATE or DELETE route exists, so even admins can't
+-- change entries.
 -- ---------------------------------------------------------------------------
 CREATE TABLE admin_activity_log (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

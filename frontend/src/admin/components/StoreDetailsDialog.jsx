@@ -23,16 +23,11 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 /**
- * Store details dialog (mirrors the reference mockup's store drawer): quick
- * stats plus "Manage materials", the required hand-off into Materials &
- * Brands (see requirement 9's Store -> Materials flow).
- *
- * Note there are two different meanings of "active" nearby, which is worth
- * keeping straight: `onSetActive` below only marks which store the Materials
- * & Brands page is currently editing (client-side selection), while
- * `onToggleActiveRequest` is the real store.isActive flag that decides whether
- * the store appears in price comparisons at all. The manage button used to be
- * labelled "Set active & manage" and was routinely mistaken for the latter.
+ * Store details dialog: quick stats plus "Manage materials", the required
+ * hand-off into Materials & Brands. There are two meanings of "active" here:
+ * `onSetActive` only marks which store the Materials & Brands page is editing
+ * (client-side selection), while `onToggleActiveRequest` is the real
+ * store.isActive flag that decides if the store appears in price comparisons.
  */
 function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, onRemoveRequest, onToggleActiveRequest }) {
   const navigate = useNavigate();
@@ -97,16 +92,10 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
             <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'text.secondary', mb: 1 }}>
               Inventory snapshot
             </Typography>
-            {/* Mobile: was a plain flex-wrap row, which greedily packs tags
-                left-to-right based on each label's own width — with labels
-                this uneven in length (four characters up to almost thirty),
-                that reads as a random, ragged arrangement rather than a
-                deliberate layout. A fixed 2-column grid instead gives every
-                tag in a row the same width (so rows line up cleanly both
-                horizontally and vertically); the one genuinely long label
-                ("CHB (Concrete Hollow Blocks)") spans both columns so it
-                still fits on one line instead of being squeezed. sm+ keeps
-                the original flex-wrap row untouched. */}
+            {/* Mobile: a fixed 2-column grid instead of a flex-wrap row, so tags in a
+                row share the same width and line up (labels vary from 4 to ~30
+                characters). The long "CHB (Concrete Hollow Blocks)" spans both
+                columns so it fits on one line. sm+ keeps the flex-wrap row. */}
             <Box
               sx={{
                 display: { xs: 'grid', sm: 'flex' },
@@ -142,13 +131,9 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
           </Box>
         )}
       </DialogContent>
-      {/* Two rows rather than one — Edit/Deactivate/Remove plus the primary
-          "Set active & manage" action no longer fit on a single row now that
-          Deactivate joined Edit/Remove store, which was squeezing "Set
-          active & manage" half off the dialog's edge. The secondary/
-          destructive actions share a row (still wrapping on very narrow
-          widths as a safety net); the primary action gets its own full-
-          width row below, unmissable rather than competing for space. */}
+      {/* Two rows: Edit/Deactivate/Remove share one (wrapping on narrow widths) and
+          the primary action gets its own full-width row, so it isn't squeezed off
+          the dialog's edge. */}
       <DialogActions sx={{ px: 3, pb: 3, flexDirection: 'column', alignItems: 'stretch', gap: 1.25 }}>
         <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', justifyContent: 'center' }}>
           <Button
@@ -209,10 +194,8 @@ function StoreDetailsDialog({ open, store, onClose, onSetActive, onEditRequest, 
             </Box>
           </Button>
         </Stack>
-        {/* Was labelled "Set active & manage", which read like it activated
-            the store — the Deactivate/Reactivate button right above does that.
-            This one only picks which store the Materials & Brands page is
-            working on, so it now says so. */}
+        {/* Labelled to say it only picks which store Materials & Brands edits. The
+            Deactivate/Reactivate button above is what actually activates the store. */}
         <Button
           onClick={handleManage}
           variant="contained"

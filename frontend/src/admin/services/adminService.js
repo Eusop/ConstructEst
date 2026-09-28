@@ -1,12 +1,10 @@
 import { apiRequest, downloadFile } from '../../services/apiClient';
 
 /**
- * Thin wrappers over the backend's `/api/admin/*` endpoints (see
- * backend/src/controllers/admin.controller.js and stores.controller.js).
- * Everything here reads/writes the real `stores`/`material_brands`/
- * `store_material_prices` tables — the same catalog the User Module's Store
- * Locator and Brand Selection pages already depend on, so changes made here
- * are immediately visible there too (see admin/context/AdminStoresContext).
+ * Wrappers over the backend's `/api/admin/*` endpoints (see admin.controller.js
+ * and stores.controller.js). They read and write the real `stores`,
+ * `material_brands` and `store_material_prices` tables, the same catalog Store
+ * Locator and Brand Selection use (see admin/context/AdminStoresContext).
  */
 export const listAdminUsers = () => apiRequest('/admin/users');
 
@@ -17,13 +15,14 @@ export const updateAdminUser = (id, body) => apiRequest(`/admin/users/${id}`, { 
 export const setAdminUserActive = (id, isActive) =>
   apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', body: { isActive } });
 
-/** Approves a pending self-registered account — sets it verified + active in one step. */
+/** Approves a pending self-registered account: sets it verified and active in one step. */
 export const verifyAdminUser = (id) => apiRequest(`/admin/users/${id}/verify`, { method: 'PATCH' });
 
-/** Permanently deletes a user and everything they own (projects, estimates,
- * notifications — see admin.controller.js's deleteUser). Admin accounts are
- * rejected server-side (403), so this should only ever be called for a
- * regular user. */
+/**
+ * Permanently deletes a user and everything they own (projects, estimates,
+ * notifications; see deleteUser in admin.controller.js). Admin accounts get a
+ * 403, so only call it for regular users.
+ */
 export const deleteAdminUser = (id) => apiRequest(`/admin/users/${id}`, { method: 'DELETE' });
 
 export const getGlobalConstants = () => apiRequest('/admin/estimation-constants');
@@ -47,9 +46,11 @@ export const setAdminStoreActive = (id, isActive) =>
 
 export const deleteAdminStore = (id) => apiRequest(`/admin/stores/${id}`, { method: 'DELETE' });
 
-/** The full global material_brands catalog, left-joined against this
- * store's own prices — brands with `storePrice: null` aren't stocked here
- * yet (see admin.controller.js's getStoreCatalog for the exact shape). */
+/**
+ * The full global material_brands catalog, left-joined with this store's prices.
+ * Brands with `storePrice: null` aren't stocked here yet (see getStoreCatalog in
+ * admin.controller.js).
+ */
 export const getStoreCatalog = (storeId) => apiRequest(`/admin/stores/${storeId}/catalog`);
 
 // --- Materials & brands --------------------------------------------------
@@ -62,16 +63,13 @@ export const updateAdminMaterial = (id, body) => apiRequest(`/admin/materials/${
 
 export const deleteAdminMaterial = (id) => apiRequest(`/admin/materials/${id}`, { method: 'DELETE' });
 
-/** Sets (or updates) one store's price/availability for an existing global
- * brand — this is what actually makes a brand "stocked" at a store.
- *
- * A real price decision needs a `quotationFile` (PDF/Word/Excel) attached as
- * proof — sent as multipart when one's given. The one caller that doesn't
- * have one, `AdminStoresContext.jsx`'s addMaterialsToStore (carrying a
- * brand's existing catalog price into a store's first stocking of it,
- * nothing new decided), sets `usesCatalogPrice: true` instead, which the
- * backend accepts as the documented exception (see admin.controller.js's
- * upsertStoreMaterialPrice).
+/**
+ * Sets or updates one store's price and availability for an existing global
+ * brand. This is what makes a brand "stocked" at a store. A price decision needs
+ * a `quotationFile` (PDF/Word/Excel) as proof, sent as multipart when given. The
+ * one caller without one, addMaterialsToStore in AdminStoresContext.jsx (carrying
+ * a catalog price into a first stocking), sets `usesCatalogPrice: true`, which the
+ * backend accepts as the exception (see upsertStoreMaterialPrice in admin.controller.js).
  *
  * @param {number} storeId
  * @param {number} materialBrandId
@@ -89,21 +87,21 @@ export const setStoreMaterialPrice = (storeId, materialBrandId, body, quotationF
   return apiRequest(`/admin/stores/${storeId}/materials/${materialBrandId}`, { method: 'PUT', body: formData, isMultipart: true });
 };
 
-/** Unassigns a brand from a store (the global brand definition itself is
- * untouched, so it stays available to price at other stores). */
+/** Unassigns a brand from a store. The global brand stays, so other stores can still price it. */
 export const removeStoreMaterialPrice = (storeId, materialBrandId) =>
   apiRequest(`/admin/stores/${storeId}/materials/${materialBrandId}`, { method: 'DELETE' });
 
-/** Downloads a price change's quotation proof (see upsertStoreMaterialPrice's
- * `quotationStoredName` metadata) as an authenticated blob, saved under its
- * original filename. */
+/**
+ * Downloads a price change's quotation proof (see `quotationStoredName` in
+ * upsertStoreMaterialPrice) as an authenticated blob, saved under its original name.
+ */
 export const downloadQuotationFile = (storedName, displayName) =>
   downloadFile(`/admin/quotations/${encodeURIComponent(storedName)}?name=${encodeURIComponent(displayName || storedName)}`, displayName);
 
 // --- Activity backlog --------------------------------------------------
 
-/** Read-only, persisted admin audit trail — see admin.controller.js's
- * logAdminActivity for what writes to it (never the client directly).
+/**
+ * Read-only saved admin audit trail. Only the server writes to it (see logAdminActivity in admin.controller.js).
  * @param {{ category?: 'user_management' | 'store_management', limit?: number }} [params]
  */
 export const listAdminActivityLog = (params = {}) => {

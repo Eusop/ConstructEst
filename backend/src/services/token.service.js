@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-/** JWT payload just carries the access role (user/admin), nothing that
- * needs to be re-derived or trusted from elsewhere. */
+/** The JWT payload only holds the access role (user/admin). */
 export function signToken(user) {
   return jwt.sign(
     { sub: user.id, employeeId: user.employee_id, accessRole: user.access_role },

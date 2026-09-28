@@ -1,16 +1,10 @@
 import * as brevo from '@getbrevo/brevo';
 import 'dotenv/config';
 
-// Railway blocks outbound SMTP on both port 465 and 587, so raw SMTP (the
-// original Nodemailer/Gmail setup) times out in production regardless of
-// credentials. Brevo sends over regular HTTPS instead of an SMTP socket,
-// which is never blocked. Landed here after Resend (sandbox sender only
-// reliably delivers to the Resend account's own email — a real blocker for
-// other people registering with their own address) and SendGrid (its
-// automated account-vetting rejected signup outright, no reason given).
-// Brevo's Single Sender Verification (one email address you own, no domain
-// purchase needed) works the same way SendGrid's would have: once verified,
-// it can send to anyone.
+// Railway blocks outbound SMTP (ports 465 and 587), so Gmail/Nodemailer times
+// out in production. Brevo sends over HTTPS, which is not blocked. Resend only
+// delivered to its own account email, and SendGrid rejected our signup. Brevo's
+// Single Sender Verification (one email you own, no domain needed) can send to anyone.
 let client;
 function getClient() {
   if (!client) {
@@ -23,9 +17,8 @@ function getClient() {
   return client;
 }
 
-// Must be exactly the address verified in Brevo (Senders, Domains & Dedicated
-// IPs > Senders > Single Sender) — Brevo rejects any other "from" address
-// outright, so there is no safe placeholder default here.
+// Must be exactly the address verified in Brevo (Senders > Single Sender).
+// Brevo rejects any other "from" address, so there is no default.
 const FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
 const FROM_NAME = process.env.BREVO_FROM_NAME || 'ConstructEst';
 
@@ -43,17 +36,15 @@ async function send({ to, subject, text, html }) {
   try {
     await getClient().sendTransacEmail(email);
   } catch (err) {
-    // Brevo's error body nests the useful message under
-    // response.body.message — the bare err.message is usually just the
-    // generic HTTP status text, not helpful for figuring out what failed.
+    // Brevo nests the useful message in response.body.message. The bare
+    // err.message is usually just the HTTP status text.
     const message = err?.response?.body?.message || err.message || 'Failed to send email via Brevo';
     throw new Error(message);
   }
 }
 
-/** Sends the 6-digit code used to reset a forgotten password. Same shape as
- * the signup code above but worded for a reset, so a code arriving in an
- * inbox is never ambiguous about which flow asked for it. */
+/** Sends the 6-digit code for resetting a password. Worded for a reset so it
+ * is never confused with the signup code. */
 export async function sendPasswordResetCodeEmail(toEmail, code) {
   await send({
     to: toEmail,
@@ -63,9 +54,8 @@ export async function sendPasswordResetCodeEmail(toEmail, code) {
   });
 }
 
-/** Heads-up that a password was just changed. Sent after the change has
- * already been saved, so the caller must swallow any failure rather than
- * reporting an error for a password that did in fact change. */
+/** Notice that a password was just changed. Sent after the change is saved,
+ * so the caller must ignore a failure here. */
 export async function sendPasswordChangedEmail(toEmail, name) {
   await send({
     to: toEmail,
@@ -75,8 +65,8 @@ export async function sendPasswordChangedEmail(toEmail, name) {
   });
 }
 
-/** Sends the 6-digit verification code. Throws on failure, whoever calls
- * this (register/resendVerificationCode) handles what to do about it. */
+/** Sends the 6-digit verification code. Throws on failure; the caller
+ * (register/resendVerificationCode) decides what to do. */
 export async function sendVerificationCodeEmail(toEmail, code) {
   await send({
     to: toEmail,

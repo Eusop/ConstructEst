@@ -21,14 +21,11 @@ const RESEND_COOLDOWN_SECONDS = 45; // matches auth.controller.js
 const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 };
 
 /**
- * Forgot-password flow, both steps in one component: ask for the email, then
- * enter the emailed code plus a new password. Modelled on VerifyEmailForm,
- * which solves the same problem for signup verification.
- *
- * The "request" step deliberately shows the same confirmation whether or not
- * the address is registered — the backend answers identically too (see
- * forgotPassword), because anything that distinguishes them turns this into
- * a way to discover which emails have accounts.
+ * Forgot-password flow in one component, two steps: ask for the email, then
+ * enter the emailed code and a new password. Modelled on VerifyEmailForm. The
+ * request step shows the same confirmation whether or not the address is
+ * registered (the backend does too, see forgotPassword), so it can't be used to
+ * find out which emails have accounts.
  */
 function ResetPasswordForm() {
   const navigate = useNavigate();
@@ -90,10 +87,8 @@ function ResetPasswordForm() {
     setIsSubmitting(true);
     try {
       await resetPasswordRequest({ email, code, newPassword });
-      // Confirmed on this page rather than by redirecting with a message in
-      // navigation state: the login form has no way to display one, so that
-      // message would just vanish and the reset would look like it did
-      // nothing.
+      // Confirmed on this page, not by redirecting with a navigation-state
+      // message: the login form can't show one, so it would just vanish.
       setStep('done');
     } catch (err) {
       setError(err.message || 'Could not reset your password. Try again.');
@@ -166,8 +161,7 @@ function ResetPasswordForm() {
             <TextField
               fullWidth
               value={code}
-              // Digits only, capped at 6, so the field can't hold something
-              // the backend would reject outright.
+              // Digits only, max 6, so the field can't hold a code the backend would reject.
               onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               inputProps={{ inputMode: 'numeric', maxLength: 6, style: { letterSpacing: '0.4em', fontWeight: 700 } }}

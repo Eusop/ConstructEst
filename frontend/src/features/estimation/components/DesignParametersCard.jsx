@@ -15,10 +15,9 @@ import MemberScheduleHelper from './MemberScheduleHelper';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 
-// Every field mirrors an `overrides.get("<key>", default)` call in
-// engine/formulas.py — leaving a field blank sends `null`, which the
-// backend drops before handing overrides to the engine, so it falls back
-// to that same built-in default. Nothing here is required.
+// Every field mirrors an `overrides.get("<key>", default)` call in engine/formulas.py.
+// A blank field sends `null`, which the backend drops, so the engine uses its
+// built-in default. Nothing here is required.
 const GROUPS = [
   {
     key: 'columnsAndBeams',
@@ -28,15 +27,15 @@ const GROUPS = [
       { key: 'columnDepth', label: 'Column depth', unit: 'm', step: 0.01 },
       { key: 'columnHeight', label: 'Column height', unit: 'm', step: 0.1 },
       { key: 'columnCount', label: 'Column count', unit: 'pcs', step: 1 },
-      // Only meaningful with a separate second-floor DXF; hidden on a
-      // 1-storey project, shown on the admin page (storeys unknown).
+      // Only meaningful with a separate second floor DXF. Hidden on a 1-storey
+      // project, shown on the admin page (storeys unknown).
       { key: 'columnWidthSecond', label: '2nd floor column width', unit: 'm', step: 0.01, twoStoreyOnly: true },
       { key: 'columnDepthSecond', label: '2nd floor column depth', unit: 'm', step: 0.01, twoStoreyOnly: true },
       { key: 'beamWidth', label: 'Beam width', unit: 'm', step: 0.01 },
       { key: 'beamDepth', label: 'Beam depth', unit: 'm', step: 0.01 },
       { key: 'beamLength', label: 'Beam total length', unit: 'm', step: 0.5 },
-      // From the project's own beam schedule, so project page only: a
-      // global default here would give every project the same schedule.
+      // From the project's own beam schedule, so project page only (a global
+      // default would give every project the same schedule).
       { key: 'beamRebarLength', label: 'Beam rebar total length', unit: 'm', step: 1, projectOnly: true },
       { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', step: 1, projectOnly: true },
     ],
@@ -74,31 +73,24 @@ const GROUPS = [
   },
 ];
 
-// columnCount (comes from the DXF's own detected count) and beamLength
-// (derived from wall run length) have no fixed number to show — every
-// other field's placeholder is the real value the engine will fall back
-// to, computed for `storeys` when known (a project), or shown as both
-// the 1-storey/2-storey variants when it isn't (the admin's global page).
+// columnCount (detected from the DXF) and beamLength (from wall run) have no
+// fixed number to show. Every other placeholder is the value the engine will use,
+// computed for `storeys` when known (a project), or both the 1-storey and
+// 2-storey variants when not (the admin global page).
 //
-// `effectiveDefaults`, when given, takes priority over the hardcoded
-// literals below — it's the project's real effective fallback chain
-// (project override -> admin's global default -> engine's own hardcoded
-// default), fetched live from the backend. Without it, this placeholder
-// used to always show formulas.py's hardcoded literal even when an admin
-// had configured a different global default, so leaving a field blank
-// looked like it would use one number but silently used another. Only a
-// project page can pass this (the admin global page IS the thing setting
-// that global default, so its own placeholder correctly stays the
-// hardcoded engine fallback — there's no more-global level above it).
+// `effectiveDefaults`, when given, wins over the hardcoded literals below: it is
+// the project's real fallback chain (project override, admin global default,
+// engine default) from the backend. Only a project page can pass it; the admin
+// global page sets that global default, so its placeholder stays the engine default.
 function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) {
-  // The second floor's column size falls back to whatever the ground floor
-  // uses (a value typed in the ground field counts, even before saving).
+  // The second floor's column size falls back to the ground floor's (a value typed
+  // in the ground field counts even before saving).
   if (fieldKey === 'columnWidthSecond' && overrides.columnWidth != null) return String(overrides.columnWidth);
   if (fieldKey === 'columnDepthSecond' && overrides.columnDepth != null) return String(overrides.columnDepth);
   if (fieldKey === 'columnWidthSecond') return fieldPlaceholder('columnWidth', storeys, effectiveDefaults);
   if (fieldKey === 'columnDepthSecond') return fieldPlaceholder('columnDepth', storeys, effectiveDefaults);
-  // Blank here means no beam rebar at all (there's no computed default),
-  // not an automatic value — "Auto" would suggest the opposite.
+  // Blank means no beam rebar at all (no computed default), not an automatic
+  // value, so "Auto" would be misleading.
   if (fieldKey === 'beamRebarLength') return 'None (from schedule)';
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
@@ -116,26 +108,18 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
 }
 
 /**
- * "Design parameters" card: the structural dimensions the paper's own
- * Section 4.3.3.2 says a 2D DXF can't derive (column/beam/footing sizes,
- * floor-to-floor height, building elevation) — editable overrides grouped
- * by structural element, each optional. Mirrors CalibrationFactorsCard's
- * shape so the two sit naturally side by side.
+ * "Design parameters" card: the structural dimensions the paper's Section
+ * 4.3.3.2 says a 2D DXF can't give (column/beam/footing sizes, floor-to-floor
+ * height, building elevation). Editable overrides grouped by structural
+ * element, each optional. Same shape as CalibrationFactorsCard so they sit
+ * side by side.
  *
  * @param {object} props
  * @param {Record<string, number|null>} props.overrides Current draft values, keyed by field.key.
  * @param {(key: string, value: number|null) => void} props.onOverrideChange
  * @param {() => void} props.onResetAll Clears every field back to "use engine default".
- * @param {number|null} [props.storeys] The active project's storeys, used to show the
- *   exact engine default as each field's placeholder — the paper defines column and
- *   footing defaults separately for 1-storey vs 2-storey buildings. Omit (or pass null)
- *   on pages with no specific project in context (e.g. admin global defaults), where
- *   both variants are shown instead.
- * @param {Record<string, number|null>|null} [props.effectiveDefaults] The project's real
- *   effective fallback chain (project override -> admin's global default -> engine's
- *   hardcoded default), fetched live from the backend — takes priority over the hardcoded
- *   literal placeholder when a field has a value here. Omit on pages with no specific
- *   project (e.g. the admin global page, which IS the global default being set).
+ * @param {number|null} [props.storeys] The project's storeys, to show the exact engine default as each placeholder (the paper gives column and footing defaults per 1- and 2-storey). Omit or pass null when there is no project (e.g. admin global defaults), and both variants are shown.
+ * @param {Record<string, number|null>|null} [props.effectiveDefaults] The project's real fallback chain (project override, admin global default, engine default), fetched from the backend. Used for placeholders instead of the hardcoded literals. Omit on the admin global page, which sets the global default itself.
  */
 function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null, effectiveDefaults = null }) {
   const isMobile = useIsMobile();
@@ -157,22 +141,13 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
         p: { xs: 2, md: 4 },
-        // Matches CalibrationFactorsCard's Paper (its sibling in
-        // MobileTabSwitcher) — without this, this card's full width was
-        // only incidental (from its own content), not guaranteed by CSS,
-        // unlike its sibling and the card below it, causing its left/right
-        // edges to not reliably line up with them.
+        // Same as CalibrationFactorsCard's Paper (its sibling in MobileTabSwitcher),
+        // so the two cards' left and right edges line up reliably.
         flex: 1,
-        // A flex item's default `min-width` is `auto`, not `0` — meaning
-        // the browser won't shrink it below its content's own min-content
-        // width. This card's 2-column grid of TextFields (see the group
-        // fields below) has a wider min-content width than its sibling
-        // (CalibrationFactorsCard, just sliders, which shrink to anything),
-        // so without this override the flex row would refuse to shrink
-        // this card down to its actual `flex: 1` half-share, overflowing
-        // the row instead — which is what actually broke the left/right
-        // alignment the comment above already describes, not the missing
-        // `flex: 1` alone.
+        // A flex item's default `min-width` is `auto`, so it won't shrink below
+        // its content. This card's 2-column grid of TextFields is wider at
+        // min-content than its sibling (sliders), so without this the row
+        // overflowed instead of giving this card its `flex: 1` half.
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
@@ -204,8 +179,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
         {GROUPS.map((group, index) => (
           <Accordion
             key={group.key}
-            // Mobile: every group starts closed — desktop keeps the first
-            // group open by default, unchanged.
+            // Mobile: every group starts closed. Desktop opens the first group.
             defaultExpanded={!isMobile && index === 0}
             disableGutters
             elevation={0}

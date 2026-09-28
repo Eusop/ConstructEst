@@ -18,7 +18,7 @@ export const ROUTES = {
   PROFILE: '/profile',
 };
 
-/** Routes for the Admin Module — kept separate from ROUTES so admin/user navigation never cross. */
+/** Routes for the Admin Module, kept separate from ROUTES so admin and user navigation never mix. */
 export const ADMIN_ROUTES = {
   DASHBOARD: '/admin/dashboard',
   USERS: '/admin/users',

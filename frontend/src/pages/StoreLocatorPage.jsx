@@ -54,19 +54,17 @@ function writeManualLocation(location) {
   }
 }
 
-// Fake marker id for the user's own position, not a real store, so it's
-// excluded from the selection/info-window logic below instead of being
-// looked up in STORES.
+// Fake marker id for the user's own position (not a store), so it is skipped
+// by the selection and info-window logic.
 const USER_LOCATION_MARKER_ID = 'user-location';
 
 /**
- * Store Locator: compares each store's BOM cost and distance on a map
- * plus a synced list. Selecting a store (either way) highlights it in
- * both and centers the map. Fetches the real per-store cost optimization
- * once per active project.
+ * Store Locator: compares each store's BOM cost and distance on a map and a
+ * synced list. Selecting a store highlights it in both and centers the map.
+ * Loads the per-store cost optimization once per active project.
  */
-// Phones start collapsed to a short preview; tablets/desktop always show
-// the full list, so this only ever affects the xs breakpoint below.
+// Phones start with a short preview; tablet and desktop always show the full
+// list, so this only affects the xs breakpoint.
 const MOBILE_PREVIEW_COUNT = 3;
 
 function StoreLocatorPage() {
@@ -79,21 +77,20 @@ function StoreLocatorPage() {
   const [loadedForId, setLoadedForId] = useState(null);
   const [loadError, setLoadError] = useState('');
   const { location: deviceLocation, status: geoStatus, rejectedDistanceKm, refetch: refetchLocation } = useUserLocation();
-  // A spot the user tapped on the map. Wins over the browser's guess, which
-  // on a laptop can land tens of km off. Remembered in this browser only.
+  // A spot the user tapped on the map. It wins over the browser's guess, which on
+  // a laptop can be tens of km off. Kept in this browser only.
   const [manualLocation, setManualLocation] = useState(readManualLocation);
   const [pickingLocation, setPickingLocation] = useState(false);
   const userLocation = manualLocation ?? deviceLocation;
-  // Stays true once geolocation settles once, so a later "locate me"
-  // click doesn't re-blank the whole page behind the big spinner (just
-  // the button itself shows a small spinner for that).
+  // Stays true once geolocation has settled once, so the "locate me" button
+  // doesn't blank the page behind the big spinner again.
   const [hasSettledLocationOnce, setHasSettledLocationOnce] = useState(false);
   useEffect(() => {
     if (geoStatus === 'loading' || hasSettledLocationOnce) return;
     queueMicrotask(() => setHasSettledLocationOnce(true));
   }, [geoStatus, hasSettledLocationOnce]);
-  // Waits on both the store fetch and the first geolocation attempt, so
-  // it never shows a distance from the wrong origin and then swaps it.
+  // Waits for the store fetch and the first geolocation attempt, so distances
+  // never show from the wrong origin and then swap.
   const ready = loadedForId === activeProject?.id && (geoStatus !== 'loading' || hasSettledLocationOnce);
 
   useEffect(() => {
@@ -119,8 +116,8 @@ function StoreLocatorPage() {
     };
   }, [activeProject?.id]);
 
-  // Bumped whenever STORES is refilled or gets road distances, since it's
-  // mutated in place and displayedStores below is memoized on this.
+  // Bumped when STORES is refilled or gets road distances (it is mutated in
+  // place), since displayedStores is memoized on this.
   const [storesVersion, setStoresVersion] = useState(0);
   // 'cheapest' = the server's order (FR-12's cost ranking), 'nearest' = by distance.
   const [sortMode, setSortMode] = useState('cheapest');
@@ -135,8 +132,8 @@ function StoreLocatorPage() {
       setLoadedForId(activeProject.id);
       setStoresVersion((version) => version + 1);
     });
-    // Straight-line shows right away; road distance (OpenRouteService)
-    // replaces it when it arrives. Any failure just keeps straight-line.
+    // Straight-line shows first; road distance (OpenRouteService) replaces it
+    // when it arrives. Any failure keeps straight-line.
     if (rawStores.length > 0) {
       apiRequest('/stores/road-distances', { method: 'POST', body: { origin: { lat: origin.lat, lng: origin.lng } } })
         .then((result) => {
@@ -151,8 +148,8 @@ function StoreLocatorPage() {
     };
   }, [rawStores, userLocation, geoStatus, activeProject?.id]);
 
-  // Copies with rank = position in the chosen order, so the card and map
-  // numbers always match the list. The Cheapest badge stays on isCheapest.
+  // Copies with rank = position in the chosen order, so card and map numbers
+  // match the list. The Cheapest badge stays on isCheapest.
   const displayedStores = useMemo(() => {
     const ordered = sortMode === 'nearest'
       ? [...STORES].sort((a, b) => (a.roadKm ?? a.distanceKm) - (b.roadKm ?? b.distanceKm))
@@ -162,13 +159,12 @@ function StoreLocatorPage() {
   }, [sortMode, storesVersion]);
 
   const selectedStoreId = activeProject?.selectedStoreId ?? null;
-  // Centers the map on the user instead of the selected store when true,
-  // set by the locate button, cleared once a store is picked again.
+  // When true, centers the map on the user instead of the selected store. Set by
+  // the locate button, cleared when a store is picked.
   const [focusOnUser, setFocusOnUser] = useState(false);
-  // Centralized here since both the list and map marker call this. A store
-  // missing some materials is still selectable — StoreListCard already
-  // shows what it's missing, and the BOM page discloses it again once
-  // priced, so there's no need to block the pick itself.
+  // Shared by the list and the map marker. A store missing some materials can
+  // still be selected: StoreListCard shows what it lacks, and the BOM page
+  // discloses it again.
   const setSelectedStoreId = (id) => {
     if (id === USER_LOCATION_MARKER_ID) return;
     setFocusOnUser(false);
@@ -198,8 +194,8 @@ function StoreLocatorPage() {
       {label}
     </Link>
   );
-  // Always says which point distances come from, so a rejected or blocked
-  // device location is never swapped for the city center silently.
+  // Always says where distances are measured from, so a rejected or blocked
+  // device location is never silently swapped for the city center.
   let originNote;
   if (manualLocation) {
     originNote = <>Distances are from the spot you set on the map. {setLocationLink('Change it')}, or use the locate button for your device location.</>;
@@ -324,24 +320,15 @@ function StoreLocatorPage() {
               boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
               p: 1.5,
               flex: 1,
-              // Without a bounded height + scroll, this list grew past its
-              // row and the button below landed on top of it. Matches the
-              // map's Paper on the left so both columns behave the same.
+              // A bounded height plus scroll, so the list doesn't grow past its row and
+              // push the button on top of it. Same as the map's Paper on the left.
               overflow: 'auto',
-              // Phones: no fixed height of its own — it fills whatever the
-              // flex chain above leaves over, so the page always ends a
-              // consistent page-padding above the bottom edge regardless of
-              // phone height, and a long store list scrolls in here.
+              // Phones: no fixed height. It fills what the flex chain leaves, so the
+              // page ends a consistent padding above the bottom, and a long list scrolls here.
               minHeight: { xs: 0, sm: 260, md: 420 },
-              // 'contain' was tried here on xs to stop the inner list's
-              // scroll from chaining into the page once it bottoms out, but
-              // it backfires when the list doesn't actually have enough
-              // content to scroll internally (e.g. the 3-card mobile
-              // preview): the browser still treats it as a scroll boundary
-              // and swallows the touch gesture instead of falling back to
-              // the page, so a finger starting on the card couldn't scroll
-              // anything at all. 'auto' (the default, same as sm+) lets
-              // that fallback happen normally.
+              // 'contain' on xs backfired: when the list has nothing to scroll (e.g. the
+              // 3-card mobile preview), the browser still swallowed the touch gesture
+              // instead of scrolling the page. 'auto' (same as sm+) lets it fall back.
               overscrollBehavior: 'auto',
               WebkitOverflowScrolling: { xs: 'touch', sm: 'auto' },
             }}
@@ -423,9 +410,8 @@ function StoreLocatorPage() {
 
       <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' }, pb: { xs: 2, sm: 3 } }}>
         <Tooltip title={selectedStoreId ? '' : 'Select a hardware store to continue'}>
-          {/* Box, not a bare <span>, so it can carry the full-width phone
-              style — it still forwards the ref Tooltip needs to anchor to
-              a disabled button. */}
+          {/* Box, not a bare <span>, so it can carry the full-width phone style and
+              still forward the ref Tooltip needs on a disabled button. */}
           <Box component="span" sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Button
               onClick={() => navigate(ROUTES.BRAND_SELECTION)}
@@ -437,8 +423,7 @@ function StoreLocatorPage() {
                 bgcolor: colors.accentBlue,
                 '&:hover': { bgcolor: colors.accentBlueDark },
                 fontSize: { xs: '0.9rem', sm: '1.05rem' },
-                // Full-bleed primary action on phones, matching how the
-                // rest of the app's mobile CTAs sit.
+                // Full-bleed primary action on phones, like the app's other mobile CTAs.
                 width: { xs: '100%', sm: 'auto' },
               }}
             >

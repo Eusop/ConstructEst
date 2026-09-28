@@ -24,8 +24,8 @@ function fileFilter(req, file, cb) {
   return cb(null, true);
 }
 
-// Using .fields() instead of .single() since a 2-storey project can
-// optionally upload a second DXF for the second floor.
+// .fields() instead of .single(), since a 2-storey project can also upload
+// a second floor DXF.
 export const uploadDxf = multer({
   storage,
   fileFilter,
@@ -35,8 +35,8 @@ export const uploadDxf = multer({
   { name: 'secondFloorDxfFile', maxCount: 1 },
 ]);
 
-// For the quotation file admins attach as proof when changing a price.
-// Keeps the real file extension, unlike uploadDxf which forces .dxf.
+// Quotation file admins attach as proof of a price change. Keeps the real
+// extension (uploadDxf forces .dxf).
 const QUOTATION_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx']);
 
 const quotationStorage = multer.diskStorage({
@@ -62,27 +62,22 @@ export const uploadQuotation = multer({
   limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES) || 10 * 1024 * 1024 },
 }).single('quotationFile');
 
-// Profile photos. These live in their own subfolder because, unlike DXFs and
-// quotations (which are only ever read back through an authenticated route),
-// avatars are served as plain static files so an <img src> can load them —
-// see app.js. Keeping them separate means that static mount can never expose
-// an uploaded floor plan or a supplier quotation.
+// Profile photos get their own folder. DXFs and quotations are only read
+// through authenticated routes, but avatars are served as static files (see
+// app.js), so a separate folder keeps that mount from exposing floor plans.
 export const AVATAR_DIR = path.join(UPLOAD_DIR, 'avatars');
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
 const AVATAR_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-// Smaller than the 10MB default for DXFs — a profile photo has no business
-// being that big, and the limit is the only thing standing between the disk
-// and someone uploading a 10MB image per save.
+// Smaller than the 10MB DXF limit, since a profile photo does not need it.
 const MAX_AVATAR_BYTES = Number(process.env.MAX_AVATAR_BYTES) || 2 * 1024 * 1024;
 
 const avatarStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, AVATAR_DIR),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    // Name is entirely generated, dropping the original filename: these are
-    // publicly reachable by URL, so there is no reason to leak whatever the
-    // user happened to call the file.
+    // Fully generated name (original filename dropped), since these files are
+    // publicly reachable by URL.
     const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     cb(null, `u${req.user?.id ?? 'x'}-${unique}${ext}`);
   },

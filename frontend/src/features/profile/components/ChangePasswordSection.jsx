@@ -12,11 +12,9 @@ const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.prim
 const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />;
 
 /**
- * "Change Password" section body: current/new/confirm password fields
- * (each with a show/hide toggle) plus a helper caption. Changing the
- * password is independent of the rest of the page: this section has its own
- * submit button and its own validation, so saving a name or email never
- * involves these fields at all.
+ * "Change Password" section: current, new and confirm password fields (each
+ * with a show/hide toggle) and a helper caption. It saves on its own with its
+ * own validation, so saving a name or email never touches these fields.
  *
  * @param {object} props
  * @param {{currentPassword: string, newPassword: string, confirmPassword: string}} props.form
@@ -26,19 +24,17 @@ const LOCK_ICON = <LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary
  * @param {(field: string) => void} props.onFieldBlur
  * @param {() => void} props.onSubmit
  * @param {boolean} [props.isSaving]
- * @param {boolean} [props.isActive] Whether any of the three fields has
- *   content yet — the submit button only appears once true, so it isn't
- *   sitting there implying a save is needed when nothing has been typed.
+ * @param {boolean} [props.isActive] Whether any of the three fields has content.
+ *   The submit button only appears once true, so it doesn't imply a save is needed
+ *   when nothing has been typed.
  */
 function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBlur, onSubmit, isSaving = false, isActive = false }) {
-  // Shows the instant there's content, not gated on blur alone — a browser
-  // autofilling saved credentials never fires a real blur event (see
-  // SignUpForm.jsx for the same fix and fuller explanation).
+  // Shown as soon as there is content, not only on blur, because browser
+  // autofill never fires a blur (see SignUpForm.jsx).
   const showError = (field) => {
     const hasContent = form[field]?.trim().length > 0;
-    // Returns the message itself (or '') so the same value drives both the
-    // error state and the helper text; it used to return `true`, so a field
-    // turned red without saying why.
+    // Returns the message (or '') so one value drives both the error state and
+    // the helper text.
     return errors[field] && (hasContent || touched[field]) ? errors[field] : '';
   };
 
@@ -97,12 +93,9 @@ function ChangePasswordSection({ form, errors, touched, onFieldChange, onFieldBl
         At least 8 characters with a letter and a number. We will email you whenever your password changes.
       </Typography>
 
-      {/* This section saves on its own, separate from the page's "Save
-          changes" — that button used to submit the password too, so editing
-          a name meant re-typing the current password for no reason. Only
-          shown once something has actually been typed here, so it doesn't
-          sit next to "Save changes" looking like a second way to do the
-          same thing when the section is untouched. */}
+      {/* Saves on its own, apart from the page's "Save changes". Only shown once
+          something is typed, so it doesn't look like a second way to do the same
+          thing when untouched. */}
       {isActive && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button

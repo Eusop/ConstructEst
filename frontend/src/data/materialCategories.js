@@ -1,10 +1,7 @@
 /**
- * Construction-logical grouping of the engine's material_key set, used only
- * to group an otherwise flat 14-16-item mobile card list into collapsible
- * sections (see ManualBrandTable.jsx / QuantityTakeoffTable.jsx's mobile
- * branches) — purely a presentational grouping, not used by any pricing/
- * estimation logic. Mirrors the same "group related fields into an
- * Accordion" convention DesignParametersCard already uses.
+ * Groups the engine's material keys by construction type, only to split the
+ * long mobile card list into collapsible sections (see ManualBrandTable.jsx
+ * and QuantityTakeoffTable.jsx). Presentation only; it does not affect pricing.
  */
 export const MATERIAL_CATEGORY_GROUPS = [
   { label: 'Structural', keys: ['hollowBlocks', 'cement', 'sand', 'gravel', 'steelRebar', 'tieWire'] },
@@ -13,10 +10,9 @@ export const MATERIAL_CATEGORY_GROUPS = [
 ];
 
 /**
- * Splits `items` (each with a `key` matching one of MATERIAL_CATEGORY_GROUPS'
- * `keys`) into `{ label, items }` groups in the fixed category order above.
- * Items whose key isn't in any group are dropped silently — every real
- * material_key is covered above, so this only matters for defensive safety.
+ * Splits `items` (each with a `key` in MATERIAL_CATEGORY_GROUPS' `keys`) into
+ * `{ label, items }` groups in the fixed order above. Items with no group are
+ * dropped (every real material_key is covered, so this is just a safeguard).
  *
  * @param {Array<{key: string}>} items
  * @param {(key: string) => any} [keyOf] Optional accessor if `key` isn't the item's own `key` field.

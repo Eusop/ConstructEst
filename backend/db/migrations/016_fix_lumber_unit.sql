@@ -1,16 +1,10 @@
--- Lumber was seeded priced per piece (a whole 2"x2"x10ft stick, unit
--- 'pcs'), but the capstone paper's Table 19 states lumber's unit as
--- "bd.ft." (Total Formwork Area x 3 board feet per m2) — which is what
--- the engine actually computes (formulas.py's material_meta already
--- declares "bd.ft.") and what optimization.service.js's computeBom prices
--- directly with no unit conversion. Charging a whole-stick price per
--- board-foot overcharged Lumber by ~3.3x (a 2"x2"x10ft stick is 3.333
--- board-feet). Same bug shape as 004_fix_flashing_unit.sql.
+-- Lumber was priced per piece (a 2"x2"x10ft stick, unit 'pcs'), but Table 19
+-- gives lumber in 'bd.ft.', which is what the engine computes. Pricing a stick
+-- per board foot overcharged lumber by about 3.3x (a stick is 3.333 bd.ft.).
+-- Same bug as 004.
 --
--- Scales each brand's base_price (and its already-seeded per-store
--- prices) by 0.3 (= 1 / 3.333) to convert "price per stick" into "price
--- per board-foot", preserving whatever per-store multiplier was already
--- baked into each store's price.
+-- Scales each brand's base_price and per-store prices by 0.3 (1 / 3.333) to get
+-- "price per board foot" while keeping each store's multiplier.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/016_fix_lumber_unit.sql

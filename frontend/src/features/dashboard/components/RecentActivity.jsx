@@ -5,20 +5,12 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 /**
- * Dashboard "Recent activity" card: an icon tile, a message, and a
- * right-aligned relative timestamp per entry. Shows a placeholder message
- * when there's nothing to list.
- *
- * No fixed height at any size — it grows with its content (a `minHeight`
- * just keeps the empty state from looking like a collapsed sliver), same
- * adaptive approach as Store Locator's Hardware Stores list. `md`+
- * additionally flexes to fill whatever vertical space the dashboard's
- * layout leaves below the stat cards (its parent in DashboardPage.jsx is
- * already `flex: 1` for exactly this), instead of sitting at a fixed 240px
- * with empty page beneath it — so a short list leaves calm empty space
- * inside the card rather than the card just stopping early, and the title
- * stays pinned with only the activity list scrolling internally once it
- * outgrows even that expanded space.
+ * Dashboard "Recent activity" card: an icon tile, a message and a right-aligned
+ * relative timestamp per entry, with a placeholder when empty. No fixed height:
+ * it grows with its content (`minHeight` keeps the empty state from collapsing),
+ * like Store Locator's Hardware Stores list. On `md`+ it also fills the space
+ * below the stat cards (its parent in DashboardPage.jsx is `flex: 1`), with the
+ * title pinned and only the list scrolling once it outgrows that space.
  *
  * @param {object} props
  * @param {Array<{id: number|string, icon: React.ElementType, iconBg: string,
@@ -81,13 +73,9 @@ function RecentActivity({ activities }) {
                   <Icon sx={{ color: activity.iconFg, fontSize: { xs: 15, sm: 18 } }} />
                 </Box>
 
-                {/* Below `sm`: message gets the full row width and the
-                    timestamp moves to its own smaller line underneath —
-                    previously both shared one row at the default 1rem body
-                    text size with no wrap accommodation, so a normal-length
-                    message wrapped 3-4 lines and only one activity fit in
-                    the card at all. `sm`+ keeps the original single-row
-                    layout untouched. */}
+                {/* Below `sm`: the message gets the full row width and the timestamp
+                    moves to its own smaller line below (side by side, a normal message
+                    wrapped 3-4 lines and only one activity fit). `sm`+ keeps one row. */}
                 <Box sx={{ display: { xs: 'block', sm: 'none' }, flex: 1, minWidth: 0 }}>
                   <Typography sx={{ color: 'text.primary', fontSize: '0.82rem', lineHeight: 1.35 }}>
                     {activity.message}

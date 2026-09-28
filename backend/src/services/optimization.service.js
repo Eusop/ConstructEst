@@ -1,14 +1,12 @@
 import { query } from '../config/db.js';
 import { HttpError } from '../middleware/errorHandler.js';
 
-// Scaffolding is bought new at retail (canvass: no rental or used rate exists,
-// and the engineer confirmed contractors price per lot), but a frame set is
-// reused across projects, so charging one project the full purchase price
-// overstates its cost. Engr. Espiritu: assuming a number of projects to
-// recover the investment is acceptable. The default of 10 uses is our own
-// assumption, not an expert-validated figure; set it per deployment with the
-// SCAFFOLDING_REUSE_COUNT env var. Quantities are untouched, only the price
-// read at every pricing site below goes through effectivePrice().
+// Scaffolding is bought new (no rental rate exists, and contractors price per
+// lot) but a frame set is reused across projects, so the full price would
+// overstate one project's cost. Engr. Espiritu: assuming a number of projects
+// to recover the cost is acceptable. The default of 10 uses is our assumption,
+// set per deployment with SCAFFOLDING_REUSE_COUNT. Quantities stay the same;
+// only the price goes through effectivePrice().
 const SCAFFOLDING_REUSE_COUNT = Number(process.env.SCAFFOLDING_REUSE_COUNT) || 10;
 
 function effectivePrice(materialKey, price) {
@@ -21,13 +19,10 @@ function effectiveSpec(materialKey, spec) {
   return `${spec ?? ''}, price / ${SCAFFOLDING_REUSE_COUNT} uses`.replace(/^, /, '');
 }
 
-// The take-off keeps lumber in board feet (Table 19: formwork area x 3 bd.ft
-// per m2, expert-validated), and the catalog stores its price per board foot
-// (migration 016), but hardware stores sell it by the piece in a stated size
-// (e.g. 2x2x10). The procurement BOM converts back to whole pieces using the
-// size in the brand's spec, so it lists something a store can actually be
-// asked for. Returns null when the spec has no readable size, in which case
-// the line stays in board feet.
+// The take-off keeps lumber in board feet (Table 19) and the catalog prices it
+// per board foot (migration 016), but stores sell it by the piece (e.g. 2x2x10).
+// The BOM converts back to whole pieces using the size in the brand spec.
+// Returns null when the spec has no readable size, so the line stays in bd.ft.
 function boardFeetPerPiece(spec) {
   const match = /(\d+(?:\.\d+)?)\s*"?\s*x\s*(\d+(?:\.\d+)?)\s*"?\s*x\s*(\d+(?:\.\d+)?)\s*(?:ft|')?/i.exec(spec ?? '');
   if (!match) return null;
@@ -36,9 +31,8 @@ function boardFeetPerPiece(spec) {
   return perPiece > 0 ? perPiece : null;
 }
 
-// Cost of one take-off line, priced the same way computeBom prices its BOM
-// line (lumber in whole pieces), so the Store Locator's total and the BOM's
-// grand total keep agreeing.
+// Cost of one take-off line, priced like computeBom (lumber in whole pieces),
+// so the Store Locator total matches the BOM grand total.
 function lineCost(materialKey, quantity, unitPrice, spec) {
   const perPiece = materialKey === 'lumber' ? boardFeetPerPiece(spec) : null;
   if (!perPiece) return unitPrice * quantity;
@@ -60,15 +54,13 @@ async function getQuantityTakeoff(projectId) {
 }
 
 /**
- * For each store, picks the cheapest available brand per material and
- * sums it up (no mixing brands across stores). If a store doesn't carry
- * something, it's flagged as missing that item and points to another
- * store that has it.
+ * For each store, picks the cheapest available brand per material and sums
+ * them (no mixing brands across stores). A store missing an item is flagged
+ * and points to another store that has it.
  */
 export async function getStoreOptimization(projectId) {
   const materials = await getQuantityTakeoff(projectId);
-  // Skip deactivated stores entirely, they're not just missing an item,
-  // they're closed for business right now.
+  // Skip deactivated stores (they're closed, not just missing an item).
   const stores = await query('SELECT * FROM stores WHERE is_active = 1 ORDER BY name');
 
   const results = [];
@@ -87,10 +79,8 @@ export async function getStoreOptimization(projectId) {
       );
 
       if (cheapest?.price == null) {
-        // Every other active store that actually carries it, not just the
-        // cheapest one — a store missing several items may need a
-        // different alternative per item, and showing only one option
-        // understates what's actually available.
+        // Every other active store that carries it, since a store missing
+        // several items may need a different alternative for each.
         const alternatives = await query(
           `SELECT DISTINCT s.id, s.name
            FROM store_material_prices smp
@@ -122,10 +112,8 @@ export async function getStoreOptimization(projectId) {
       address: store.address,
       lat: Number(store.lat),
       lng: Number(store.lng),
-      // Partial total for whatever this store *does* carry — a store
-      // missing something is still worth showing/selecting, just not
-      // eligible for the "cheapest" badge (see isCheapest below), since its
-      // total is missing whatever the gap item would have cost.
+      // Partial total for what this store does carry. It can still be shown
+      // and selected, but not get the "cheapest" badge (see isCheapest below).
       optimizedTotal: Math.round(optimizedTotal * 100) / 100,
       inStock: missingMaterials.length === 0,
       missingMaterials,
@@ -136,10 +124,8 @@ export async function getStoreOptimization(projectId) {
   const cheapestTotal = priced.length > 0 ? Math.min(...priced.map((r) => r.optimizedTotal)) : null;
   return results
     .map((r) => ({ ...r, isCheapest: r.inStock && r.optimizedTotal === cheapestTotal && cheapestTotal != null }))
-    // Fully-stocked stores first (cheapest-first among themselves), then
-    // partially-stocked ones after (also cheapest-first among themselves) —
-    // a partial total is missing cost, so it shouldn't be able to outrank a
-    // complete one just for being numerically lower.
+    // Fully stocked stores first (cheapest first), then partial ones. A partial
+    // total is missing cost, so it should not outrank a complete one.
     .sort((a, b) => (a.inStock === b.inStock ? a.optimizedTotal - b.optimizedTotal : a.inStock ? -1 : 1));
 }
 
@@ -207,11 +193,8 @@ export async function computeBom(projectId, storeId) {
       );
     }
 
-    // No row at all means this store doesn't carry any brand of this
-    // material — distinct from a genuinely free material, so it's flagged
-    // rather than silently priced at ₱0 (see StoreLocatorPage/BomTable,
-    // which let a partially-stocked store be selected and need to show
-    // this honestly instead).
+    // No row means the store carries no brand of this material. Flag it
+    // instead of pricing it at 0 (see StoreLocatorPage and BomTable).
     const available = Boolean(row);
     let unitPrice = available ? effectivePrice(material.material_key, Number(row.price)) : null;
     let quantity = Number(material.quantity);

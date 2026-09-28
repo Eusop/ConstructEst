@@ -7,10 +7,8 @@ import Link from '@mui/material/Link';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import { colors } from '../../../theme/palette';
 
-// Shown as "+N%" (how much extra this buys above the bare rule-based
-// formula) instead of the raw 1.0x-1.3x multiplier the backend actually
-// stores/sends — "1.05" reads as an arbitrary number on first use, "+5%"
-// doesn't need translating.
+// Shown as "+N%" (extra material above the bare formula) instead of the raw
+// 1.0x-1.3x multiplier the backend stores, which reads as an arbitrary number.
 function formatPercentAboveBase(multiplier) {
   const pct = Math.round((multiplier - 1) * 100);
   return pct === 0 ? '0% (none)' : `+${pct}%`;
@@ -28,12 +26,10 @@ const FACTOR_FIELDS = [
 ];
 
 /**
- * "Calibration factors" card: the multipliers the rule-based engine
- * applies during quantity take-off, editable via sliders. Each slider's
- * left edge (0%) is the bare formula with no extra added — the displayed
- * value is how much material that factor buys on top of that, which is
- * what actually varies, not the underlying 1.0x-1.3x multiplier the
- * backend stores.
+ * "Calibration factors" card: the multipliers the engine applies during the
+ * quantity take-off, editable with sliders. Each slider's left edge (0%) is the
+ * bare formula, and the displayed value is how much extra material the factor
+ * adds (not the 1.0x-1.3x multiplier the backend stores).
  *
  * @param {object} props
  * @param {{cement: number, steel: number, roofing: number, wastage: number}} props.factors

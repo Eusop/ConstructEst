@@ -1,6 +1,5 @@
-// One rule for every path that sets or changes a password (register, reset,
-// change, admin-created users). Login is deliberately not checked against it,
-// so accounts created under the older 6-character rule can still sign in.
+// One password rule for register, reset, change and admin-created users.
+// Login is not checked against it, so old 6-character accounts can still sign in.
 // Keep in sync with frontend/src/utils/validators.js (isStrongPassword).
 export const PASSWORD_MIN_LENGTH = 8;
 

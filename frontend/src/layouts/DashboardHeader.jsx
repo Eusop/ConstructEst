@@ -16,9 +16,9 @@ import { useUser } from '../context/UserContext';
 import { getInitials } from '../utils/getInitials';
 
 /**
- * App top bar shared by all authenticated pages: sidebar toggle, page
- * title (or breadcrumb trail for nested pages), a persistent "New Project"
- * action, and the profile action.
+ * Top bar for all authenticated pages: sidebar toggle, page title (or a
+ * breadcrumb trail for nested pages), a "New Project" action and the profile
+ * action.
  *
  * @param {object} props
  * @param {() => void} props.onToggleSidebar Called when the menu button is clicked.
@@ -84,17 +84,9 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
               )}
             </Breadcrumbs>
           ) : (
-            // title/subtitle are direct flex items of this row (not a nested
-            // Stack) so flexShrink:0 on title actually protects it — nesting
-            // them in their own Stack let that inner Stack get squeezed
-            // smaller than title's content by this row's own shrinking,
-            // clipping title instead of just hiding the subtitle. Below the
-            // sm breakpoint there's not always room for the full title
-            // either (e.g. "Material Estimation" next to a subtitle on a
-            // narrow phone), so title gets its own ellipsis fallback there
-            // too — subtitle still shrinks first via its much larger
-            // flexShrink, title only gives up characters once subtitle is
-            // already down to nothing.
+            // title/subtitle are direct flex items of this row (not a nested Stack)
+            // so flexShrink:0 on title protects it. Below `sm` title gets its own
+            // ellipsis fallback, and subtitle shrinks first (much larger flexShrink).
             <>
               <Typography
                 sx={{
@@ -170,9 +162,8 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             {getInitials(userName)}
           </Avatar>
 
-          {/* Mobile only: compact icon-only version of the New Project
-              button above (that one's hidden below `md`), same action and
-              color, just sized down to fit next to the profile icon. */}
+          {/* Mobile only: compact icon-only New Project button (the one above is
+              hidden below `md`), sized to fit next to the profile icon. */}
           <IconButton
             component={RouterLink}
             to={ROUTES.NEW_PROJECT}
@@ -190,18 +181,15 @@ function DashboardHeader({ onToggleSidebar, title = 'Dashboard', subtitle, bread
             <AddRoundedIcon sx={{ fontSize: 18 }} />
           </IconButton>
 
-          {/* Mobile/tablet (below `md`): moved up from the old bottom tab
-              bar — icon-only (no label), centered on the row like the
-              hamburger/title beside it. */}
+          {/* Mobile/tablet (below `md`): icon-only, centered on the row like the
+              hamburger and title beside it. */}
           <Box
             component={RouterLink}
             to={ROUTES.PROFILE}
             aria-label="Profile"
             sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', justifyContent: 'center', flexShrink: 0, textDecoration: 'none' }}
           >
-            {/* Same colored-avatar treatment as the desktop header's
-                Profile icon (see the `md`+ Avatar above) — just sized
-                down to fit this compact spot. */}
+            {/* Same colored avatar as the desktop Profile icon (`md`+ above), sized down. */}
             <Avatar
               src={avatarUrl ?? undefined}
               sx={{ width: 30, height: 30, bgcolor: colors.accentBlue, fontSize: '0.72rem', fontWeight: 700 }}

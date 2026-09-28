@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-// A fix worse than this usually means the browser fell back to IP-based
-// geolocation instead of real GPS/Wi-Fi, which can be off by hundreds of
-// km. enableHighAccuracy asks for better but can't force it, so we check
-// the reported accuracy after the fact instead.
+// A fix worse than this usually means the browser used IP-based location
+// instead of GPS/Wi-Fi, which can be off by hundreds of km. We check the
+// reported accuracy since enableHighAccuracy can't force better.
 const MAX_ACCEPTABLE_ACCURACY_M = 50_000;
 
-// This app's whole service area is Tarlac City. A fix landing way outside
-// this radius is more likely a confidently-wrong IP geolocation (we saw a
-// real case ~94km off with a small reported accuracy) than an actual user
-// testing from far away, so we reject it too. Trade-off: a real user
-// genuinely far from Tarlac also gets rejected here, fine for how narrow
-// this app's scope is.
-// Was 100 km, which let an IP guess about 90 km away through (a tester in
-// Capas saw 116.6 km by road). 50 km still covers all of Tarlac province
-// (its far towns are about 40-45 km out; Capas is 17 km).
+// The app only serves Tarlac. A fix farther than 50 km from Tarlac City
+// is treated as a wrong browser guess (usually IP based).
 const TARLAC_CITY_CENTER = { lat: 15.4802, lng: 120.5979 };
 const MAX_PLAUSIBLE_DISTANCE_KM = 50;
 
@@ -29,19 +21,16 @@ function haversineKm(a, b) {
 }
 
 /**
- * Wraps the browser Geolocation API to get a real distance-from-you figure
- * for the store list, instead of always measuring from a fixed city point.
- * Fetches once on mount, `refetch` re-triggers it for a "locate me" button.
+ * Wraps the browser Geolocation API so distances start from the user, not a
+ * fixed city point. Fetches on mount; `refetch` is for the "locate me" button.
  *
- * Never hangs; when there's no usable location it says why, so the page can
- * tell the user instead of silently measuring from somewhere else:
+ * It never hangs. When there is no usable location it says why, so the page
+ * can tell the user instead of silently using another point:
  * - 'denied': permission refused.
- * - 'implausible': the fix is more than MAX_PLAUSIBLE_DISTANCE_KM from
- *   Tarlac City (usually a confidently wrong IP guess); `rejectedDistanceKm`
- *   says how far.
+ * - 'implausible': more than MAX_PLAUSIBLE_DISTANCE_KM from Tarlac City
+ *   (usually a wrong IP guess); `rejectedDistanceKm` says how far.
  * - 'imprecise': reported accuracy worse than MAX_ACCEPTABLE_ACCURACY_M.
- * - 'unavailable': unsupported, failed, or the 10s failsafe fired while a
- *   permission prompt was still pending.
+ * - 'unavailable': unsupported, failed, or the 10s failsafe fired.
  *
  * @returns {{ location: {lat:number,lng:number}|null,
  *   status: 'loading'|'granted'|'denied'|'implausible'|'imprecise'|'unavailable',
@@ -49,9 +38,7 @@ function haversineKm(a, b) {
  */
 export function useUserLocation() {
   const [state, setState] = useState({ location: null, status: 'loading', rejectedDistanceKm: null });
-  // Bumped on every locate() call so a slow, superseded request (mount
-  // fetch still pending when "locate me" fires a new one) can't overwrite
-  // a newer result.
+  // Bumped on every locate() so a slow older request can't overwrite a newer result.
   const requestIdRef = useRef(0);
 
   const locate = useCallback(() => {
@@ -59,8 +46,7 @@ export function useUserLocation() {
     const setIfCurrent = (next) => {
       if (requestId === requestIdRef.current) setState(next);
     };
-    // Deferred so this isn't a synchronous setState when called from the
-    // mount effect.
+    // Deferred so this isn't a synchronous setState from the mount effect.
     queueMicrotask(() => setIfCurrent((prev) => ({ ...prev, status: 'loading' })));
 
     const none = (status, rejectedDistanceKm = null) => ({ location: null, status, rejectedDistanceKm });
@@ -83,9 +69,8 @@ export function useUserLocation() {
       (position) => {
         clearTimeout(failsafe);
         const { latitude, longitude, accuracy } = position.coords;
-        // Shouldn't happen from a normal browser, but seen from weird
-        // extension/emulator setups. Treat it as unavailable instead of
-        // passing garbage to the map (which would crash on it).
+        // Not expected from a normal browser (seen with extensions/emulators).
+        // Treat as unavailable so bad values never reach the map.
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
           settle(none('unavailable'));
           return;
@@ -95,9 +80,8 @@ export function useUserLocation() {
           settle(none('imprecise'));
           return;
         }
-        // Confidently wrong: small reported accuracy but nowhere near
-        // Tarlac. The accuracy check above only catches fixes that admit
-        // they're coarse, not this.
+        // Wrong but confident: small reported accuracy yet far from Tarlac.
+        // The accuracy check above only catches fixes that admit they're rough.
         const kmFromTarlac = haversineKm(TARLAC_CITY_CENTER, { lat: latitude, lng: longitude });
         if (kmFromTarlac > MAX_PLAUSIBLE_DISTANCE_KM) {
           settle(none('implausible', Math.round(kmFromTarlac)));

@@ -17,22 +17,15 @@ import { ADMIN_ROUTES } from '../../routes/paths';
 import { colors } from '../../theme/palette';
 
 /**
- * Admin dashboard: desktop/tablet keeps its own unchanged 2x2 grid
- * (AdminWelcomeCard top-left, then the 3 stat cards filling the rest in DOM
- * order — Total Users top-right, Active Users bottom-left, Hardware Stores
- * bottom-right). Phones get the same mobile treatment as the User Module's
- * Dashboard instead (see pages/DashboardPage): AdminWelcomeCard full-width,
- * then the same 3 stat cards as a swipeable carousel (ProjectStatsSection,
- * shared and content-agnostic — just given Admin's own stats here) rather
- * than a cramped 2-per-row grid. Branches in JS rather than pure responsive
- * CSS because the two are genuinely different structures, same reasoning as
- * DashboardPage's own isTabletUp split.
- *
- * Every stat number here is either real (Total/Active Users, from GET
- * /api/admin/users) or admin-session data that starts at zero (Hardware
- * Stores — see AdminStoresContext) — nothing is seeded/fake, per the spec.
- * Recent activity is empty until the admin actually does something in
- * Users/Stores/Materials/Settings (see logActivity calls there).
+ * Admin dashboard. Desktop/tablet keeps a 2x2 grid (AdminWelcomeCard top-left,
+ * then the 3 stat cards in DOM order: Total Users top-right, Active Users
+ * bottom-left, Hardware Stores bottom-right). Phones get the same treatment as
+ * the User Dashboard (see pages/DashboardPage): the greeting full width, then
+ * the 3 stat cards as a swipeable carousel (ProjectStatsSection). It branches in
+ * JS because the two are different structures, like DashboardPage's isTabletUp.
+ * Every stat is real (Total/Active Users from GET /api/admin/users) or
+ * session data that starts at zero (Hardware Stores, see AdminStoresContext).
+ * Recent activity fills from the saved log (see AdminActivityContext).
  */
 function AdminDashboardPage() {
   const theme = useTheme();
@@ -112,8 +105,7 @@ function AdminDashboardPage() {
           ))}
         </Box>
       ) : (
-        // Phones: full-width greeting, then the same swipeable carousel
-        // treatment as the User Module's Dashboard (see ProjectStatsSection).
+        // Phones: full-width greeting, then the swipeable carousel like the User Dashboard.
         <>
           <Box sx={{ mb: 2.5, flexShrink: 0 }}>
             <AdminWelcomeCard />

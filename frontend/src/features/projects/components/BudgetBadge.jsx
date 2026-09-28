@@ -4,8 +4,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { colors } from '../../../theme/palette';
 
 /**
- * Small pill badge showing whether a cost is within or over its budget
- * ceiling.
+ * Small pill showing whether a cost is within or over its budget ceiling.
  *
  * @param {object} props
  * @param {boolean} props.withinBudget

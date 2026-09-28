@@ -1,8 +1,7 @@
--- Allows a project_id IS NULL row in project_design_overrides to represent
--- the admin-managed global default (mirrors estimation_constants' pattern) —
--- every field still resolves per-key: a project's own override wins, else
--- falls back to this global row, else falls back to the engine's own
--- hardcoded default (see designOverrides.service.js's getEffectiveDesignOverrides).
+-- A project_id IS NULL row in project_design_overrides is the admin's global
+-- default (same pattern as estimation_constants). Each field resolves on its
+-- own: project override, then this global row, then the engine default (see
+-- getEffectiveDesignOverrides in designOverrides.service.js).
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/002_global_design_overrides.sql

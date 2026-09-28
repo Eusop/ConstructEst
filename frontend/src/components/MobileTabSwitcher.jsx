@@ -5,33 +5,15 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 
 /**
- * Wraps exactly two sibling sections (e.g. two full-height config cards)
- * that would otherwise stack on top of each other below `md`, each a fairly
- * long scroll on a phone (sliders, accordion groups, ...). Below `md`, a
- * 2-tab bar picks which one is visible; both stay mounted the whole time
- * (only `display` toggles), so neither one's internal state — a slider
- * value, an open accordion — resets when switching tabs.
+ * Wraps exactly two sibling sections (e.g. two long config cards) that would
+ * stack on a phone. Below `md`, a 2-tab bar picks the visible one. Both stay
+ * mounted (only `display` toggles), so state like a slider value or an open
+ * accordion is kept when switching tabs.
  *
- * `md` and up show both children side by side (or stacked below `lg`, if
- * there isn't room yet) via this component's own inner Stack — both
- * breakpoints live here now, not split between this file and each caller.
- * They used to be: the caller wrapped this whole component in its own
- * `Stack direction={{ xs: 'column', lg: 'row' }}`, with the `md`-vs-tabs
- * switch handled here. That worked visually but had a real bug: this
- * component used to return a bare Fragment (Tabs, then the content Boxes,
- * as separate top-level elements), so the *caller's* Stack saw the Tabs bar
- * as a real DOM sibling preceding the first content Box — and MUI Stack's
- * `spacing` applies margin to any child with a preceding sibling via a
- * plain CSS sibling selector, which doesn't care whether that sibling is
- * `display: none`. At `md`+ (Tabs hidden, spacing switched to margin-left
- * for row layout) that meant the first content Box quietly got an extra
- * phantom margin-left the second one didn't, shifting the whole row right
- * of where it should align with unrelated sibling content elsewhere on the
- * page. Returning one real wrapping Box here — with Tabs' own spacing
- * self-contained (`mb`) and the content row in its own inner Stack — means
- * a caller's Stack (if it still wraps this in one, unnecessary now but
- * harmless) only ever sees a single child, so it has no sibling to add
- * phantom spacing around in the first place.
+ * `md` and up show both side by side (stacked below `lg` if there is no room)
+ * in this component's own inner Stack. It returns one wrapping Box (Tabs use
+ * their own `mb` spacing), so a caller's Stack only sees a single child and
+ * cannot add phantom sibling spacing.
  *
  * @param {object} props
  * @param {[string, string]} props.labels Tab labels, one per child.

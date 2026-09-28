@@ -3,10 +3,8 @@ import Typography from '@mui/material/Typography';
 import { colors } from '../theme/palette';
 
 /**
- * ConstructEst brand mark: a house-roof + growing bar-chart glyph
- * followed by the "ConstructEst" wordmark.
- *
- * Rendered as inline SVG + text so it scales crisply and needs no image asset.
+ * ConstructEst brand mark: a house-roof and bar-chart glyph followed by the
+ * "ConstructEst" wordmark. Inline SVG plus text, so no image asset is needed.
  *
  * @param {object} props
  * @param {number} [props.height=52] Pixel height of the glyph; wordmark scales with it.

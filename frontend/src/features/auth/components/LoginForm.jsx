@@ -35,13 +35,11 @@ function validate(form) {
 }
 
 /**
- * Sign in form: "Email or Employee ID" + password fields, a "Keep me signed in"
- * preference, the primary Sign in action, and the "Create an account" prompt.
- *
- * Backed by the real backend (see services/authService.js) — the returned
- * account's `accessRole` decides where sign-in lands: `admin` accounts go
- * straight to the Admin Module's dashboard, everyone else to the regular
- * Dashboard, so an admin login never ends up in the User Module.
+ * Sign in form: "Email or Employee ID" and password, a "Keep me signed in"
+ * option, the Sign in action and the "Create an account" prompt. Uses the real
+ * backend (services/authService.js). The account's `accessRole` decides where
+ * sign-in lands: `admin` goes to the Admin Module dashboard, everyone else to
+ * the regular Dashboard.
  */
 function LoginForm() {
   const [form, setForm] = useState(INITIAL_FORM);
@@ -54,13 +52,11 @@ function LoginForm() {
   const { setCurrentUser, updateProfile } = useUser();
   const { showToast } = useToast();
 
-  // Computed live from `form` every render (not stored in state) so a
-  // shown error updates as you keep typing, rather than freezing until the
-  // next submit click — see SignUpForm.jsx for the same pattern.
+  // Computed from `form` on every render (not stored in state), so an error
+  // updates while typing (same pattern as SignUpForm.jsx).
   const errors = validate(form);
-  // Shows the instant there's content, not gated on blur alone — a browser
-  // autofilling saved login credentials never fires a real blur event
-  // (see SignUpForm.jsx for the same fix and fuller explanation).
+  // Shown as soon as there is content, not only on blur, because browser
+  // autofill never fires a blur (see SignUpForm.jsx).
   const showError = (field) => {
     const hasContent = form[field]?.trim().length > 0;
     return Boolean(errors[field]) && (hasContent || touched[field] || submitAttempted);
@@ -91,17 +87,13 @@ function LoginForm() {
       updateProfile({ id: user.id, employeeId: user.employeeId, email: user.email, avatarUrl: user.avatarUrl });
       navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
     } catch (error) {
-      // Email confirmation is the earlier of the two gates (see
-      // auth.controller.js's login — it checks email_verified_at before
-      // is_verified), so it's checked first here too: sent straight to
-      // Verify Email with the account's real address (error.email — not
-      // necessarily what was typed here, since the identifier field accepts
-      // either the email or the Employee ID) rather than a toast, since
-      // nothing else on this page can fix it. Pending approval instead gets
-      // its own overlay, not the usual toast — it's not really "wrong
-      // credentials" (the toast's implication), and it's worth more than a
-      // few seconds on screen since it explains why nothing else here will
-      // work yet.
+      // Email confirmation is the earlier gate (auth.controller.js login checks
+      // email_verified_at before is_verified), so it is checked first. It goes
+      // straight to Verify Email with the account's real address (error.email,
+      // since the identifier can be an Employee ID) instead of a toast, because
+      // nothing else on this page can fix it. Pending approval gets its own
+      // overlay instead of the usual toast, since it isn't a wrong-credentials
+      // case and needs longer on screen to explain why login won't work yet.
       if (error.code === 'EMAIL_NOT_VERIFIED') {
         navigate(ROUTES.VERIFY_EMAIL, { state: { email: error.email || form.identifier } });
       } else if (error.code === 'PENDING_VERIFICATION') {
@@ -146,9 +138,7 @@ function LoginForm() {
             <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
               Password
             </Typography>
-            {/* Was href="#" with nothing behind it — no route, no page, no
-                endpoint. Now goes to the real reset flow, carrying whatever
-                was already typed so it doesn't have to be retyped. */}
+            {/* Goes to the real reset flow, carrying whatever was already typed. */}
             <Link
               component={RouterLink}
               to={`${ROUTES.RESET_PASSWORD}${form.identifier.includes('@') ? `?email=${encodeURIComponent(form.identifier)}` : ''}`}

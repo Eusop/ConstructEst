@@ -1,14 +1,9 @@
--- Adds per-project structural design parameter overrides — separate from
--- estimation_constants (which holds the 4 calibration *factors*: cement,
--- steel, roofing, wastage). These are the raw dimensions/counts the paper
--- itself says aren't derivable from a 2D DXF (column/beam/footing sizes,
--- floor-to-floor height, etc.) — see engine/formulas.py's `overrides` dict,
--- which already reads every one of these columns by name, just never had
--- anywhere to be persisted from until now.
+-- Per-project structural parameter overrides, separate from estimation_constants
+-- (the 4 calibration factors). These are the dimensions and counts the paper says
+-- a 2D DXF can't give (column/beam/footing sizes, floor-to-floor height, etc.).
+-- formulas.py already reads each column by name.
 --
--- Every column is nullable: NULL means "use the engine's built-in default"
--- (e.g. column height 3.0m for a 1-storey building) — a row only needs to
--- set the columns a user actually chose to override.
+-- Every column is nullable: NULL means "use the engine's default".
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/001_project_design_overrides.sql
@@ -21,16 +16,16 @@ CREATE TABLE IF NOT EXISTS project_design_overrides (
   column_width DECIMAL(6, 3) NULL,      -- meters
   column_depth DECIMAL(6, 3) NULL,      -- meters
   column_height DECIMAL(6, 3) NULL,     -- meters
-  column_count SMALLINT UNSIGNED NULL,  -- pcs — overrides the DXF-detected count
+  column_count SMALLINT UNSIGNED NULL,  -- pcs, overrides the DXF count
   beam_width DECIMAL(6, 3) NULL,        -- meters
   beam_depth DECIMAL(6, 3) NULL,        -- meters
-  beam_length DECIMAL(10, 2) NULL,      -- meters, total run — no DXF layer provides this at all
+  beam_length DECIMAL(10, 2) NULL,      -- meters, total run
   footing_width DECIMAL(6, 3) NULL,     -- meters
   footing_length DECIMAL(6, 3) NULL,    -- meters
   footing_depth DECIMAL(6, 3) NULL,     -- meters
-  floor_to_floor_height DECIMAL(6, 3) NULL, -- meters — used by stair computation
+  floor_to_floor_height DECIMAL(6, 3) NULL, -- meters, used by stairs
   stair_width DECIMAL(6, 3) NULL,       -- meters
-  building_height DECIMAL(6, 3) NULL,   -- meters — used by scaffolding computation
+  building_height DECIMAL(6, 3) NULL,   -- meters, used by scaffolding
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_design_overrides_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE KEY uq_design_overrides_project (project_id)

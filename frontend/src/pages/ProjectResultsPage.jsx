@@ -16,11 +16,10 @@ import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
 
 /**
- * Shown once parsing finishes: a snapshot of the active project's parsed
- * floor plan and extracted measurements. Reads the active project from
- * ProjectsContext; if its estimation isn't already in memory (e.g. after a
- * reload), fetches it once and feeds it into parsedProjectCache, same as
- * MaterialEstimationPage.
+ * Shown when parsing finishes: a snapshot of the parsed floor plan and
+ * extracted measurements. Reads the active project from ProjectsContext; if its
+ * estimation isn't in memory (e.g. after a reload), it fetches it once and feeds
+ * parsedProjectCache, same as MaterialEstimationPage.
  */
 function ProjectResultsPage() {
   const { activeProject, refreshActiveProjectEstimation } = useProjects();
@@ -59,25 +58,12 @@ function ProjectResultsPage() {
   const secondFloorFileValidation = activeProject.secondFloorFileValidation ?? {};
 
   return (
-    // This Stack no longer switches to `flex: 1` at `sm`+ the way the
-    // shared root pattern (MaterialEstimationPage / BrandSelectionPage /
-    // BillOfMaterialsPage) does — those pages need it because *their* Paper
-    // is itself `flex: 1` + `overflow: auto`, scrolling internally within a
-    // bounded height. This page's Paper is natural-height instead (see its
-    // own comment below), so it never consumed that bounded height in the
-    // first place; keeping the outer Stack as `flex: 1` here only meant it
-    // stretched to fill the viewport while its content (via this Stack)
-    // rendered past that stretched box once taller than the viewport —
-    // and a flex item's own trailing padding/margin gets absorbed into its
-    // flex-computed size rather than extending past it in that situation,
-    // which is why DashboardLayout's own bottom padding (and two different
-    // attempts to add more of it here) never actually showed up below the
-    // card. Plain natural-height flow (same as this page already correctly
-    // uses on phones) doesn't have that problem: the page's true height
-    // (including this Paper's own margin/padding) is exactly what
-    // DashboardLayout's scrolling content box sees, so its existing
-    // `p: { xs: 2, md: 3 }` bottom padding shows up the same way it does
-    // on every other page, with no extra spacing hack needed here.
+    // Unlike the shared root pattern (MaterialEstimationPage, BrandSelectionPage,
+    // BillOfMaterialsPage), this Stack does not use `flex: 1` at `sm`+. Those
+    // pages have a Paper that is `flex: 1` and scrolls inside a bounded height.
+    // This page's Paper is natural height, so `flex: 1` here only made content
+    // overflow the stretched box and swallowed DashboardLayout's bottom padding.
+    // Natural flow lets that padding show like on every other page.
     <Stack spacing={2.5} sx={{ flex: 'unset', minHeight: 'auto' }}>
       <Paper
         elevation={0}
@@ -86,25 +72,13 @@ function ProjectResultsPage() {
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
           p: { xs: 2.5, md: 4 },
-          // sm+ (tablet and desktop): natural, content-based sizing
-          // instead of flex:1/minHeight:0. Mobile (xs) still uses that
-          // combination unchanged, since it never hit this bug — but once
-          // this card's real content (floor plan + extracted measurements
-          // + detailed extraction info + the "View estimate" action) is
-          // taller than the viewport at sm+, forcing the DashboardLayout
-          // content area to scroll, a flex-basis:0/min-height:0 item's own
-          // background stops covering its actual rendered height once it
-          // overflows its flex-computed size — the overflowing content (in
-          // practice, everything from partway through "Extracted
-          // measurements" onward) still renders, just without this
-          // card's white background behind it, exposing the page
-          // background instead. minHeight:'auto' restores the browser's
-          // normal "never shrink below content" protection for a flex
-          // item, which keeps the white background covering the card's
-          // true full height regardless of viewport/scroll state. (This
-          // is a separate, older fix from the outer Stack's own comment
-          // above — that one is about the *page's* bottom spacing, this
-          // one is about the *card's* own background coverage.)
+          // sm+ (tablet and desktop): natural, content-based sizing instead of
+          // flex:1/minHeight:0. Mobile (xs) keeps that and never hit this bug. When the
+          // card's content is taller than the viewport, a flex-basis:0/min-height:0
+          // item's background stops covering the overflow, exposing the page
+          // background. minHeight:'auto' keeps the white background over the full
+          // card. (Separate from the outer Stack fix above, which is about the
+          // page's bottom spacing.)
           flex: { xs: 1, sm: 'initial' },
           minHeight: { xs: 0, sm: 'auto' },
         }}
@@ -129,9 +103,8 @@ function ProjectResultsPage() {
                 bgcolor: colors.accentBlue,
                 '&:hover': { bgcolor: colors.accentBlueDark },
                 flexShrink: 0,
-                // Full-bleed primary CTA on phones, same convention as this
-                // app's other mobile "Continue"/"Download" actions (Store
-                // Locator, Brand Selection, Bill of Materials).
+                // Full-bleed primary CTA on phones, like the other mobile
+                // "Continue"/"Download" actions.
                 width: { xs: '100%', sm: 'auto' },
                 minHeight: { xs: 46, sm: 'auto' },
               }}

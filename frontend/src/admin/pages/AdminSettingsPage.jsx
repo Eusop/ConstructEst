@@ -34,14 +34,13 @@ function toUiShape(constants) {
 }
 
 /**
- * Global Estimation Settings: the system-wide defaults every new project
- * falls back to until it sets its own override —  calibration constants
- * (see estimation_constants, project_id IS NULL row) on the User Module's
- * Material Estimation page, and now also structural design parameters (see
- * project_design_overrides, same NULL-row pattern) via the same page's
- * Design Parameters card. Both resolve per-field: a project's own value
- * wins, else this global default, else the engine's own hardcoded default
- * (see backend's designOverrides.service.js getEffectiveDesignOverrides).
+ * Global Estimation Settings: the system-wide defaults every new project uses
+ * until it sets its own override. That covers the calibration constants
+ * (estimation_constants, project_id IS NULL row) and the structural design
+ * parameters (project_design_overrides, same NULL-row pattern), both edited
+ * through the Material Estimation page's cards. Each field resolves on its own:
+ * the project's value, else this global default, else the engine's default (see
+ * getEffectiveDesignOverrides in designOverrides.service.js).
  */
 function AdminSettingsPage() {
   const { logActivity } = useAdminActivity();
@@ -77,11 +76,9 @@ function AdminSettingsPage() {
   const updateOverride = (key, value) => setDraftOverrides((prev) => ({ ...prev, [key]: value }));
   const handleResetOverrides = () => setDraftOverrides({ ...EMPTY_OVERRIDES });
 
-  // Save/Cancel only appear once a draft actually diverges from what's
-  // saved — both cards share one Save action (they save together in one
-  // request below), so either card being dirty is enough to show it. Plain
-  // objects of primitives, so a JSON comparison is a reliable, simple dirty
-  // check without needing a per-field diff.
+  // Save/Cancel only appear when a draft differs from what's saved. Both cards
+  // save together in one request, so either being dirty shows it. The state is
+  // plain primitives, so a JSON comparison is a simple, reliable dirty check.
   const isDirty = JSON.stringify(draftFactors) !== JSON.stringify(savedFactors)
     || JSON.stringify(draftOverrides) !== JSON.stringify(savedOverrides);
 
@@ -119,13 +116,9 @@ function AdminSettingsPage() {
           </Typography>
         </Box>
 
-        {/* alignItems: 'flex-start' at lg+ (row layout) so the two cards sit at
-            their own natural content height side by side, instead of the
-            shorter one being cross-stretched to match the taller one and
-            ending in a block of dead white space (visible once the Cancel/
-            Save row — which used to visually anchor the bottom of both — was
-            removed). 'stretch' below lg (column layout) is unchanged: that's
-            what makes each stacked card span the full container width. */}
+        {/* alignItems: 'flex-start' at lg+ (row) so the two cards keep their own
+            height instead of the shorter one stretching into dead white space.
+            'stretch' below lg (column) lets each stacked card span the full width. */}
         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ alignItems: { xs: 'stretch', lg: 'flex-start' } }}>
           <MobileTabSwitcher labels={['Design', 'Calibration']}>
             <DesignParametersCard overrides={draftOverrides} onOverrideChange={updateOverride} onResetAll={handleResetOverrides} />
@@ -133,9 +126,8 @@ function AdminSettingsPage() {
           </MobileTabSwitcher>
         </Stack>
 
-        {/* Only shown once a draft actually differs from what's saved — the
-            page stays button-free otherwise, matching the earlier removal,
-            while still giving dragging a slider a way to actually persist. */}
+        {/* Only shown when a draft differs from what's saved, so the page has no
+            buttons otherwise but dragging a slider can still be saved. */}
         {isDirty && (
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
             <Button
@@ -165,19 +157,12 @@ function AdminSettingsPage() {
         )}
       </Stack>
 
-      {/* Explicit-height spacer, not padding on the flex:1/minHeight:0
-          container above — this page has no inner flex/minHeight:0/
-          overflow:auto panel of its own the way AdminMaterialsPage/
-          AdminStoresPage do (their content scrolls inside that inner panel
-          instead, so AdminLayout's content Box itself never has to scroll).
-          Here the cards are left to grow to their natural, possibly tall,
-          height, so that outer Box does end up scrolling — and browsers
-          drop a nested flex-basis:0 item's own end-padding/margin from the
-          scrollable area once it overflows, which silently ate a plain
-          `pb` here too. A sibling with a real height isn't subject to
-          that, so it reliably reproduces AdminLayout's own bottom spacing
-          on this page's content regardless of which of the two cards ends
-          up longest. */}
+      {/* Explicit-height spacer instead of padding on the flex:1/minHeight:0
+          container above. This page has no inner scroll panel (unlike
+          AdminMaterialsPage/AdminStoresPage), so the outer Box scrolls, and
+          browsers drop a nested flex-basis:0 item's end padding from the
+          scrollable area once it overflows, which ate a plain `pb`. A sibling with
+          a real height isn't affected, so it restores AdminLayout's bottom spacing. */}
       <Box sx={{ flexShrink: 0, height: { xs: 16, md: 24 } }} />
     </Box>
   );

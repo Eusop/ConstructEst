@@ -1,13 +1,9 @@
--- Adds email-ownership verification as a new, independent concept from
--- is_verified (admin approval — see 008_users_is_verified.sql). A
--- self-registered account must now type back a 6-digit code emailed to the
--- address they gave before an admin's approval even matters (see
--- auth.controller.js's register/verifyEmail/resendVerificationCode and
--- login's new EMAIL_NOT_VERIFIED check, which runs before is_verified).
--- email_verified_at is a timestamp, not a boolean, so it doubles as a free
--- "when" audit trail. The code is stored in plaintext — it's random,
--- single-use, 10-minute-lived, and invalidated after 5 wrong guesses, so
--- hashing it protects nothing a password hash actually needs to protect.
+-- Adds email verification, separate from is_verified (admin approval, see 008).
+-- A self-registered account must type back a 6-digit emailed code (see
+-- register, verifyEmail and resendVerificationCode in auth.controller.js) and
+-- login checks it first (EMAIL_NOT_VERIFIED). email_verified_at is a timestamp
+-- so it also records when. The code is stored in plain text since it is
+-- random, single-use, expires in 10 minutes and locks after 5 wrong tries.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/012_users_email_verification.sql

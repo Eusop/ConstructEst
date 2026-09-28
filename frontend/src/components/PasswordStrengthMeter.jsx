@@ -11,12 +11,10 @@ const LABEL_COLOR = {
 };
 
 /**
- * Live password strength rating — a segmented bar + Weak/Fair/Strong label,
- * derived from the same 5 criteria `getPasswordStrength` checks, only three of
- * which (length, a letter, a number) `isStrongPassword` actually requires to
- * pass — this is guidance, not a gate (see utils/validators.js). Shows nothing for
- * an empty field — there's nothing to rate yet, and an empty red/weak bar
- * would just look like an error before the user has typed anything.
+ * Live password strength: a segmented bar and a Weak/Fair/Strong label, from
+ * the 5 criteria in `getPasswordStrength`. Only length, a letter and a number
+ * are required to pass (`isStrongPassword`); this is guidance (see
+ * utils/validators.js). Shows nothing for an empty field.
  *
  * @param {object} props
  * @param {string} props.password

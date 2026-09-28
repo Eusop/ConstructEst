@@ -67,17 +67,14 @@ async function loadCurrentEstimation(projectId) {
       quantity: Number(item.quantity),
       unitCost: Number(item.unitCost),
       totalCost: Math.round(Number(item.quantity) * Number(item.unitCost) * 100) / 100,
-      // mysql2 usually auto-parses JSON columns already, the typeof check
-      // is just a safety net in case it ever comes back as a raw string.
+      // mysql2 usually parses JSON columns already; the typeof check is a fallback.
       sourceBreakdown: typeof source_breakdown === 'string' ? JSON.parse(source_breakdown) : source_breakdown,
     })),
   };
 }
 
 export const listProjects = asyncHandler(async (req, res) => {
-  // has_brand_selection lets the client show a project as Complete after a
-  // reload; before, "Complete" only lived in browser memory and every
-  // project came back Incomplete on the next login.
+  // has_brand_selection lets the client mark a project Complete after a reload.
   const rows = await query(
     `SELECT p.*, EXISTS(SELECT 1 FROM project_brand_selections b WHERE b.project_id = p.id) AS has_brand_selection
      FROM projects p WHERE p.user_id = ? ORDER BY p.created_at DESC`,
@@ -147,12 +144,9 @@ export const createProject = asyncHandler(async (req, res) => {
       overrides: toEngineOverrides(overrides),
     });
   } catch (err) {
-    // Only pass through messages we wrote ourselves. A 4xx from the engine is
-    // a real, user-actionable explanation ("no FLOOR layer..."), but a 5xx
-    // carries raw Python stderr - full traceback and absolute server paths -
-    // and this response bypasses errorHandler, which is what sanitises 500s
-    // everywhere else. Without this the same failure leaked here while being
-    // scrubbed on the recompute path.
+    // Only pass through messages we wrote. A 4xx from the engine is a useful
+    // user message, but a 5xx carries raw Python stderr (traceback and server
+    // paths). This response skips errorHandler, which cleans 500s elsewhere.
     const isUserFacing = err instanceof HttpError && err.status >= 400 && err.status < 500;
     if (!isUserFacing) console.error('DXF parsing failed:', err);
     parseError = isUserFacing ? err.message : 'DXF parsing failed. Check that the file is a valid DXF and try again.';
@@ -173,8 +167,8 @@ export const createProject = asyncHandler(async (req, res) => {
   res.status(201).json({ project: toPublicProject(project), estimation, parseError: null });
 });
 
-/** Marks the old estimation as not current, then saves a fresh one. Used by
- * both project creation and Recalculate, never overwrites a past run. */
+/** Marks the old estimation as not current and saves a new one. Used by
+ * project creation and Recalculate; past runs are never overwritten. */
 async function persistEstimation(projectId, engineResult) {
   await query('UPDATE estimation_results SET is_current = 0 WHERE project_id = ? AND is_current = 1', [projectId]);
 
@@ -223,15 +217,11 @@ async function persistEstimation(projectId, engineResult) {
 export const getProjectDesignOverrides = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
-  // `overrides` is this project's own saved values only (null where unset —
-  // see getDesignOverrides's own doc comment). `effectiveDefaults` is what
-  // the engine will actually use for any field left blank (project override
-  // -> admin's global default -> formulas.py's hardcoded default) — a
-  // regular user can't call the admin-only /admin/design-overrides endpoint
-  // to see the global default themselves, so without this, Design
-  // Parameters' placeholder text fell back to a static hardcoded mirror
-  // (engineDefaultParameters.js) that never reflected an admin's actual
-  // configured global override.
+  // `overrides` is this project's own saved values (null where unset).
+  // `effectiveDefaults` is what the engine will use for blank fields (project
+  // override, then the admin's global default, then the formulas.py default).
+  // Regular users can't call the admin endpoint, so this gives the Design
+  // Parameters placeholders the real global default.
   const [overrides, effectiveDefaults] = await Promise.all([
     getDesignOverrides(project.id),
     getEffectiveDesignOverrides(project.id),
@@ -246,10 +236,9 @@ export const putProjectDesignOverrides = asyncHandler(async (req, res) => {
   res.json({ overrides });
 });
 
-/** Re-runs the DXF engine on the already-uploaded file with the current
- * constants/overrides, used after tweaking those without re-uploading.
- * Also takes an optional `includeRoofing` to flip that on/off after the
- * fact, saved back onto the project so later recomputes stay consistent. */
+/** Re-runs the engine on the uploaded file with the current constants and
+ * overrides. Also takes an optional `includeRoofing`, which is saved on the
+ * project so later recomputes stay consistent. */
 export const recomputeEstimation = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);

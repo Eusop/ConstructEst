@@ -1,13 +1,11 @@
 /**
- * Whether a project counts as "Complete" for the Projects page's status tag
- * (see ProjectCard) and status filter (see ProjectsPage/ProjectStatusFilter)
- * — a saved brand selection and generated Bill of Materials, which is when
- * ProjectsContext's client-side status becomes `'Optimized'` (see
- * BrandSelectionPage, set right after POST /api/projects/:id/brand-selection
- * succeeds). Every other state — still parsing, estimated but no brand
- * selection yet, or a failed parse — reads as "Incomplete". Kept as one
- * shared helper so the tag and the filter can never disagree with each
- * other about which bucket a project falls into.
+ * Whether a project counts as "Complete" for the Projects page tag (see
+ * ProjectCard) and status filter (ProjectsPage, ProjectStatusFilter): a saved
+ * brand selection and generated BOM, which is when the client status becomes
+ * `'Optimized'` (set in BrandSelectionPage after POST
+ * /api/projects/:id/brand-selection, and on load when the project has a saved
+ * brand selection). Everything else (parsing, estimated without brand selection,
+ * failed) is "Incomplete". One shared helper so the tag and filter agree.
  *
  * @param {{status: string}} project
  * @returns {boolean}

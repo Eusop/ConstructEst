@@ -19,10 +19,9 @@ const PAGE_TITLES = {
 };
 
 /**
- * Shell for Admin Module pages — the same layout structure as the User
- * Module's DashboardLayout (persistent Sidebar open/closed state, header,
- * <Outlet /> below it) but with the Admin-only Sidebar/Header, and none of
- * the User Module's project-flow providers mounted.
+ * Shell for Admin Module pages: same structure as the User Module's
+ * DashboardLayout (sidebar state, header, <Outlet />) with the admin Sidebar and
+ * Header, and none of the project-flow providers.
  */
 function AdminLayout() {
   const theme = useTheme();
@@ -33,14 +32,11 @@ function AdminLayout() {
   const title = PAGE_TITLES[location.pathname] ?? 'Dashboard';
 
   return (
-    // height (not minHeight) is what actually makes this a fixed-viewport
-    // shell — AdminSidebar already assumes one (its own desktop Box is
-    // `height: '100vh', position: sticky`). Without a hard ceiling here,
-    // the whole page grows past the viewport whenever a page's content
-    // needs more room, and every `flex: 1, minHeight: 0, overflow: 'auto'`
-    // panel further down (e.g. AdminStoresPage's "Registered stores" list)
-    // never actually gets a bounded height to scroll *within* — the
-    // browser just scrolls the whole page instead of that one panel.
+    // `height` (not minHeight) makes this a fixed-viewport shell. AdminSidebar
+    // assumes one (its desktop Box is `height: '100vh', position: sticky`).
+    // Without a hard ceiling the page grows past the viewport, and inner
+    // `flex: 1, minHeight: 0, overflow: 'auto'` panels (e.g. "Registered stores")
+    // never get a bounded height, so the whole page scrolls instead.
     <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
       <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -53,14 +49,9 @@ function AdminLayout() {
             display: 'flex',
             flexDirection: 'column',
             p: { xs: 2, md: 3 },
-            // Safety net now that the shell above is a hard `overflow:
-            // hidden` viewport height: a page that scrolls internally
-            // (like AdminStoresPage's own flex/minHeight:0/overflow:auto
-            // panel) still does, since that panel gets a real bounded
-            // height to work with now — but any admin page that *doesn't*
-            // set up its own internal scroll region would otherwise have
-            // extra content silently clipped and unreachable instead of
-            // just scrolling, which is a worse outcome than before.
+            // Safety net now that the shell is a hard `overflow: hidden` viewport
+            // height. Pages with their own scroll region still scroll there, but a
+            // page without one would have content clipped and unreachable.
             overflow: 'auto',
           }}
         >

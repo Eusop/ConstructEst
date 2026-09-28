@@ -10,16 +10,13 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { colors } from '../theme/palette';
 
 /**
- * Typed-word confirmation dialog for destructive actions — the destructive
- * button stays disabled until the exact confirmation word is typed in, a
- * stronger guard than a plain Yes/Cancel dialog that's easy to click through
- * by habit. Shared between the User Module's project delete
- * (ProjectsPage.jsx) and the Admin Module's store delete
- * (AdminStoresPage.jsx).
+ * Confirmation dialog for destructive actions. The confirm button stays
+ * disabled until the exact word is typed, which is harder to click through
+ * than Yes/Cancel. Used by the project delete (ProjectsPage.jsx) and the admin
+ * store delete (AdminStoresPage.jsx).
  *
- * Render with a `key` tied to whatever's being targeted (e.g.
- * `key={pendingId ?? 'closed'}`) so each new attempt gets a fresh instance —
- * no leftover typed text or stuck spinner from a previous attempt.
+ * Render with a `key` tied to the target (e.g. `key={pendingId ?? 'closed'}`)
+ * so each attempt starts fresh, with no leftover text or spinner.
  *
  * @param {object} props
  * @param {boolean} props.open
@@ -28,7 +25,7 @@ import { colors } from '../theme/palette';
  * @param {string} [props.confirmWord]
  * @param {string} [props.confirmLabel]
  * @param {() => void} props.onCancel
- * @param {() => Promise<void>} props.onConfirm Rejecting keeps the dialog open (stops the spinner, keeps the typed text) instead of closing — the caller is expected to have already surfaced the error (e.g. a toast).
+ * @param {() => Promise<void>} props.onConfirm Rejecting keeps the dialog open (stops the spinner, keeps the typed text); the caller already showed the error (e.g. a toast).
  */
 function TypedConfirmDialog({ open, title, message, confirmWord = 'DELETE', confirmLabel = 'Yes, Delete', onCancel, onConfirm }) {
   const [confirmText, setConfirmText] = useState('');
@@ -41,8 +38,8 @@ function TypedConfirmDialog({ open, title, message, confirmWord = 'DELETE', conf
     try {
       await onConfirm();
     } catch {
-      // Caller already surfaced the error (toast) — just stop spinning so
-      // the user can retry without the dialog closing on them.
+      // The caller already showed the error (toast). Just stop the spinner so the
+      // user can retry without the dialog closing.
       setIsConfirming(false);
     }
   };
@@ -51,10 +48,9 @@ function TypedConfirmDialog({ open, title, message, confirmWord = 'DELETE', conf
     <Dialog open={open} onClose={isConfirming ? undefined : onCancel} disableScrollLock maxWidth="xs" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>{title}</DialogTitle>
       <DialogContent>
-        {/* component="div" — `message` isn't always inline text; the Admin
-            verify-user flow puts a whole profile-review block in here, which
-            would be invalid HTML nested inside DialogContentText's default
-            <p>. */}
+        {/* component="div" because `message` isn't always inline text (the admin
+            verify-user flow puts a profile block here), which can't sit inside
+            DialogContentText's default <p>. */}
         <DialogContentText component="div" sx={{ color: 'text.primary', mb: 2 }}>{message}</DialogContentText>
         <DialogContentText sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 1 }}>
           Type <strong>{confirmWord}</strong> to confirm.
@@ -69,10 +65,8 @@ function TypedConfirmDialog({ open, title, message, confirmWord = 'DELETE', conf
           disabled={isConfirming}
         />
       </DialogContent>
-      {/* On phones (`down('sm')`) the two actions stack full-width instead of
-          sharing a cramped row — side by side, the confirm label ("Yes,
-          Deactivate") wraps onto two lines and the buttons look unbalanced.
-          Desktop/tablet (`sm`+) keep the original inline row untouched. */}
+      {/* On phones (`down('sm')`) the actions stack full-width, since side by
+          side the confirm label ("Yes, Deactivate") wraps. `sm`+ keeps the inline row. */}
       <DialogActions
         sx={(theme) => ({
           px: 3,

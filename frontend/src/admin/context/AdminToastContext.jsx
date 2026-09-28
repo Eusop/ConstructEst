@@ -5,8 +5,8 @@ import Alert from '@mui/material/Alert';
 const AdminToastContext = createContext(null);
 
 /**
- * Lightweight ephemeral feedback for Admin actions ("Store added", "Brand
- * deleted", ...) — the Admin Module has no notifications bell/page.
+ * Short feedback for Admin actions ("Store added", "Brand deleted", ...). The
+ * Admin Module has no notifications bell or page.
  */
 export function AdminToastProvider({ children }) {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });

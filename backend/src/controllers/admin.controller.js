@@ -10,11 +10,10 @@ import { getEffectiveConstants } from '../services/constants.service.js';
 import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
 import { UPLOAD_DIR } from '../middleware/upload.js';
 
-// --- Admin activity backlog -------------------------------------------------
-// Permanent log of admin actions, split into 'user_management' and
-// 'store_management' categories. Called after each mutation succeeds.
-// There's no update/delete route for this table on purpose, not even
-// admins can edit or remove log entries.
+// --- Admin activity log ---
+// Permanent log of admin actions ('user_management' and 'store_management'),
+// written after each successful change. There is no update or delete route on
+// purpose, so even admins can't edit or remove entries.
 async function logAdminActivity(adminUserId, category, action, message, metadata = null) {
   await query(
     `INSERT INTO admin_activity_log (admin_user_id, category, action, message, metadata) VALUES (?, ?, ?, ?, ?)`,
@@ -68,9 +67,8 @@ export const createUser = asyncHandler(async (req, res) => {
   if (!isValidPassword(password)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
   const passwordHash = bcrypt.hashSync(password, 10);
-  // Set email_verified_at right away, unlike self-registration. An admin
-  // creating the account directly is already trustworthy, no need to
-  // verify email ownership for this path.
+  // Set email_verified_at right away. An admin creating the account is trusted,
+  // so no email check is needed.
   const result = await query(
     `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, email_verified_at)
      VALUES (?, ?, ?, ?, ?, ?, NOW())`,
@@ -92,22 +90,18 @@ export const updateUser = asyncHandler(async (req, res) => {
   if (accessRole !== undefined) {
     if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
 
-    // Promoting someone to admin is fine and stays allowed. Demotion is what
-    // needs guarding, because there was nothing stopping an admin from
-    // demoting themselves or the only remaining admin and leaving the system
-    // with no way to reach the admin module at all. Only run these checks
-    // when the role is actually changing to 'user'.
+    // Promoting to admin is allowed. Demotion is guarded so an admin can't
+    // demote themselves or the last admin and lock everyone out of the admin
+    // module. The checks only run when the role changes to 'user'.
     if (accessRole === 'user') {
       const [current] = await query('SELECT access_role FROM users WHERE id = ?', [req.params.id]);
       if (current?.access_role === 'admin') {
         if (String(req.params.id) === String(req.user.id)) {
           throw new HttpError(403, 'You cannot remove your own admin role.');
         }
-        // Backstop only, and deliberately kept even though the self-demotion
-        // check above already covers every path that can reach it today: the
-        // caller must be an admin, so demoting a *different* admin means at
-        // least two exist and this can never trip. It matters if the rule
-        // above is ever relaxed, or if another code path starts setting roles.
+        // Backstop kept on purpose. The self-demotion check above already
+        // covers every path today, but this matters if that rule is relaxed
+        // or another code path starts setting roles.
         const [{ adminCount }] = await query(
           "SELECT COUNT(*) AS adminCount FROM users WHERE access_role = 'admin'",
         );
@@ -133,12 +127,9 @@ export const setUserActive = asyncHandler(async (req, res) => {
   const { isActive } = req.body;
   const [target] = await query('SELECT first_name, last_name, access_role FROM users WHERE id = ?', [req.params.id]);
   if (!target) throw new HttpError(404, 'User not found.');
-  // Admin accounts can't be deactivated by anyone, including themselves.
-  // Nothing here checked identity before, so an admin could lock themselves
-  // (or every other admin) out of the whole admin module with one click, and
-  // the only way back in would be editing the database by hand. Checked on
-  // the server because the UI hiding the button is just a convenience - the
-  // endpoint is still reachable directly.
+  // Admin accounts can't be deactivated, even by themselves, or an admin could
+  // lock everyone out with one click. Checked on the server because hiding the
+  // button in the UI does not block direct requests.
   if (target.access_role === 'admin') {
     throw new HttpError(403, 'Admin accounts cannot be deactivated. Change the role to user first.');
   }
@@ -164,15 +155,10 @@ export const verifyUser = asyncHandler(async (req, res) => {
 export const deleteUser = asyncHandler(async (req, res) => {
   const [target] = await query('SELECT first_name, last_name, employee_id, access_role FROM users WHERE id = ?', [req.params.id]);
   if (!target) throw new HttpError(404, 'User not found.');
-  // Same blanket rule as setUserActive: no admin account can be deactivated
-  // OR deleted, by anyone, including themselves. Deleting a user cascades to
-  // every project/estimation/notification they own (all ON DELETE CASCADE,
-  // see schema.sql) — fine and desired for a regular user, but an admin's
-  // own admin_activity_log entries also cascade via admin_user_id, and that
-  // table is meant to be a permanent, append-only record (see
-  // 007_admin_activity_log.sql). Blocking admin deletion entirely keeps that
-  // table's immutability guarantee intact and sidesteps the self-delete
-  // question by construction, since the caller's own row is always an admin.
+  // Same rule as setUserActive: admin accounts can't be deactivated or deleted.
+  // Deleting a user cascades to their projects and estimations (see schema.sql),
+  // which is fine for regular users. But it would also cascade an admin's
+  // admin_activity_log rows, which must stay permanent (007_admin_activity_log.sql).
   if (target.access_role === 'admin') {
     throw new HttpError(403, 'Admin accounts cannot be deleted. Change the role to user first, then delete.');
   }
@@ -273,9 +259,8 @@ export const deleteStore = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-// Deactivate/reactivate a store instead of deleting it. Deactivated stores
-// drop out of Store Locator comparisons but stay editable in the Admin
-// Module. Same idea as setUserActive above.
+// Deactivate or reactivate a store instead of deleting it. Deactivated stores
+// drop out of Store Locator but stay editable in the Admin Module.
 export const setStoreActive = asyncHandler(async (req, res) => {
   const { isActive } = req.body;
   const [target] = await query('SELECT name FROM stores WHERE id = ?', [req.params.id]);
@@ -290,10 +275,9 @@ export const setStoreActive = asyncHandler(async (req, res) => {
   res.json({ message: isActive ? 'Store reactivated.' : 'Store deactivated.' });
 });
 
-/** All global brands, left-joined with this store's own prices. `storePrice`/
- * `inStock` are null if this store hasn't priced that brand yet, that's how
- * the frontend tells "not stocked" apart from "already stocked". Grouped by
- * material key for the admin UI. */
+/** All global brands, left-joined with this store's own prices. `storePrice` and
+ * `inStock` are null if the store has not priced that brand, which is how the
+ * frontend tells "not stocked" from "already stocked". Grouped by material key. */
 export const getStoreCatalog = asyncHandler(async (req, res) => {
   const rows = await query(
     `SELECT mb.id AS material_brand_id, mb.material_key, mb.material_name, mb.unit, mb.brand, mb.spec,
@@ -336,11 +320,9 @@ function truthy(value, fallback) {
   return value === true || value === 'true';
 }
 
-// Setting or changing a price needs a quotation file attached as proof
-// (PDF/Word/Excel, see uploadQuotation in middleware/upload.js). The one
-// exception is `usesCatalogPrice`, used when "Add materials to store" just
-// copies a brand's existing catalog price, nothing was actually decided so
-// there's nothing to prove.
+// Setting or changing a price needs a quotation file as proof (PDF/Word/Excel,
+// see uploadQuotation in upload.js). The exception is `usesCatalogPrice`, used
+// when "Add materials to store" just copies a catalog price.
 export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { storeId, materialBrandId } = req.params;
   const { price, inStock } = req.body;
@@ -395,10 +377,9 @@ export const removeStoreMaterialPrice = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-// Lets an admin download a quotation file from the Activity Log.
-// `storedName` should always be a multer-generated filename, but we still
-// block path separators just in case, so nobody can read files outside
-// UPLOAD_DIR.
+// Lets an admin download a quotation file from the Activity Log. `storedName`
+// is a multer-generated name, but path separators are blocked anyway so
+// nothing outside UPLOAD_DIR can be read.
 export const downloadQuotation = asyncHandler(async (req, res) => {
   const { storedName } = req.params;
   if (!storedName || /[/\\]/.test(storedName)) throw new HttpError(400, 'Invalid file name.');
@@ -429,8 +410,8 @@ export const updateGlobalDesignOverrides = asyncHandler(async (req, res) => {
 export const updateGlobalConstants = asyncHandler(async (req, res) => {
   const { cementFactor, steelFactor, roofingFactor, wastagePercent } = req.body;
 
-  // ON DUPLICATE KEY UPDATE won't match a NULL project_id row (MySQL treats
-  // every NULL as different), so we upsert manually here instead.
+  // ON DUPLICATE KEY UPDATE won't match a NULL project_id (MySQL treats every
+  // NULL as different), so upsert manually.
   const [existing] = await query('SELECT id FROM estimation_constants WHERE project_id IS NULL');
   if (existing) {
     await query(

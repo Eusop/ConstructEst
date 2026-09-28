@@ -1,7 +1,6 @@
--- ConstructEst seed data — mirrors the frontend's current mock data
--- (parsedProjectMock.js, brandOptionsMock.js, storesMock.js,
--- storePricing.js, calibrationDefaults.js) so swapping the frontend's mocks
--- for real API calls produces the same numbers it already shows today.
+-- ConstructEst seed data. Mirrors the frontend mock data (brandOptionsMock.js,
+-- storesMock.js, storePricing.js, calibrationDefaults.js) so real API calls give
+-- the same numbers the mocks showed.
 --
 -- Run after schema.sql:
 --   mysql -u root -p constructest < seed.sql
@@ -9,25 +8,20 @@
 USE constructest;
 
 -- ---------------------------------------------------------------------------
--- Admin account. Password is "ChangeMe123!" (hash generated and verified
--- against this exact string via `npm run hash-password -- "ChangeMe123!"`).
--- No admin UI/signup path exists, so this is the only way in; change the
--- password via PUT /api/users/me/password once you've logged in.
+-- Admin account. Password is "ChangeMe123!" (hash from `npm run hash-password`).
+-- There is no admin signup, so this is the only way in. Change the password
+-- with PUT /api/users/me/password after logging in.
 -- ---------------------------------------------------------------------------
--- email_verified_at is set at seed time (not left NULL) — that column only
--- means "did a self-registered user prove they own this email"; an admin
--- account created directly here never went through that flow and shouldn't
--- be blocked by login()'s check for it (see
--- db/migrations/013_backfill_email_verified_at.sql for the same fix applied
--- retroactively to an already-existing database).
+-- email_verified_at is set here (not NULL). That column only tracks whether a
+-- self-registered user proved their email, so a seeded admin should not be
+-- blocked by the login check (same fix as migration 013 for existing databases).
 INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, email_verified_at)
 VALUES ('System', 'Admin', 'admin', 'admin@constructest.local',
         '$2a$10$tsAJhcupRMJt1XVsmBIiQe1M4qMcXQ6JaBs6JUcnEQRJjdpWZcUqq', 'admin', NOW());
 
 -- ---------------------------------------------------------------------------
--- Material catalog: 14 brand-selectable materials x 3 brands, plus the 2
--- commodity aggregates (sand, gravel) priced flat with no brand choice —
--- matches BASE_PRICING/MATERIAL_BRAND_OPTIONS in brandOptionsMock.js.
+-- Material catalog: 14 brand-selectable materials x 3 brands, plus sand and
+-- gravel priced flat with no brand choice (see brandOptionsMock.js).
 -- ---------------------------------------------------------------------------
 INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, quality, category, is_commodity) VALUES
 ('hollowBlocks', 'CHB (Concrete Hollow Blocks)', 'pcs', 'JBC', '4" CHB', 12, 4, 'Masonry', 0),
@@ -90,7 +84,7 @@ INSERT INTO material_brands (material_key, material_name, unit, brand, spec, bas
 ('scaffolding', 'Scaffolding', 'sets', 'Layher', 'H-frame set', 3900, 5, 'Formwork', 0);
 
 -- ---------------------------------------------------------------------------
--- Stores — matches storesMock.js (Tarlac City locale).
+-- Stores. Matches storesMock.js (Tarlac City).
 -- ---------------------------------------------------------------------------
 INSERT INTO stores (id, name, address, lat, lng) VALUES
 (1, 'Tarlac Builders Depot', 'MacArthur Hwy, San Roque, Tarlac City', 15.480200, 120.597900),
@@ -98,11 +92,9 @@ INSERT INTO stores (id, name, address, lat, lng) VALUES
 (3, 'Northgate Home Center', 'Circumferential Rd, Tarlac City', 15.465000, 120.590000),
 (4, 'Villaflor Hardware', 'San Miguel, Tarlac City', 15.490000, 120.580000);
 
--- Per-store price multiplier applied to every brand's base_price, matching
--- STORE_PRICE_MULTIPLIERS in storePricing.js. Villaflor Hardware (store 4)
--- deliberately gets no steelRebar rows at all, reproducing storesMock.js's
--- "out of stock: steel rebar, try Tarlac Builders Depot" scenario that
--- exercises the Store Locator's unavailability notification (FR-11).
+-- Per-store price multiplier on every brand's base_price (STORE_PRICE_MULTIPLIERS
+-- in storePricing.js). Villaflor Hardware (store 4) gets no steelRebar rows, to
+-- test the Store Locator's unavailability notice (FR-11).
 INSERT INTO store_material_prices (store_id, material_brand_id, price, in_stock)
 SELECT s.id, mb.id, ROUND(mb.base_price * s.multiplier, 2), 1
 FROM material_brands mb
@@ -115,9 +107,8 @@ JOIN (
 WHERE NOT (s.id = 4 AND mb.material_key = 'steelRebar');
 
 -- ---------------------------------------------------------------------------
--- Global default calibration constants — matches calibrationDefaults.js.
--- project_id NULL = the global default row read when a project has no
--- override.
+-- Global default calibration constants (calibrationDefaults.js). project_id NULL
+-- is the default row used when a project has no override.
 -- ---------------------------------------------------------------------------
 INSERT INTO estimation_constants (project_id, cement_factor, steel_factor, roofing_factor, wastage_percent)
 VALUES (NULL, 1.08, 1.05, 1.07, 5.00);

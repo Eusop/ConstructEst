@@ -2,10 +2,9 @@ import Box from '@mui/material/Box';
 import authBackground from '../assets/login-background.png';
 
 /**
- * Full-bleed background shared by the auth pages (Sign In, Sign Up): the
- * blueprint-style hero image, scaled to cover the viewport, with a subtle
- * dark overlay so the card stays readable without hiding the artwork
- * underneath.
+ * Full-bleed background for the auth pages (Sign In, Sign Up): the
+ * blueprint-style hero image, scaled to cover the viewport, with a dark
+ * overlay so the card stays readable.
  */
 function AuthBackground() {
   return (

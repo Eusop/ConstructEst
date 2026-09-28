@@ -35,7 +35,7 @@ import { ROUTES, ADMIN_ROUTES } from './paths';
 function AppRoutes() {
   return (
     <Routes>
-      {/* No public marketing Landing Page — "/" goes straight to Login. */}
+      {/* No public landing page: "/" goes straight to Login. */}
       <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.LOGIN} replace />} />
       <Route path={ROUTES.LOGIN} element={<RedirectIfAuthenticated><LoginPage /></RedirectIfAuthenticated>} />
       <Route path={ROUTES.SIGNUP} element={<RedirectIfAuthenticated><SignUpPage /></RedirectIfAuthenticated>} />
@@ -45,18 +45,14 @@ function AppRoutes() {
       <Route path={ROUTES.TERMS} element={<TermsPage />} />
       <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
 
-      {/* Layout route: DashboardLayout mounts once and persists (Sidebar
-          open/closed state, etc.) across navigation between these child
-          pages. ProjectsProvider lives here too so the project list, the
-          active project, and the in-progress "New project" draft all
-          survive navigation across the whole authenticated app.
-          DashboardActivityProvider tracks dashboard counters/activity the
-          same way. Gated by RequireRole exactly like the Admin Module
-          below — an unauthenticated session gets sent to Login, and an
-          admin session gets sent to its own dashboard instead of ever
-          rendering these pages (previously unguarded — reachable directly
-          by URL regardless of session, only failing later on the first API
-          call with a raw auth-header error). */}
+      {/* Layout route: DashboardLayout mounts once and persists (sidebar state,
+          etc.) across navigation between these child pages. ProjectsProvider
+          lives here too, so the project list, the active project and the
+          in-progress "New project" draft survive navigation across the
+          authenticated app. DashboardActivityProvider tracks dashboard
+          counters and activity the same way. Gated by RequireRole like the
+          Admin Module below: no session goes to Login, and an admin session
+          goes to its own dashboard instead of these pages. */}
       <Route
         element={
           <RequireRole role="user" redirectTo={ADMIN_ROUTES.DASHBOARD}>

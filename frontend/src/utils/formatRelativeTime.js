@@ -1,11 +1,7 @@
 /**
- * Formats a Date as a short relative/clock label for activity feeds —
- * "Just now" within the last minute, the time of day for anything else
- * that happened today, then day-aware past that ("Yesterday", "3 days
- * ago", a short date past a week) — see AdminUsersPage.jsx's own
- * formatRelativeTime/formatLastSeen for the same day-bucketing idea
- * applied at minute/hour granularity throughout instead of a same-day
- * clock time.
+ * Short label for activity feeds: "Just now" within a minute, the clock time
+ * for today, then "Yesterday", "N days ago", or a short date after a week.
+ * (AdminUsersPage.jsx has a similar formatter with minute/hour steps.)
  *
  * @param {Date} date
  * @param {Date} [now]

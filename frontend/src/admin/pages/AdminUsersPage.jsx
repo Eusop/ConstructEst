@@ -47,12 +47,11 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-// Double the 45s heartbeat interval (see UserContext.jsx's sendHeartbeat
-// polling) so one missed beat from ordinary network jitter doesn't
-// immediately flip someone to looking offline.
+// Double the 45s heartbeat interval (see UserContext.jsx), so one missed beat
+// from network jitter doesn't flip someone to offline.
 const ONLINE_THRESHOLD_MS = 90_000;
-// Keeps the dots/last-seen text reasonably live while an admin sits on this
-// page watching, without needing a websocket — see refresh() below.
+// Keeps the dots and last-seen text fresh while an admin watches this page,
+// without a websocket (see refresh() below).
 const ADMIN_LIST_REFRESH_MS = 30_000;
 
 function isOnline(user) {
@@ -60,8 +59,8 @@ function isOnline(user) {
   return Date.now() - new Date(user.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS;
 }
 
-// Null past the ~7 day mark — formatLastSeen falls back to formatDate then,
-// since "23 days ago" is less useful than an actual date at that point.
+// Null past ~7 days: formatLastSeen then shows a date, since "23 days ago" is
+// less useful.
 function formatRelativeTime(date) {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return 'just now';
@@ -74,11 +73,9 @@ function formatRelativeTime(date) {
   return null;
 }
 
-// Shown both as the presence dot's tooltip and as a secondary line under
-// each user's name, so the actual recency is visible without needing to
-// hover — a bare dot alone doesn't say whether "offline" means 2 minutes
-// or 2 months. lastSeenAt is null for an admin-created/seeded account that
-// has never actually logged in yet, distinct from "was online, now isn't."
+// Shown as the presence dot's tooltip and as a line under each user's name, so
+// recency is visible without hovering (a bare dot doesn't say if "offline" is 2
+// minutes or 2 months). lastSeenAt is null for an account that never logged in.
 function formatLastSeen(user) {
   if (isOnline(user)) return 'Online now';
   if (!user.lastSeenAt) return 'Never signed in';
@@ -87,8 +84,7 @@ function formatLastSeen(user) {
 }
 
 // Wraps an Avatar with the green "online now" dot (hidden otherwise) and a
-// tooltip giving the exact recency on hover. Shared between the desktop
-// table and UserMobileCard so the dot/tooltip logic isn't duplicated.
+// tooltip with the exact recency. Shared by the desktop table and UserMobileCard.
 function PresenceAvatar({ user, children }) {
   return (
     <Tooltip title={formatLastSeen(user)}>
@@ -105,18 +101,16 @@ function PresenceAvatar({ user, children }) {
   );
 }
 
-// Admin accounts are protected from deactivation — see admin.controller.js's
-// setUserActive, which rejects it server-side too. Without that, one click
-// could deactivate every admin (including your own account) and leave nobody
-// able to get back into the admin module.
+// Admin accounts can't be deactivated (setUserActive in admin.controller.js
+// rejects it too), or one click could deactivate every admin, including your
+// own, and lock everyone out of the admin module.
 function isAdminAccount(user) {
   return user?.accessRole === 'admin';
 }
 
-// A brand-new self-registered account (isVerified: false) reads as "Pending"
-// regardless of isActive — distinct from an existing account an admin
-// deliberately deactivated. See admin.controller.js's verifyUser /
-// auth.controller.js's register.
+// A new self-registered account (isVerified: false) reads as "Pending" whatever
+// isActive is, unlike an account an admin deactivated. See verifyUser in
+// admin.controller.js and register in auth.controller.js.
 function userStatus(user) {
   if (!user.isVerified) return { label: 'Pending', bg: colors.iconOrangeBg, fg: colors.iconOrangeFg };
   return user.isActive
@@ -124,8 +118,8 @@ function userStatus(user) {
     : { label: 'Inactive', bg: 'grey.100', fg: 'text.secondary' };
 }
 
-// One line of the account review shown inside the Deactivate/Reactivate/
-// Activate confirmations — see UserProfileReview below.
+// One line of the account review shown in the Deactivate/Reactivate/Activate
+// confirmations (see UserProfileReview below).
 function ProfileReviewRow({ label, value }) {
   return (
     <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
@@ -137,10 +131,9 @@ function ProfileReviewRow({ label, value }) {
   );
 }
 
-// Shared account-review block used as the `message` for all three
-// TypedConfirmDialogs below (Deactivate/Reactivate/Activate) — an admin
-// reviews who they're actually acting on before the typed word unlocks the
-// button, not just a one-line "are you sure" with a name buried in it.
+// Account-review block used as the `message` for the Deactivate/Reactivate/
+// Activate TypedConfirmDialogs, so the admin sees who they're acting on before
+// the typed word unlocks the button.
 function UserProfileReview({ user, intro }) {
   if (!user) return null;
   return (
@@ -158,14 +151,10 @@ function UserProfileReview({ user, intro }) {
   );
 }
 
-// Mobile-only rendering (below `md`). Was a 4-band card per user (avatar
-// row, chip row, a full Divider, then a footer row just for the date and
-// two action icons) — with a real user list that's a very tall scroll for
-// very little information per screen. Collapsed down to two lines: identity
-// (with the two actions moved behind a single kebab menu, the same
-// shared-Menu pattern already used for Admin Materials' mobile cards) plus
-// one line of chips + registration date. Desktop's table and its two
-// separate action icons are completely untouched.
+// Mobile-only rendering (below `md`). Collapsed to two lines: identity (with
+// the actions in a kebab menu, like Admin Materials' mobile cards) and one line
+// of chips plus the registration date. A 4-band card per user made a very tall
+// scroll. Desktop's table and its two action icons are untouched.
 function UserMobileCard({ user, onOpenMenu }) {
   return (
     <Paper elevation={0} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider', p: 1.25 }}>
@@ -219,11 +208,10 @@ function UserMobileCard({ user, onOpenMenu }) {
 }
 
 /**
- * Admin User Management: real, persisted data via /api/admin/users (the
- * backend already has full CRUD here). Starts empty except for whatever
- * accounts genuinely exist (at minimum the seeded admin account) — no fake
- * rows. The header's "Add User" button was removed per spec; this page's
- * own toolbar button is the one place users actually get created from.
+ * Admin User Management: real data via /api/admin/users (the backend has full
+ * CRUD). It starts with only the accounts that exist (at least the seeded
+ * admin). The header's "Add User" button was removed; this page's toolbar
+ * button is where users are created.
  */
 function AdminUsersPage() {
   const [users, setUsers] = useState([]);
@@ -231,17 +219,16 @@ function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  // Mobile-only row action menu (kebab) — see UserMobileCard above.
+  // Mobile-only row action menu (kebab); see UserMobileCard above.
   const [rowMenu, setRowMenu] = useState(null);
-  // Both directions of the active/inactive toggle are gated behind a typed
-  // word (DEACTIVATE / REACTIVATE) — see handleToggleActive.
+  // Both directions of the active/inactive toggle need a typed word
+  // (DEACTIVATE / REACTIVATE), see handleToggleActive.
   const [pendingToggleUser, setPendingToggleUser] = useState(null);
-  // Approving a pending self-registered account is gated behind typing
-  // ACTIVATE — see handleVerify.
+  // Approving a pending account needs a typed ACTIVATE (see handleVerify).
   const [pendingVerifyUser, setPendingVerifyUser] = useState(null);
-  // Deleting is permanent (unlike deactivate) — gated behind typing DELETE.
-  // Admin accounts never reach this state; the button that would set it is
-  // disabled for them (backend also rejects it, see deleteUser).
+  // Deleting is permanent (unlike deactivate), so it needs a typed DELETE. Admin
+  // accounts never reach this state: the button is disabled for them, and the
+  // backend rejects it too (see deleteUser).
   const [pendingDeleteUser, setPendingDeleteUser] = useState(null);
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
@@ -253,11 +240,9 @@ function AdminUsersPage() {
       .finally(() => setIsLoading(false));
   };
 
-  // Silent background refresh — no isLoading toggle, so the table doesn't
-  // flash back to a spinner every cycle while an admin is actively reading
-  // it. Only exists to keep the online dots/last-seen text from going
-  // stale while this page stays open; failures are ignored, the next tick
-  // just tries again.
+  // Silent background refresh with no isLoading toggle, so the table doesn't
+  // flash a spinner every cycle. It only keeps the online dots and last-seen text
+  // from going stale; failures are ignored and the next tick tries again.
   const refresh = () => {
     listAdminUsers()
       .then(({ users: list }) => setUsers(list))
@@ -377,13 +362,9 @@ function AdminUsersPage() {
       </Box>
 
       <Paper elevation={0} sx={{ borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: { xs: 1.5, md: 2.5 }, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {/* Mobile: search + "Add User" used to stack as two full-width rows
-            (a wide search bar, then a full-width button below it) — on
-            their own that's two whole rows of vertical space before a
-            single user is visible. Now always a single row: the button
-            shrinks to an icon-only square next to the search field instead
-            of dropping below it. sm+ is untouched (was already a row with
-            the full text button). */}
+        {/* Mobile: search and "Add User" are one row now, with the button an
+            icon-only square beside the search field (they used to stack as two
+            full-width rows). sm+ is unchanged. */}
         <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexShrink: 0, alignItems: { xs: 'center', sm: 'stretch' } }}>
           <Box
             sx={{
@@ -527,12 +508,9 @@ function AdminUsersPage() {
                             </IconButton>
                           </Tooltip>
                         ) : (
-                          // Admin accounts can't be deactivated (the backend
-                          // rejects it too) — otherwise an admin could lock
-                          // every admin, themselves included, out of this
-                          // module. Shown disabled rather than hidden so the
-                          // reason is visible instead of the button just
-                          // silently missing on some rows.
+                          // Admin accounts can't be deactivated (the backend rejects it too),
+                          // or an admin could lock every admin out. Shown disabled, not hidden,
+                          // so the reason is visible.
                           <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deactivated' : user.isActive ? 'Deactivate' : 'Activate'}>
                             <span>
                               <IconButton size="small" disabled={isAdminAccount(user)} onClick={() => handleToggleActive(user)}>
@@ -541,10 +519,8 @@ function AdminUsersPage() {
                             </span>
                           </Tooltip>
                         )}
-                        {/* Same admin protection as Deactivate — permanent,
-                            unlike deactivate, so it's also gated behind a
-                            typed-DELETE confirm below rather than firing
-                            straight from this click. */}
+                        {/* Same admin protection as Deactivate. Delete is permanent, so it
+                            also needs a typed-DELETE confirm below. */}
                         <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deleted' : 'Delete'}>
                           <span>
                             <IconButton size="small" disabled={isAdminAccount(user)} onClick={() => handleDelete(user)}>
@@ -612,7 +588,7 @@ function AdminUsersPage() {
         onConfirm={handleConfirmDelete}
       />
 
-      {/* Mobile only — opened from UserMobileCard's kebab button. */}
+      {/* Mobile only: opened from UserMobileCard's kebab button. */}
       <Menu anchorEl={rowMenu?.anchorEl} open={Boolean(rowMenu)} onClose={closeRowMenu} disableScrollLock>
         <MenuItem
           onClick={() => {

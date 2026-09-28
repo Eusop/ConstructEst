@@ -1,9 +1,6 @@
--- Persisted, immutable Admin activity backlog — categorized into
--- User Management and Store Management (see admin.controller.js's
--- logAdminActivity helper, called after every admin mutation succeeds).
--- Deliberately append-only: no UPDATE/DELETE route is ever exposed for this
--- table, and this migration adds none — immutability is structural, not
--- just a missing button in the admin UI.
+-- Persisted admin activity log, split into User Management and Store
+-- Management (see logAdminActivity in admin.controller.js). Append-only: no
+-- UPDATE or DELETE route exists for it, so it can't be changed even by admins.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/007_admin_activity_log.sql

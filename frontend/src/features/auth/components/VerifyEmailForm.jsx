@@ -15,23 +15,17 @@ import { colors } from '../../../theme/palette';
 
 const RESEND_COOLDOWN_SECONDS = 45;
 
-// Error codes that mean "this address is already past this step" — send the
-// user straight to Login with an explanation instead of leaving them stuck
-// on a code field that can never succeed.
+// Error codes meaning this address is already past this step: send the user to
+// Login with an explanation instead of leaving them stuck on a code that can't work.
 const REDIRECT_TO_LOGIN_CODES = new Set(['ALREADY_VERIFIED', 'ACCOUNT_NOT_FOUND']);
 
 /**
- * Verify Email form: type the 6-digit code emailed at registration (or
- * after a login attempt that came back EMAIL_NOT_VERIFIED — see
- * LoginForm.jsx). The email itself arrives via router `state` (not a query
- * param, so it never lands in the URL bar/history) from whichever page sent
- * the user here; state doesn't survive a hard refresh, so this degrades
- * gracefully to a blank, editable field rather than erroring.
- *
- * Doesn't create a session either way — matching SignUpForm's existing
- * "no token issued yet" precedent, since an admin still has to approve the
- * account afterward (see auth.controller.js's login, which checks
- * email_verified_at before is_verified/is_active).
+ * Verify Email form: type the 6-digit code emailed at registration (or after a
+ * login that returned EMAIL_NOT_VERIFIED, see LoginForm.jsx). The email comes
+ * from router `state`, not a query param, so it stays out of the URL and
+ * history. State doesn't survive a hard refresh, so the field is then blank and
+ * editable. It doesn't create a session either way (same as SignUpForm), since
+ * an admin still has to approve the account (see login in auth.controller.js).
  */
 function VerifyEmailForm() {
   const location = useLocation();
@@ -100,8 +94,8 @@ function VerifyEmailForm() {
         showToast(error.message, error.code === 'ALREADY_VERIFIED' ? 'success' : 'error');
         navigate(ROUTES.LOGIN);
       } else if (error.code === 'RESEND_COOLDOWN') {
-        // Defensive — the button should already be disabled locally, but the
-        // server's own cooldown is the source of truth (e.g. a second tab).
+        // Defensive: the button should already be disabled, but the server's
+        // cooldown is the source of truth (e.g. a second tab).
         showToast(error.message);
         setCooldownEndsAt(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
       } else {

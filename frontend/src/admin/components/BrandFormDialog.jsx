@@ -33,8 +33,8 @@ function validate(form) {
 
 /**
  * Add / Edit Brand dialog for a store's material (Cement, CHB, Rebar, ...).
- * Sand/Gravel never use this — they go through BulkMaterialDialog instead
- * (requirement 13: bulk commodities have no brand selection).
+ * Sand and Gravel use BulkMaterialDialog instead, since bulk commodities have
+ * no brand selection.
  */
 function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit }) {
   const isMobile = useIsMobile();

@@ -10,8 +10,7 @@ const ICON_COLORS = {
 };
 
 /**
- * Small colour-coded rounded tile representing a project (table rows,
- * summary cards, ...).
+ * Small colour-coded rounded tile for a project (table rows, summary cards).
  *
  * @param {object} props
  * @param {'blue'|'green'|'orange'|'purple'} [props.color='blue']

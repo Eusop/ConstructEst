@@ -1,21 +1,19 @@
 import { query } from '../config/db.js';
 
 /**
- * Road distance and drive time from one origin to every active store, via
- * the OpenRouteService Matrix API (one request covers all stores). Store
- * Locator shows straight-line distance first and swaps in these numbers when
- * they arrive; when this returns { available: false } (no key, quota used up,
- * timeout, bad response) the page just keeps the straight-line labels.
- *
- * Store coordinates are read from the database, never taken from the client.
+ * Road distance and drive time from one origin to every active store, using
+ * the OpenRouteService Matrix API (one request for all stores). Store Locator
+ * shows straight-line first and swaps these in. When this returns
+ * { available: false } (no key, quota used, timeout, bad response) the page
+ * keeps the straight-line labels. Store coordinates come from the database.
  */
 
 const ORS_MATRIX_URL = 'https://api.openrouteservice.org/v2/matrix/driving-car';
 const REQUEST_TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
-// Keyed by origin rounded to ~110 m plus the store list, so a reload or the
-// locate button within the hour doesn't spend another request of the daily quota.
+// Cached by origin (rounded to ~110 m) plus the store list, so reloads within
+// the hour don't use up the daily quota.
 const cache = new Map();
 
 function cacheKey(origin, stores) {

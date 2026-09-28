@@ -1,6 +1,5 @@
--- Adds the deactivate/reactivate lifecycle to hardware stores (mirrors
--- users.is_active) — a deactivated store drops out of the Store Locator
--- comparison but stays visible/editable in the Admin Module.
+-- Adds deactivate/reactivate for stores (like users.is_active). A deactivated
+-- store drops out of Store Locator but stays editable in the admin module.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/011_stores_is_active.sql

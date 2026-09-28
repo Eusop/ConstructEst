@@ -63,9 +63,8 @@ function StepStatusIcon({ status, Icon }) {
 }
 
 /**
- * Vertical timeline of parsing steps: a connecting line runs through each
- * status icon, with completed steps checked off, the current one spinning,
- * and the rest pending.
+ * Vertical timeline of parsing steps: a line runs through the status icons,
+ * with done steps checked, the current one spinning and the rest pending.
  *
  * @param {object} props
  * @param {Array<{key: string, title: string, subtitle: string, icon: React.ElementType}>} props.steps

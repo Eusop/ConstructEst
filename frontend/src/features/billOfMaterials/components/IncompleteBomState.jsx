@@ -9,11 +9,10 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { colors } from '../../../theme/palette';
 
 /**
- * Shown on Bill of Materials when the active project exists but hasn't
- * finished the steps a BOM depends on (material estimation, then a
- * selected hardware store — brand selection already defaults to a
- * recommended brand, so no further step is required after that). "Continue
- * Estimation" routes to whichever of those steps is still outstanding.
+ * Shown on Bill of Materials when the active project hasn't finished the steps
+ * a BOM needs (material estimation, then a selected store; brand selection
+ * already defaults to a recommended brand). "Continue Estimation" goes to
+ * whichever step is still outstanding.
  */
 function IncompleteBomState({ nextRoute }) {
   const navigate = useNavigate();

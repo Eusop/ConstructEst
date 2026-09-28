@@ -14,10 +14,9 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 /**
- * Checkbox picker for adding materials to the active store's catalog (see
- * requirement 9's Store -> Material step). Already-stocked materials are
- * pre-checked and locked; Sand/Gravel are flagged "no brands" since they're
- * priced directly (requirement 13).
+ * Checkbox picker for adding materials to the active store's catalog (Store ->
+ * Material step). Already-stocked materials are pre-checked and locked;
+ * Sand/Gravel are marked "no brands" since they are priced directly.
  */
 function AddMaterialsDialog({ open, alreadyStocked, onClose, onSubmit }) {
   const isMobile = useIsMobile();

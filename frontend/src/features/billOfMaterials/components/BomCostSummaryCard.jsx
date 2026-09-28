@@ -18,20 +18,18 @@ function SummaryRow({ label, value, valueColor = 'common.white' }) {
 }
 
 /**
- * Dark cost breakdown: raw subtotal, the optimization saving applied, and
- * the final grand total against the project's budget ceiling — with the
- * "Download PDF report" action on the same row as the grand total, on the
- * opposite end.
+ * Dark cost breakdown: raw subtotal, the optimization saving, and the grand
+ * total against the budget ceiling, with the "Download PDF report" action on
+ * the same row as the grand total.
  *
  * @param {object} props
  * @param {string} props.subtotalLabel Formatted, e.g. "₱1,725,820".
- * @param {string} props.savingLabel Formatted, e.g. "–₱252,920".
+ * @param {string} props.savingLabel Formatted with a minus sign, e.g. "-₱252,920".
  * @param {string} props.grandTotalLabel Formatted, e.g. "₱1,472,900".
  * @param {string} props.ceilingDeltaLabel e.g. "₱127,100 under ceiling".
  * @param {boolean} props.withinBudget
- * @param {number} [props.missingCount] Materials the selected store doesn't carry —
- *   when > 0, grandTotal/the budget check only cover what it does sell, so that's
- *   disclosed here rather than left implicit.
+ * @param {number} [props.missingCount] Materials the selected store doesn't carry.
+ *   When > 0, grandTotal and the budget check only cover what it sells, so this is disclosed.
  * @param {() => void} props.onDownloadPdf
  */
 function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceilingDeltaLabel, withinBudget, missingCount = 0, onDownloadPdf }) {
@@ -79,10 +77,8 @@ function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceili
             flexShrink: 0,
             whiteSpace: 'nowrap',
             fontSize: { xs: '0.9rem', sm: '1.05rem' },
-            // Full-bleed primary CTA on phones, same convention as this
-            // app's other mobile "Continue" actions (Store Locator, Brand
-            // Selection) — was auto-width here, which on a narrow card
-            // left it looking undersized next to the grand total above it.
+            // Full-bleed primary CTA on phones, like the other mobile "Continue"
+            // actions. It was auto-width and looked undersized next to the total.
             width: { xs: '100%', sm: 'auto' },
             minHeight: { xs: 46, sm: 'auto' },
           }}

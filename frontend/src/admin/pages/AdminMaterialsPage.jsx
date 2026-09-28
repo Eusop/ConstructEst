@@ -36,8 +36,8 @@ import { ADMIN_ROUTES } from '../../routes/paths';
 import { colors } from '../../theme/palette';
 import { formatPeso as formatPesoAmount } from '../../utils/formatNumbers';
 
-// Keeps the "—" for an unpriced material (the shared helper treats null as 0,
-// which would read as a real ₱0.00 price here rather than "not set").
+// Keeps the dash placeholder for an unpriced material (the shared helper treats
+// null as 0, which would look like a real 0.00 price).
 function formatPeso(value) {
   if (value == null) return '—';
   return formatPesoAmount(value);
@@ -60,11 +60,9 @@ function AvailabilityChip({ available, sx }) {
 }
 
 // ---------------------------------------------------------------------
-// Mobile-only rendering (below `md`). Desktop's rows above are untouched —
-// these are dedicated compact cards, not the desktop row squeezed smaller:
-// no per-row category icon (it's the same generic icon on every row, pure
-// clutter at phone width), and edit/delete consolidated into one kebab
-// menu instead of two separate icon buttons.
+// Mobile-only rendering (below `md`). Desktop rows are untouched. These are
+// compact cards: no per-row category icon (the same on every row, clutter at
+// phone width), and edit/delete in one kebab menu instead of two icon buttons.
 // ---------------------------------------------------------------------
 
 function BulkMaterialMobileCard({ material, data, onOpenMenu }) {
@@ -178,11 +176,9 @@ function MaterialMobileCard({ material, data, isOpen, onToggle, onRemove, onOpen
 }
 
 /**
- * Materials & Brands: the store-specific catalog (Store -> Material ->
- * Brand -> Price -> Availability, requirement 11). Locked behind an active
- * store (requirement 10) and, once unlocked, behind the store actually
- * having materials added (requirement 12) — Sand/Gravel skip the brand
- * layer entirely (requirement 13).
+ * Materials & Brands: the store-specific catalog (Store -> Material -> Brand ->
+ * Price -> Availability). It is locked until a store is active, and until that
+ * store has materials added. Sand/Gravel skip the brand layer entirely.
  */
 function AdminMaterialsPage() {
   const navigate = useNavigate();
@@ -195,8 +191,8 @@ function AdminMaterialsPage() {
   const [addMaterialsOpen, setAddMaterialsOpen] = useState(false);
   const [brandDialog, setBrandDialog] = useState({ open: false, materialKey: null, brand: null });
   const [bulkDialog, setBulkDialog] = useState({ open: false, materialKey: null });
-  // Mobile-only row action menu (kebab) — one shared Menu for every bulk-
-  // material and brand row instead of a dialog/menu per row.
+  // Mobile-only row action menu (kebab): one shared Menu for every bulk-material
+  // and brand row, instead of a menu per row.
   const [rowMenu, setRowMenu] = useState(null);
 
   if (!activeStore) {
@@ -307,17 +303,11 @@ function AdminMaterialsPage() {
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Manage the materials, brands, prices, and availability for the active store.</Typography>
       </Box>
 
-      {/* Mobile: the dark navy card below is the one "themed" card on a page
-          that's otherwise all light/white cards (the materials list, the
-          empty state, every dialog) — stacked full-width "Change store" and
-          "Add Material" buttons underneath it also made it read as a header
-          plus two extra rows. Redesigned to match this app's ordinary white
-          card language (colored icon tile on a light card, used everywhere
-          else here): store info + a small "change store" icon action in one
-          row, one primary "Add Material" button below it. Functionality is
-          identical — same two click handlers, same navigation target. sm+
-          renders the completely untouched original dark card right after
-          this one. */}
+      {/* Mobile: the dark navy card below is the one themed card on an otherwise
+          light page, and stacked full-width buttons under it read as extra rows.
+          This version uses the app's ordinary white card style: store info and a
+          small "change store" icon in one row, then one primary "Add Material"
+          button. Same click handlers and navigation. sm+ keeps the dark card. */}
       <Paper
         elevation={0}
         sx={{
@@ -427,10 +417,9 @@ function AdminMaterialsPage() {
           <Stack spacing={{ xs: 1, sm: 1.5 }}>
             {stockedMaterials.map((material) => {
               const data = activeStore.materialData[material.key] ?? {};
-              // Collapsed by default on mobile (so opening the page doesn't
-              // dump every material's full brand list at once) — desktop's
-              // default-open behavior is untouched. Once a user has toggled
-              // a specific material, that explicit choice wins on both.
+              // Collapsed by default on mobile so opening the page doesn't dump every
+              // material's brand list. Desktop's default-open is unchanged. Once a
+              // material is toggled, that explicit choice wins on both.
               const isOpen = expanded[material.key] ?? !isMobile;
 
               if (isMobile) {
@@ -585,9 +574,8 @@ function AdminMaterialsPage() {
                               <Typography sx={{ order: 1, fontWeight: 700, fontSize: '0.9rem', minWidth: { xs: 0, sm: 140 } }}>
                                 {brand.name}
                               </Typography>
-                              {/* Mobile-only line break: force the price, then the
-                                  availability chip, each onto their own row —
-                                  invisible and inert at sm+, where the row never wraps. */}
+                              {/* Mobile-only line break: price and availability chip each get
+                                  their own row. No effect at sm+, where the row never wraps. */}
                               <Box sx={{ order: 2, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
                               <Typography
                                 sx={{
@@ -638,8 +626,8 @@ function AdminMaterialsPage() {
         </Paper>
       )}
 
-      {/* Mobile-only row action menu — shared by every bulk-material and
-          brand card's kebab button (see openRowMenu/closeRowMenu above). */}
+      {/* Mobile-only row action menu, shared by every bulk-material and brand
+          card's kebab button (see openRowMenu/closeRowMenu above). */}
       <Menu anchorEl={rowMenu?.anchorEl} open={Boolean(rowMenu)} onClose={closeRowMenu} disableScrollLock>
         {rowMenu?.kind === 'bulk' && [
           <MenuItem

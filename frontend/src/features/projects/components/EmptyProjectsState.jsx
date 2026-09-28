@@ -5,9 +5,7 @@ import Typography from '@mui/material/Typography';
 import FolderRoundedIcon from '@mui/icons-material/FolderRounded';
 import { colors } from '../../../theme/palette';
 
-/**
- * Shown on the Projects page when no projects have been created yet.
- */
+/** Shown on the Projects page when no projects exist yet. */
 function EmptyProjectsState() {
   return (
     <Paper

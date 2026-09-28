@@ -23,14 +23,11 @@ import { colors } from '../theme/palette';
 import { formatPeso } from '../utils/formatNumbers';
 
 /**
- * Brand Selection: choose which brand each shoppable material comes from,
- * either via an Automatic tier preset (Premium/Standard/Budget) or Manual
- * per-material dropdowns. Only usable once the active project has a
- * selected store — the available brands and prices come from that store's
- * real catalog (GET /api/projects/:id/brand-catalog), loaded into
- * brandOptionsCache so OptimizationTierCards/RecommendedBrandsSummary/
- * ManualBrandTable/computeBom all resolve against real data unchanged.
- * "Continue" persists the choice via POST /api/projects/:id/brand-selection.
+ * Brand Selection: choose the brand for each shoppable material, with an
+ * Automatic tier preset (Premium/Standard/Budget) or Manual dropdowns. It needs
+ * a selected store, since brands and prices come from that store's catalog
+ * (GET /api/projects/:id/brand-catalog, loaded into brandOptionsCache).
+ * "Continue" saves the choice with POST /api/projects/:id/brand-selection.
  */
 function BrandSelectionPage() {
   const { activeProject, updateActiveProject } = useProjects();
@@ -41,12 +38,9 @@ function BrandSelectionPage() {
   const [loadedForStoreId, setLoadedForStoreId] = useState(null);
   const catalogReady = storeId != null && loadedForStoreId === storeId;
   const [isSaving, setIsSaving] = useState(false);
-  // materialKey -> this store's real price, read off the backend's own BOM.
-  // Only actually consulted for materials with no brand options (sand and
-  // gravel), whose prices would otherwise come from BASE_PRICING's flat
-  // literals and disagree with what the store really charges. Null until it
-  // loads, and stays null if the request fails, which just falls back to the
-  // old behaviour rather than blocking the page.
+  // materialKey -> this store's real price, from the backend BOM. Only used for
+  // materials without brand options (sand, gravel), which would otherwise use
+  // BASE_PRICING's flat prices. Null until loaded or if the request fails.
   const [realUnitPrices, setRealUnitPrices] = useState(null);
 
   const initialSelection = activeProject?.brandSelection;
@@ -69,10 +63,8 @@ function BrandSelectionPage() {
         if (!cancelled) setLoadedForStoreId(storeId);
       });
 
-    // Separate request on purpose: the page stays usable if this one fails,
-    // and the totals just fall back to BASE_PRICING as before. The brand
-    // choices don't affect what we take from it (commodities have no brands),
-    // so it doesn't need refetching when the user changes a pick.
+    // Separate request so the page still works if it fails (totals fall back to
+    // BASE_PRICING). Brand picks don't change it, so it isn't refetched.
     apiRequest(`/projects/${activeProject.id}/bom?storeId=${storeId}`)
       .then(({ lineItems }) => {
         if (cancelled) return;
@@ -136,12 +128,8 @@ function BrandSelectionPage() {
   };
 
   return (
-    // Mobile: no longer stretches to fill the viewport (`flex:1`) — with
-    // Optimization tier cards/accordions now closed by default, that forced
-    // stretch left a large empty gap between the short collapsed content
-    // and the "Continue" button/card below it, instead of the content
-    // simply ending where it naturally does. sm+ keeps the original
-    // flex:1 behavior unchanged.
+    // Mobile: not stretched to fill the viewport (`flex:1`), since the tier
+    // cards are closed by default and it left an empty gap. sm+ keeps flex:1.
     <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
         <Box>
@@ -155,11 +143,9 @@ function BrandSelectionPage() {
       </Stack>
 
       {mode === 'automatic' ? (
-        // No flex:1/minHeight:0 here (unlike the manual branch below) — both
-        // children are natural-height content, not a bounded scroll panel,
-        // so forcing this wrapper to shrink to the outer Stack's flex share
-        // let it compute shorter than the actual card grid, spilling the
-        // "Continue" button below on top of the still-overflowing cards.
+        // No flex:1/minHeight:0 here (unlike the manual branch): both children are
+        // natural-height content, and shrinking this wrapper let the "Continue"
+        // button spill on top of the cards.
         <Stack spacing={2.5} sx={{ minWidth: 0 }}>
           <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} realUnitPrices={realUnitPrices} />
           <RecommendedBrandsSummary tierKey={tier} grandTotal={grandTotal} storeId={storeId} />
@@ -176,14 +162,8 @@ function BrandSelectionPage() {
             isSaving={isSaving}
           />
 
-          {/* Mobile only: a real white card (shadow, no fill-color-on-fill-
-              color blending) with the total called out in its own accent
-              box, then a full-width button — vs. before, where the card's
-              own background was nearly the same light blue as the page
-              behind it, so it read as plain floating text with no card
-              boundary at all rather than an actual card. sm+ now has its
-              own equivalent footer built into ManualBrandTable's own card
-              instead of a separate one here (see that component). */}
+          {/* Mobile only: a white card with the total in its own accent box, then
+              a full-width button. sm+ has its own footer inside ManualBrandTable. */}
           <Paper
             elevation={0}
             sx={{ display: { xs: 'block', sm: 'none' }, borderRadius: 3, bgcolor: 'common.white', boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)', p: 2 }}
@@ -228,11 +208,8 @@ function BrandSelectionPage() {
               bgcolor: colors.accentBlue,
               '&:hover': { bgcolor: colors.accentBlueDark },
               fontSize: { xs: '0.9rem', sm: '1.05rem' },
-              // Full-width primary CTA on phones — this tab's button was the
-              // one place left still sized to its label instead of matching
-              // the Manual tab's own mobile Continue button just above (and
-              // every other primary mobile CTA in the app, e.g. Store
-              // Locator's "Continue to Brand Selection"). sm+ unchanged.
+              // Full-width primary CTA on phones, like the Manual tab's Continue
+              // button and other mobile CTAs. sm+ unchanged.
               width: { xs: '100%', sm: 'auto' },
             }}
           >

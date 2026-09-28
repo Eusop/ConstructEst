@@ -13,8 +13,8 @@ import DxfDropzone from './DxfDropzone';
 import LayerNamesGuide from './LayerNamesGuide';
 import { colors } from '../../../theme/palette';
 
-// Mirrors BrandModeToggle's pill-track segmented-control styling, for a
-// consistent look between the two two-option toggles in the app.
+// Same pill-track segmented-control style as BrandModeToggle, so the two
+// two-option toggles look alike.
 const STOREYS_TOGGLE_SX = {
   bgcolor: 'grey.100',
   borderRadius: 999,
@@ -38,9 +38,9 @@ const STOREYS_TOGGLE_SX = {
 
 const FIELD_LABEL_SX = { fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.85rem' }, color: 'text.primary', mb: { xs: 0.5, sm: 0.75 } };
 
-// Strips everything but digits as the user types, then reformats with
-// thousands separators — keeps the stored value a clean numeric string
-// (e.g. "1,600,000") while making it impossible to enter letters/symbols.
+// Strips everything but digits while typing, then adds thousands separators,
+// so the stored value is a clean numeric string (e.g. "1,600,000") and letters
+// can't be entered.
 function formatBudgetInput(rawValue) {
   const digitsOnly = rawValue.replace(/[^\d]/g, '');
   if (!digitsOnly) return '';
@@ -49,12 +49,11 @@ function formatBudgetInput(rawValue) {
 
 /**
  * "Project details" card: name, location, budget ceiling, storeys (1/2) and
- * include-roofing toggles, the floor plan DXF dropzone (with its own
- * preview once a file validates), an optional second-floor DXF dropzone
- * (shown only for a 2-storey project — see DxfDropzone/ProjectsContext's
- * secondFloorFile), and the Cancel / Create & parse DXF actions at the
- * bottom. The submit button relies on being a descendant of the page's
- * <form> (see NewProjectPage) rather than owning its own submit handling.
+ * include-roofing toggles, the floor plan DXF dropzone (with preview once
+ * valid), an optional second floor dropzone (2-storey only, see DxfDropzone and
+ * ProjectsContext's secondFloorFile), and the Cancel / Create & parse DXF
+ * actions. The submit button relies on being inside the page's <form> (see
+ * NewProjectPage).
  *
  * @param {object} props
  * @param {object} props.form Current form values (projectName, location, budgetCeiling, storeys, includeRoofing, file, secondFloorFile).
@@ -64,18 +63,15 @@ function formatBudgetInput(rawValue) {
  * @param {(file: {name: string, sizeLabel: string}) => void} props.onFileSelect
  * @param {() => void} props.onFileRemove
  * @param {(result: object) => void} props.onFileValidation
- * @param {object} props.secondFloorFileValidation Same shape as `fileValidation`, for the optional second-floor dropzone (only rendered when `form.storeys === 2`).
+ * @param {object} props.secondFloorFileValidation Same shape as `fileValidation`, for the second floor dropzone (only rendered when `form.storeys === 2`).
  * @param {(file: {name: string, sizeLabel: string}) => void} props.onSecondFloorFileSelect
  * @param {() => void} props.onSecondFloorFileRemove
  * @param {(result: object) => void} props.onSecondFloorFileValidation
  * @param {() => void} props.onCancel
- * @param {{projectName?: string, location?: string, budgetCeiling?: string}} props.errors
- *   Validation messages per field, keyed the same as `form`.
- * @param {{projectName?: boolean, location?: boolean, budgetCeiling?: boolean}} props.touched
- *   Which required fields the user has already left (blurred) — errors only
- *   show for touched fields, so a fresh empty form doesn't look broken.
+ * @param {{projectName?: string, location?: string, budgetCeiling?: string}} props.errors Validation messages per field, keyed like `form`.
+ * @param {{projectName?: boolean, location?: boolean, budgetCeiling?: boolean}} props.touched Which required fields were already blurred. Errors only show for touched fields, so a fresh empty form doesn't look broken.
  * @param {(field: string) => void} props.onFieldBlur
- * @param {boolean} props.canSubmit Whether every required field is valid and the DXF (and, if attached, the second-floor DXF) has validated — gates the submit button.
+ * @param {boolean} props.canSubmit True when every required field is valid and the DXF (and the second floor DXF, if attached) validated. Gates the submit button.
  */
 function ProjectDetailsCard({
   form,
@@ -177,10 +173,9 @@ function ProjectDetailsCard({
               label={<Typography sx={{ fontSize: { xs: '0.82rem', sm: '0.88rem' }, color: 'text.primary' }}>Include roofing</Typography>}
             />
           </Stack>
-          {/* 2 storeys is the default, so a bungalow uploaded without switching
-              would get a second floor estimated from the ground floor (roughly
-              double the walls, slab and columns) with no error. The engine
-              can't tell floor count from one file, so this just says it. */}
+        {/* 2 storeys is the default, so a bungalow uploaded without switching would
+            get a second floor estimated from the ground floor (roughly double) with
+            no error. The engine can't tell floor count from one file, so this says it. */}
           {form.storeys === 2 && !form.secondFloorFile && (
             <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mt: 1 }}>
               With no second floor file, the second floor is estimated from the ground floor. Choose 1 storey for a

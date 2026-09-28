@@ -1,7 +1,6 @@
 /**
- * First letter of up to the first two words of a name, e.g. "Jordan Cruz"
- * -> "JC". Returns an empty string for a blank/missing name rather than a
- * hardcoded placeholder, so an avatar with no name set just renders empty.
+ * First letter of up to the first two words of a name, e.g. "Jordan Cruz" -> "JC".
+ * Returns an empty string for a blank name.
  *
  * @param {string|null|undefined} name
  */

@@ -51,9 +51,8 @@ export const register = asyncHandler(async (req, res) => {
   try {
     await sendVerificationCodeEmail(email, code);
   } catch (err) {
-    // If the email fails to send, delete the row instead of leaving a
-    // dead account behind (email/employeeId are unique, so it would block
-    // that person from ever registering again). Worst case they just retry.
+    // If the email fails, delete the new row. Otherwise the unique email and
+    // employeeId would block that person from registering again.
     await query('DELETE FROM users WHERE id = ?', [insertResult.insertId]);
     console.error('Failed to send verification email:', err);
     throw new HttpError(400, "We couldn't send a verification email to that address. Double-check it and try again.", 'EMAIL_SEND_FAILED');
@@ -84,9 +83,8 @@ export const login = asyncHandler(async (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier || !password) throw new HttpError(400, 'Email/Employee ID and password are required.');
 
-  // Still fetch the user even if they're pending/deactivated, so a wrong
-  // password gives the same generic error either way (no hinting whether
-  // the account exists).
+  // Fetch the user even if pending or deactivated, so a wrong password gives
+  // the same generic error either way.
   const [user] = await query(
     'SELECT * FROM users WHERE (email = ? OR employee_id = ?)',
     [identifier, identifier],
@@ -96,9 +94,8 @@ export const login = asyncHandler(async (req, res) => {
     throw new HttpError(401, 'Incorrect email/Employee ID or password.');
   }
 
-  // Check email verification first since that's the earliest step. An
-  // admin could technically approve an account before its email is
-  // verified, so login still needs to block on it separately.
+  // Check email verification first. An admin could approve an account before
+  // its email is verified, so login blocks on it separately.
   if (!user.email_verified_at) {
     throw new HttpError(403, 'Please verify your email before signing in.', 'EMAIL_NOT_VERIFIED', user.email);
   }
@@ -109,9 +106,8 @@ export const login = asyncHandler(async (req, res) => {
     throw new HttpError(403, 'This account has been deactivated.', 'ACCOUNT_DEACTIVATED');
   }
 
-  // Feeds the Admin Module's "online now" indicator — see
-  // db/migrations/015_users_last_seen.sql. Kept fresh afterward by a
-  // heartbeat while the session stays open (users.controller.js's heartbeat).
+  // Feeds the admin "online now" dot (migration 015). The heartbeat keeps it
+  // fresh afterward (users.controller.js).
   await query('UPDATE users SET last_seen_at = NOW() WHERE id = ?', [user.id]);
 
   const token = signToken(user);
@@ -173,8 +169,7 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
   }
 
   const code = generateVerificationCode();
-  // Send first, save after. If sending fails, the old code still works
-  // instead of getting wiped out for nothing.
+  // Send first, save after, so a failed send keeps the old code working.
   try {
     await sendVerificationCodeEmail(user.email, code);
   } catch (err) {
@@ -199,11 +194,9 @@ const FORGOT_PASSWORD_REPLY = 'If that email has an account, a reset code is on 
 /**
  * POST /auth/forgot-password { email }
  *
- * Always answers 200 with the same message, whether the address exists, is
- * unknown, or is on cooldown. That is the standard behaviour for this
- * endpoint: anything that distinguishes the cases turns it into a way to
- * enumerate registered users, and unlike login there is no password being
- * checked here to make guessing costly.
+ * Always answers 200 with the same message, whether or not the address has an
+ * account or is on cooldown. Any difference would let someone find out which
+ * emails are registered.
  */
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -211,8 +204,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   const [user] = await query('SELECT * FROM users WHERE email = ?', [email]);
 
-  // Every early return below still sends the same 200. Note none of them are
-  // errors from the caller's point of view.
+  // Every early return below still sends the same 200.
   if (!user) return res.json({ message: FORGOT_PASSWORD_REPLY });
 
   if (user.password_reset_last_sent_at) {
@@ -222,12 +214,11 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   const code = generateVerificationCode();
   try {
-    // Send before saving, same as resendVerificationCode: if the mail fails,
-    // any previous code stays usable rather than being wiped for nothing.
+    // Send before saving, same as resendVerificationCode, so a failed send
+    // keeps the previous code usable.
     await sendPasswordResetCodeEmail(email, code);
   } catch (err) {
-    // Swallowed on purpose. Reporting a send failure here would confirm the
-    // address exists, which is the one thing this endpoint must not reveal.
+    // Ignored on purpose: reporting a send failure would confirm the address exists.
     console.error('Failed to send password reset email:', err);
     return res.json({ message: FORGOT_PASSWORD_REPLY });
   }
@@ -244,11 +235,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 /**
  * POST /auth/reset-password { email, code, newPassword }
  *
- * Code checking mirrors verifyEmail exactly (expiry, attempt cap, same error
- * codes) so both flows behave identically for the user. Unlike
- * forgot-password above, this one does report real errors: by this point the
- * caller already holds a code that was emailed to that address, so there is
- * nothing left to hide.
+ * Checks the code the same way as verifyEmail (expiry, attempt cap, error
+ * codes). Unlike forgot-password it reports real errors, since the caller
+ * already holds a code that was emailed to that address.
  */
 export const resetPassword = asyncHandler(async (req, res) => {
   const { email, code, newPassword } = req.body;
@@ -277,8 +266,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     throw new HttpError(400, `Incorrect code. ${MAX_CODE_ATTEMPTS - attempts} attempt(s) left.`, 'INVALID_CODE');
   }
 
-  // Clearing the code in the same statement as the new hash is what stops it
-  // being replayed to set the password a second time.
+  // Clearing the code in the same statement stops it from being reused.
   const passwordHash = bcrypt.hashSync(newPassword, 10);
   await query(
     `UPDATE users SET password_hash = ?, password_reset_code = NULL,
@@ -287,9 +275,8 @@ export const resetPassword = asyncHandler(async (req, res) => {
     [passwordHash, user.id],
   );
 
-  // Same notification the logged-in change sends, so a reset the account
-  // owner did not ask for still reaches them. Not awaited into the response:
-  // the password is already changed either way.
+  // Same notification as the logged-in change. Not awaited: the password is
+  // already changed either way.
   sendPasswordChangedEmail(user.email, `${user.first_name} ${user.last_name}`.trim())
     .catch((err) => console.error('Could not send password-change notification:', err.message));
 

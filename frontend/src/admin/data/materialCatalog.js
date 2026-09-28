@@ -1,11 +1,9 @@
 /**
- * The fixed set of material types the system supports — one entry per
- * `material_key` the rule-based engine actually produces (see backend's
- * engine/formulas.py `material_meta` and db/seed.sql's material_brands
- * rows), so a brand added here lines up with the same key the Quantity
- * Take-off table, Brand Selection, and Bill of Materials already use. Sand
- * and Gravel are bulk commodities: priced/availability directly, no brand
- * selection (matches `is_commodity` in the materials schema).
+ * The fixed set of material types, one per `material_key` the engine produces
+ * (see `material_meta` in engine/formulas.py and the material_brands rows in
+ * db/seed.sql), so a brand added here matches the key used by the Quantity
+ * Take-off, Brand Selection and Bill of Materials. Sand and Gravel are bulk
+ * commodities: priced directly, with no brand selection (`is_commodity`).
  */
 export const MATERIAL_CATALOG = [
   { key: 'hollowBlocks', name: 'CHB (Concrete Hollow Blocks)', unit: 'pcs', bulk: false },

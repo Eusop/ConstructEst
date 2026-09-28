@@ -42,9 +42,8 @@ function validate(form, isEdit) {
 }
 
 /**
- * Add / Edit User dialog for AdminUsersPage — this is the "appropriate Add
- * User action" the User Management page keeps (see requirement to remove
- * the header's Add User button but not the ability to create users).
+ * Add / Edit User dialog for AdminUsersPage. This is the Add User action the
+ * User Management page keeps (the header's Add User button was removed).
  *
  * @param {object} props
  * @param {boolean} props.open
@@ -61,18 +60,14 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useAdminToast();
 
-  // Derived fresh from `form` every render (not stored in state) — see
-  // SignUpForm.jsx for why: it's what makes a shown error update live as
-  // you keep typing instead of freezing until the next submit click.
+  // Derived from `form` on every render (not in state), so an error updates
+  // while typing (see SignUpForm.jsx).
   const errors = validate(form, isEdit);
-  // Shows the instant there's content, not gated on blur alone — a browser
-  // autofilling name/email fields never fires a real blur event (see
-  // SignUpForm.jsx for the same fix and fuller explanation).
+  // Shown as soon as there is content, not only on blur, because browser
+  // autofill never fires a blur (see SignUpForm.jsx).
   const showError = (field) => {
     const hasContent = form[field]?.trim().length > 0;
-    // Returns the message itself (or '') so the same value drives both the
-    // error state and the helper text; it used to return `true`, so a field
-    // turned red without saying why.
+    // Returns the message (or '') so one value drives both the error state and the helper text.
     return errors[field] && (hasContent || touched[field] || submitAttempted) ? errors[field] : '';
   };
 

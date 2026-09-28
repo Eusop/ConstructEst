@@ -31,12 +31,11 @@ function validate(form) {
 }
 
 /**
- * Add / Edit Hardware Store dialog — Name/Address plus coordinates so the
- * store can plot on the map above (see AdminStoresPage). Coordinates are
- * set by clicking a point on the embedded map (click-to-drop-pin) — the
- * Latitude/Longitude fields below it update to match and stay editable for
- * typing/pasting an exact value directly; either way keeps the other in
- * sync since both read/write the same `form.lat`/`form.lng`.
+ * Add / Edit Hardware Store dialog: Name and Address plus coordinates so the
+ * store plots on the map (see AdminStoresPage). Click the embedded map to drop
+ * a pin; Latitude and Longitude update to match and stay editable for typing or
+ * pasting an exact value. Both read and write `form.lat`/`form.lng`, so they
+ * stay in sync.
  *
  * @param {object} props
  * @param {boolean} props.open
@@ -50,9 +49,8 @@ function StoreFormDialog({ open, store, defaultCenter, onClose, onSubmit }) {
   const isEdit = Boolean(store);
   const [form, setForm] = useState(() => buildForm(store, defaultCenter));
   const [errors, setErrors] = useState({});
-  // Where the map opens centered — captured once per open rather than
-  // tracking the picked point live, so clicking a new pin location doesn't
-  // recenter the view out from under the admin on every click.
+  // Where the map opens, captured once per open so clicking a new pin doesn't
+  // recenter the view under the admin.
   const [mapCenter, setMapCenter] = useState(() => (store ? { lat: store.lat, lng: store.lng } : defaultCenter));
 
   useEffect(() => {

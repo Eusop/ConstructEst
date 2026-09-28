@@ -5,10 +5,9 @@ import { useUser } from '../context/UserContext';
 import { ROUTES } from './paths';
 
 /**
- * Gates a layout route behind a specific `accessRole` (see UserContext).
- * Not authenticated -> Login. Authenticated but wrong role -> `redirectTo`
- * (each module's own dashboard), so an admin login can never end up
- * rendering User Module pages and vice versa.
+ * Limits a layout route to one `accessRole` (see UserContext). Not signed in
+ * goes to Login. Wrong role goes to `redirectTo` (that module's dashboard), so
+ * an admin never sees User Module pages and vice versa.
  */
 function RequireRole({ role, redirectTo, children }) {
   const { isAuthenticated, isLoading, accessRole } = useUser();

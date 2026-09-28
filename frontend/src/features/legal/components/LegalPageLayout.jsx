@@ -7,10 +7,8 @@ import Footer from '../../../layouts/Footer';
 import { colors } from '../../../theme/palette';
 
 /**
- * Shared chrome for the Terms of Service and Privacy Policy pages — same
- * Navbar/Footer as the landing page (so these read as real, navigable pages
- * rather than a bare content dump), a title, a "last updated" line, and a
- * simple stack of labeled sections.
+ * Shared layout for the Terms and Privacy pages: the landing page's Navbar and
+ * Footer, a title, a "last updated" line and a stack of labeled sections.
  *
  * @param {object} props
  * @param {string} props.title

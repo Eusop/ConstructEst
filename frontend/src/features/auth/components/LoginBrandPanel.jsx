@@ -13,10 +13,7 @@ const HIGHLIGHTS = [
   { icon: LocationOnRoundedIcon, color: colors.iconGreenFg, label: 'Compare nearby hardware stores' },
 ];
 
-/**
- * Dark brand/marketing panel shown alongside the Sign In form: brand mark,
- * headline, quick capability highlights, and a footer tagline.
- */
+/** Dark brand panel next to the Sign In form: brand mark, headline, capability highlights and a footer tagline. */
 function LoginBrandPanel() {
   return (
     <Box

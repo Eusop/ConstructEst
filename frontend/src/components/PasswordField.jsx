@@ -5,8 +5,8 @@ import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded';
 import FormTextField from './FormTextField';
 
 /**
- * Reusable password input — a FormTextField locked to type="password".
- * Forwards every other prop (value, onChange, name, error, helperText, etc.).
+ * Password input: a FormTextField locked to type="password". Other props
+ * (value, onChange, name, error, helperText, etc.) are forwarded.
  *
  * @param {object} props
  * @param {boolean} [props.showToggle=false] Show a visibility toggle icon
@@ -23,9 +23,8 @@ function PasswordField({ showToggle = false, sx, ...rest }) {
   return (
     <FormTextField
       type={visible ? 'text' : 'password'}
-      // Edge draws its own reveal (eye) button inside every password input;
-      // with this component's own toggle that showed two eye icons side by
-      // side. Hide the browser's so only ours remains.
+      // Edge adds its own reveal (eye) button, which showed two eyes next to
+      // this component's toggle. Hide the browser's.
       sx={[
         { '& input::-ms-reveal, & input::-ms-clear': { display: 'none' } },
         ...(Array.isArray(sx) ? sx : [sx]),

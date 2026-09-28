@@ -40,12 +40,9 @@ export const changePassword = asyncHandler(async (req, res) => {
   const passwordHash = bcrypt.hashSync(newPassword, 10);
   await query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, req.user.id]);
 
-  // Tell the account holder their password just changed — the standard way a
-  // real service flags a change nobody authorised, and the reason a plain
-  // current-password check is enough on its own without also emailing a code
-  // first. Deliberately not awaited into the response's success: the password
-  // IS already changed, so a mail failure must not report failure to someone
-  // who now has a new password.
+  // Email the user that their password changed, so they notice a change they
+  // did not make. The password is already changed, so a mail failure must
+  // not be reported as a failure.
   notifyPasswordChanged(user);
 
   res.json({ message: 'Password updated.' });
@@ -53,12 +50,7 @@ export const changePassword = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/users/me/avatar (multipart, field name `avatar`).
- *
- * Replaces the old behaviour where the frontend just did URL.createObjectURL()
- * and kept a blob: URL in React state — that pointed at a single browser
- * document, was never uploaded anywhere, and left users.avatar_url NULL, so
- * the photo vanished on the next login. Now the bytes actually land on disk
- * and the stored path survives a logout.
+ * Saves the photo on disk and stores its path, so it survives logout.
  */
 export const uploadProfilePhoto = asyncHandler(async (req, res) => {
   if (!req.file) throw new HttpError(400, 'No image was uploaded.');
@@ -67,9 +59,8 @@ export const uploadProfilePhoto = asyncHandler(async (req, res) => {
   const [previous] = await query('SELECT avatar_url FROM users WHERE id = ?', [req.user.id]);
   await query('UPDATE users SET avatar_url = ? WHERE id = ?', [avatarUrl, req.user.id]);
 
-  // Delete whatever the old photo was so replacing it repeatedly doesn't pile
-  // up orphaned files. Best-effort: a missing/already-deleted file is fine,
-  // and losing the cleanup is never worth failing the upload over.
+  // Delete the old photo so replacing it does not leave orphaned files.
+  // Best effort: a missing file is fine and should not fail the upload.
   removeStoredAvatar(previous?.avatar_url);
 
   const [user] = await query('SELECT * FROM users WHERE id = ?', [req.user.id]);
@@ -77,17 +68,15 @@ export const uploadProfilePhoto = asyncHandler(async (req, res) => {
 });
 
 /**
- * PUT /api/users/me/heartbeat — no body, no response content. Polled
- * periodically by the frontend (see UserContext.jsx) while a session stays
- * open, so the Admin Module's "online now" indicator (last_seen_at within
- * the last ~90s) stays accurate beyond just the moment of login.
+ * PUT /api/users/me/heartbeat (no body, no response content). The frontend
+ * polls it (see UserContext.jsx) so the admin "online now" dot stays accurate.
  */
 export const heartbeat = asyncHandler(async (req, res) => {
   await query('UPDATE users SET last_seen_at = NOW() WHERE id = ?', [req.user.id]);
   res.status(204).end();
 });
 
-/** DELETE /api/users/me/avatar — back to the generated initials. */
+/** DELETE /api/users/me/avatar: goes back to the generated initials. */
 export const removeProfilePhoto = asyncHandler(async (req, res) => {
   const [previous] = await query('SELECT avatar_url FROM users WHERE id = ?', [req.user.id]);
   await query('UPDATE users SET avatar_url = NULL WHERE id = ?', [req.user.id]);
@@ -99,8 +88,8 @@ export const removeProfilePhoto = asyncHandler(async (req, res) => {
 
 function removeStoredAvatar(avatarUrl) {
   if (!avatarUrl) return;
-  // Only ever unlink inside the avatars folder, and only the basename, so a
-  // stored value that somehow contained a path can't reach anything else.
+  // Only unlink inside the avatars folder, and only the basename, so a bad
+  // stored path can't reach other files.
   const filename = path.basename(avatarUrl);
   fs.rm(path.join(AVATAR_DIR, filename), { force: true }, () => {});
 }

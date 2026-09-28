@@ -12,13 +12,10 @@ import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 import { formatPeso } from '../../../utils/formatNumbers';
 
-// Only materials this project's estimation actually needs (see
-// getAvailableMaterialKeys) — not the app-wide static list, which still
-// includes e.g. roofing even for a project that's toggled it off. Falls
-// back to the store's cheapest option for a key the tier hasn't set a
-// choice for yet, then drops anything that still can't resolve (defensive
-// — shouldn't happen since availableMaterialKeys already means options
-// exist) rather than rendering with an undefined option.
+// Only materials this project's estimation needs (see getAvailableMaterialKeys),
+// not the app-wide list (which has roofing even when turned off). Falls back to
+// the store's cheapest option when the tier has no choice for a key, then drops
+// anything that still can't resolve (defensive).
 function resolveMaterials(choices, storeId) {
   return getAvailableMaterialKeys(storeId)
     .map((materialKey) => {
@@ -29,15 +26,11 @@ function resolveMaterials(choices, storeId) {
 }
 
 /**
- * Automatic-mode body: "Recommended brands · {tier}" + the 4 brand-
- * selectable materials resolved against the chosen tier's price, plus the
- * live estimated total.
- *
- * Mobile only: the whole thing collapses into one tappable summary row
- * (name/tier + total, no material list) instead of always showing all 14
- * materials — expanding it is an explicit choice instead of the page
- * defaulting to a long scroll. Desktop/tablet render the original always-
- * expanded layout, completely unchanged.
+ * Automatic-mode body: "Recommended brands · {tier}", the 4 brand-selectable
+ * materials priced at the chosen tier, and the live estimated total. On mobile
+ * it collapses into one tappable summary row (name/tier and total, no material
+ * list) so the page isn't a long scroll by default. Desktop/tablet keep the
+ * always-expanded layout.
  *
  * @param {object} props
  * @param {string} props.tierKey
@@ -64,13 +57,9 @@ function RecommendedBrandsSummary({ tierKey, grandTotal, storeId }) {
           expandIcon={<ExpandMoreRoundedIcon />}
           sx={{ py: 0.5, '& .MuiAccordionSummary-content': { my: 1, alignItems: 'center' } }}
         >
-          {/* Redesigned closed state: the tier name reads as its own clear
-              label with a "tap to view all" hint instead of the slightly
-              awkward "Recommended · Standard" concatenation, and the total
-              is now the visually dominant element (accent color, its own
-              label directly above it) since that's the number people are
-              actually scanning for — not competing on equal footing with
-              the tier name the way it did before. */}
+          {/* Closed state: the tier name is its own label with a "tap to view all"
+              hint, and the total is the dominant element (accent color, own label
+              above) since that is the number people scan for. */}
           <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', width: '100%', minWidth: 0, gap: 1.5, pr: 1 }}>
             <Box sx={{ minWidth: 0 }}>
               <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.92rem', color: 'text.primary' }}>

@@ -16,10 +16,8 @@ import DXFPreview from '../../../components/DXFPreview';
 import { isDxfFilename, parseDxfFile } from '../../../services/dxfParserService';
 import { colors } from '../../../theme/palette';
 
-// Fixed footprint for the dropzone/preview box — matches its current
-// natural size (icon + two lines of helper text with py:4 padding) so the
-// box never resizes when it swaps from the upload placeholder to the
-// rendered floor plan preview.
+// Fixed footprint for the dropzone/preview box (icon plus two lines of helper
+// text) so it doesn't resize when the placeholder swaps to the floor plan preview.
 const DROPZONE_HEIGHT = 172;
 const PREVIEW_CANVAS_HEIGHT = 144;
 
@@ -58,13 +56,11 @@ function ValidationBadge({ status, message }) {
 }
 
 /**
- * Drag-and-drop (or browse) target for the project's floor plan DXF.
- * Validates the selected file (extension, then that it actually parses)
- * immediately on selection, shows the result as a status badge below, and
- * — once valid — crossfades the same box's content from the upload
- * placeholder to the rendered floor plan preview. The box itself keeps a
- * fixed footprint in both states so swapping content never resizes or
- * shifts the surrounding layout; only what's drawn inside it changes.
+ * Drag-and-drop (or browse) target for the floor plan DXF. It checks the file
+ * (extension, then that it parses) as soon as it is selected, shows the result
+ * as a status badge, and once valid crossfades from the upload placeholder to
+ * the floor plan preview. The box keeps a fixed footprint in both states so the
+ * layout doesn't shift.
  *
  * @param {object} props
  * @param {{name: string, sizeLabel: string} | null} props.file Currently attached file (display metadata only).
@@ -79,15 +75,13 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
   const theme = useTheme();
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  // Phone-only (below `sm` = 600px) — tablet and up keep the exact original
-  // fixed footprint untouched.
+  // Phone-only (below `sm` = 600px); tablet and up keep the fixed footprint.
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
   const dropzoneHeight = isPhone ? 150 : DROPZONE_HEIGHT;
   const previewCanvasHeight = isPhone ? 122 : PREVIEW_CANVAS_HEIGHT;
 
-  // Same reason as handleRemove below, for when the file is cleared from
-  // outside (the New Project form resetting its draft): otherwise picking
-  // the same file again after the reset does nothing.
+  // Same reason as handleRemove below, for when the file is cleared from outside
+  // (the New Project form resetting): otherwise picking the same file again does nothing.
   useEffect(() => {
     if (!file && inputRef.current) inputRef.current.value = '';
   }, [file]);
@@ -115,17 +109,15 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
   const handleRemove = () => {
     onFileRemove();
     onFileValidation({ status: 'idle', message: '' });
-    // Reset so re-selecting the exact same file still fires a change event
-    // — without this, browsers treat "same file, same value" as a no-op.
+    // Reset so re-selecting the same file still fires a change event (browsers
+    // treat the same value as a no-op).
     if (inputRef.current) inputRef.current.value = '';
   };
 
   const showPreview = fileValidation.status === 'valid' && Boolean(fileValidation.bounds);
-  // `visibility` is included alongside `opacity` so the outgoing layer is
-  // truly hidden (not just transparent) once its fade-out finishes —
-  // browsers delay a visibility:hidden switch until the transition
-  // completes, while a switch to visible applies immediately, so the
-  // crossfade still looks identical.
+  // `visibility` goes with `opacity` so the fading-out layer is truly hidden
+  // once done (browsers delay a switch to hidden until the transition ends, and
+  // a switch to visible applies immediately, so the crossfade looks the same).
   const layerTransition = theme.transitions.create(['opacity', 'visibility'], {
     easing: theme.transitions.easing.easeInOut,
     duration: theme.transitions.duration.enteringScreen,
@@ -243,11 +235,9 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
             }}
           >
             <InsertDriveFileRoundedIcon sx={{ color: colors.iconGreenFg, fontSize: { xs: 18, sm: 20 }, flexShrink: 0 }} />
-            {/* `minWidth: 0` is what actually lets this flex item shrink
-                below its text's natural width — without it, a long file
-                name just pushes past the card's border on narrow phones
-                instead of truncating. Tablet/desktop (`sm`+) keep the
-                original untruncated, non-shrinking behavior exactly. */}
+            {/* `minWidth: 0` lets this flex item shrink below its text width, so a long
+                file name truncates on narrow phones instead of pushing past the card.
+                `sm`+ keeps the untruncated behavior. */}
             <Typography
               sx={{
                 fontSize: { xs: '0.78rem', sm: '0.85rem' },

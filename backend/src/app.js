@@ -19,12 +19,9 @@ app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// Profile photos are the one upload served as plain static files, because an
-// <img src> can't send an Authorization header the way the authenticated
-// quotation download does. Only the avatars subfolder is mounted, never the
-// whole uploads directory — DXFs and supplier quotations stay private. File
-// names are fully generated (see upload.js), so a URL can't be guessed from
-// a person's name and reveals nothing about the original file.
+// Profile photos are served as static files because <img src> can't send an
+// Authorization header. Only the avatars folder is mounted, so DXFs and
+// supplier quotations stay private. File names are generated (see upload.js).
 app.use('/uploads/avatars', express.static(AVATAR_DIR, { fallthrough: true, maxAge: '1h' }));
 
 app.use('/api/auth', authRoutes);

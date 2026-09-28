@@ -26,20 +26,13 @@ function validate(draft) {
 }
 
 /**
- * "New project" form: a single, full-width Project details card (name,
- * location, budget ceiling, DXF upload + preview, and the Cancel / Create
- * & parse DXF actions). Frontend-only for now — submitting creates the
- * project (making it active) and navigates to the (simulated) processing
- * page instead of persisting anything for real.
+ * "New project" form: one Project details card (name, location, budget ceiling,
+ * DXF upload and preview, Cancel and Create & parse DXF). Submitting creates
+ * the project (making it active) and goes to the Processing page.
  *
- * Form values live in ProjectsContext's draft. The draft is cleared every
- * time this page is opened, including clicking New Project while already
- * on it (each click is a new location.key). Before, it was only cleared by a
- * successful create, so leaving the form and coming back later showed the
- * old name and files. Cancel parsing isn't affected: creating a project
- * already cleared the draft, so it always came back to an empty form.
- * Field-level validation errors and "has this field been touched" state
- * stay local to this page — they're purely transient UI state.
+ * Form values live in ProjectsContext's draft, which is cleared every time this
+ * page opens (including clicking New Project while already here, since each
+ * click is a new location.key). Field errors and "touched" state stay local.
  */
 function NewProjectPage() {
   const {
@@ -59,13 +52,13 @@ function NewProjectPage() {
 
   useEffect(() => {
     resetDraft();
-    setTouched({});
+    // Deferred a tick (see MapView.jsx) instead of setting state in the effect body.
+    queueMicrotask(() => setTouched({}));
   }, [locationKey, resetDraft]);
 
   const isFileValid = fileValidation.status === 'valid';
-  // The second floor file is always optional — an empty/untouched second
-  // dropzone never blocks submission, but an attached-and-invalid one does,
-  // so a bad file can't silently get dropped instead of fixed or removed.
+  // The second floor file is optional. Empty never blocks submit, but an
+  // attached invalid file does, so a bad file can't be silently dropped.
   const isSecondFloorFileValid = !draft.secondFloorFile || secondFloorFileValidation.status === 'valid';
   const errors = validate(draft);
   const isFormValid = Object.keys(errors).length === 0;

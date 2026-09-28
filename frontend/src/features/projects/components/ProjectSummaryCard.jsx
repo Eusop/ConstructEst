@@ -15,11 +15,11 @@ function SummaryRow({ label, value }) {
 }
 
 /**
- * Read-only snapshot of the project currently being parsed.
+ * Read-only snapshot of the project being parsed.
  *
  * @param {object} props
  * @param {object} props.draft Project-shaped object (projectName, location, storeys,
- *   includeRoofing, budgetCeiling) — the active project while parsing.
+ *   includeRoofing, budgetCeiling): the active project while parsing.
  */
 function ProjectSummaryCard({ draft }) {
   return (

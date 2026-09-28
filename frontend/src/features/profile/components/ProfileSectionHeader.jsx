@@ -3,9 +3,9 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 /**
- * Small icon-tile + title + subtitle header, used to introduce each section
- * of the Profile card (Personal Information, Change Password) — matches the
- * icon-tile convention already used elsewhere (e.g. Dashboard's StatCard).
+ * Small icon tile, title and subtitle header for each section of the Profile
+ * card (Personal Information, Change Password). Same icon-tile style as the
+ * Dashboard StatCard.
  *
  * @param {object} props
  * @param {React.ElementType} props.icon

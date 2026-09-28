@@ -6,10 +6,8 @@ import LoginBrandPanel from './LoginBrandPanel';
 import ResetPasswordForm from './ResetPasswordForm';
 
 /**
- * Reset Password card — same two-panel shell as LoginCard/SignUpCard. Reuses
- * LoginBrandPanel as-is for the left panel rather than writing a third
- * near-identical marketing panel — its copy is generic enough to sit behind
- * any auth screen.
+ * Reset Password card: same two-panel shell as LoginCard and SignUpCard.
+ * Reuses LoginBrandPanel for the left panel, since its copy fits any auth screen.
  */
 function ResetPasswordCard() {
   return (

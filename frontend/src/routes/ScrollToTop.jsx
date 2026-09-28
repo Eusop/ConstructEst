@@ -1,9 +1,8 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-// Resets scroll position on every route change. Without this, the browser
-// keeps whatever scrollY the previous page was at, so navigating from a
-// scrolled-down page lands you mid-way down the next one instead of the top.
+// Scrolls to the top on every route change. Otherwise the next page opens
+// at the previous page's scroll position.
 function ScrollToTop() {
   const { pathname } = useLocation();
 

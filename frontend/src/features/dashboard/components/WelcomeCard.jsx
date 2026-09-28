@@ -21,26 +21,13 @@ function getFormattedDate() {
 }
 
 /**
- * Dashboard greeting card: time-of-day greeting + today's date. Sits full
- * width above the three project stat cards (see DashboardPage) at every
- * breakpoint — deliberately a short, wide bar rather than a tall block, and
- * styled apart from the plain white StatCards below it (a brand-orange
- * gradient instead of white, white text instead of the usual text.primary/
- * text.secondary pair) so it reads as the dashboard's welcoming header
- * rather than a fifth metric tile. Both stops of the gradient stay within
- * the darker half of the brand's orange (orange -> orangeDark) so white text
- * keeps strong contrast across the whole card, not just at one corner.
- *
- * The icon-tile-plus-text group sits toward the left of the card (the
- * Paper's own padding is what keeps it off the edge, not extra margin),
- * with each line of text left-aligned against the other — the horizontal
- * room this card has now goes toward that left column, not toward a
- * taller card or bigger type. Both lines of text are always shown, phones
- * included: unlike the project stat cards
- * (which do get a phone-specific compact treatment, see StatCard's `dense`
- * prop), the greeting and date read fine at a modest phone type scale
- * without needing to drop anything, and wrap naturally if the viewport is
- * narrow enough that they don't fit on one line.
+ * Dashboard greeting card: a time-of-day greeting and today's date. It is a
+ * short, wide bar full width above the stat cards at every breakpoint, styled
+ * differently from them (brand-orange gradient, white text) so it reads as a
+ * header, not a fifth metric. Both gradient stops stay in the darker half of
+ * the orange (orange to orangeDark) so white text keeps contrast. The icon tile
+ * and text sit to the left, left-aligned. Both lines show on phones too and
+ * wrap if the viewport is narrow.
  */
 function WelcomeCard() {
   const { userName } = useUser();

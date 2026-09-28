@@ -10,10 +10,9 @@ import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
 
 /**
- * Shown on Brand Selection when the active project has no store chosen yet
- * — the available brands/prices come from the selected store's catalog
- * (see getStoreBrandOptions), so Automatic/Manual mode and the material
- * grid have nothing meaningful to render until one is picked.
+ * Shown on Brand Selection when no store is chosen yet. Brands and prices come
+ * from the selected store's catalog (see getStoreBrandOptions), so there is
+ * nothing to show until one is picked.
  */
 function NoStoreSelectedState() {
   return (

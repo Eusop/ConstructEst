@@ -5,8 +5,8 @@ import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import { colors } from '../../../theme/palette';
 
 /**
- * Automatic (tier presets) / Manual (per-material dropdowns) segmented
- * toggle for Brand Selection.
+ * Segmented toggle for Brand Selection: Automatic (tier presets) or Manual
+ * (per-material dropdowns).
  *
  * @param {object} props
  * @param {'automatic'|'manual'} props.mode

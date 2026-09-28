@@ -9,10 +9,9 @@ const OPTIONS = [
 ];
 
 /**
- * All / Complete / Incomplete segmented filter for the Projects page's
- * project list — same pill-toggle treatment as BrandModeToggle (grey.100
- * track, white-and-accent-blue selected pill), so it reads as the same
- * kind of control elsewhere in the app rather than a new pattern.
+ * All / Complete / Incomplete segmented filter for the Projects list. Same
+ * pill-toggle style as BrandModeToggle (grey.100 track, white and accent-blue
+ * selected pill), so it reads as the same kind of control.
  *
  * @param {object} props
  * @param {'all'|'complete'|'incomplete'} props.value

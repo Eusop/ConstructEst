@@ -1,10 +1,9 @@
 import { apiRequest } from './apiClient';
 
 /**
- * Thin wrappers over the backend's `/api/users/*` endpoints (see
- * backend/src/controllers/users.controller.js) — the signed-in user's own
- * profile/password, as opposed to authService.js's pre-session `/auth/*`
- * endpoints or adminService.js's admin-only `/admin/*` ones.
+ * Wrappers over the backend's `/api/users/*` endpoints (see users.controller.js):
+ * the signed-in user's own profile and password. authService.js has the
+ * pre-session `/auth/*` calls and adminService.js the `/admin/*` ones.
  */
 export async function updateProfileRequest({ firstName, lastName, email }) {
   const { user } = await apiRequest('/users/me', { method: 'PUT', body: { firstName, lastName, email } });
@@ -16,11 +15,8 @@ export async function changePasswordRequest({ currentPassword, newPassword }) {
 }
 
 /**
- * Uploads the actual image bytes and returns the updated user, whose
- * `avatarUrl` is a real server path. Previously the page only ever held a
- * `blob:` URL from URL.createObjectURL(), which pointed at one browser
- * document and left the database column NULL — so the photo disappeared on
- * the next login.
+ * Uploads the image and returns the updated user, whose `avatarUrl` is a real
+ * server path (a blob: URL would be lost on the next login).
  */
 export async function uploadAvatarRequest(file) {
   const form = new FormData();
@@ -35,9 +31,8 @@ export async function removeAvatarRequest() {
 }
 
 /**
- * Polled periodically while a session stays open (see UserContext.jsx) so
- * the Admin Module's "online now" indicator reflects more than just the
- * moment of login. No response body — a 204.
+ * Polled while a session is open (see UserContext.jsx) so the admin "online
+ * now" dot stays accurate. No response body (204).
  */
 export async function sendHeartbeat() {
   return apiRequest('/users/me/heartbeat', { method: 'PUT' });

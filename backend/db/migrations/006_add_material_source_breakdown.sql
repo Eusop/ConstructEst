@@ -1,11 +1,8 @@
--- Adds per-source categorization to estimation results: which floor (or
--- "roofing"/"shared" for whole-building elements like columns/footings)
--- each material's quantity actually came from (see engine/formulas.py's
--- SOURCE_CATEGORIES / MaterialAccumulator.by_category), plus the per-floor
--- wall length/floor area breakdown for 2-storey projects uploaded with a
--- separate ground-floor and second-floor DXF. All columns are nullable —
--- a project computed before this change, or one that only ever used a
--- single DXF, simply leaves them NULL; nothing existing changes shape.
+-- Adds per-source breakdown to estimation results: which floor (or
+-- "roofing"/"shared" for columns and footings) each quantity came from (see
+-- SOURCE_CATEGORIES in formulas.py), plus per-floor wall length and floor area
+-- for projects with two DXF files. All columns are nullable, so older
+-- projects are unchanged.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/006_add_material_source_breakdown.sql

@@ -21,8 +21,8 @@ import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
 import { colors } from '../../theme/palette';
 
-// Same Tarlac City default center the User Module's Store Locator uses, so
-// the map opens somewhere sensible before any store has been added.
+// Same Tarlac City default center as the User Module's Store Locator, so the
+// map opens somewhere sensible before any store is added.
 const DEFAULT_CENTER = { lat: 15.4802, lng: 120.5979 };
 
 function ProfileReviewRow({ label, value }) {
@@ -36,9 +36,8 @@ function ProfileReviewRow({ label, value }) {
   );
 }
 
-// Shown inside the Deactivate/Reactivate TypedConfirmDialog below — mirrors
-// AdminUsersPage's UserProfileReview so an admin reviews exactly which store
-// they're acting on before the typed word unlocks the button.
+// Shown inside the Deactivate/Reactivate TypedConfirmDialog (like AdminUsersPage's
+// UserProfileReview) so the admin sees which store they're acting on.
 function StoreProfileReview({ store, intro }) {
   if (!store) return null;
   return (
@@ -57,10 +56,9 @@ function StoreProfileReview({ store, intro }) {
 }
 
 /**
- * Hardware Stores: the required first step before Materials & Brands can be
- * managed (requirements 9/10). Add or edit via StoreFormDialog
- * (Name/Address/click-to-drop-pin coordinates), see them plotted on the
- * map, then "Set active & manage" hands off into Materials & Brands for
+ * Hardware Stores: the required first step before Materials & Brands. Add or
+ * edit a store with StoreFormDialog (Name, Address, click-to-drop-pin
+ * coordinates), see it on the map, then hand off into Materials & Brands for
  * that store.
  */
 function AdminStoresPage() {
@@ -71,8 +69,8 @@ function AdminStoresPage() {
   const [editingStore, setEditingStore] = useState(null);
   const [detailsStoreId, setDetailsStoreId] = useState(null);
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
-  // Both directions of the active/inactive toggle are gated behind a typed
-  // word (DEACTIVATE / REACTIVATE) — mirrors AdminUsersPage's identical flow.
+  // Both directions of the active/inactive toggle need a typed word
+  // (DEACTIVATE / REACTIVATE), like AdminUsersPage.
   const [pendingToggleActiveStore, setPendingToggleActiveStore] = useState(null);
 
   const detailsStore = stores.find((store) => store.id === detailsStoreId) ?? null;

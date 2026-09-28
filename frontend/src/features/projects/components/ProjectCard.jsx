@@ -11,10 +11,8 @@ import { isProjectComplete } from '../utils/projectStatus';
 import { colors } from '../../../theme/palette';
 
 /**
- * One project in the Projects list. Clicking it (anywhere but Delete) makes
- * it the active project — the source every downstream workspace page
- * (Material Estimation, Store Locator, Brand Selection, Bill of Materials)
- * reads from.
+ * One project in the Projects list. Clicking it (except Delete) makes it the
+ * active project, which every workspace page reads from.
  *
  * @param {object} props
  * @param {object} props.project
@@ -23,12 +21,9 @@ import { colors } from '../../../theme/palette';
  * @param {() => void} props.onDeleteRequest
  */
 function ProjectCard({ project, active, onSelect, onDeleteRequest }) {
-  // Display-only simplification of the real status (Parsing/Estimated/
-  // Optimized/Failed, see ProjectsContext) down to the two labels the
-  // Projects page shows (see isProjectComplete for what "Complete" means).
-  // The underlying `project.status` itself is untouched: every other page
-  // (Material Estimation, Bill of Materials, Brand Selection, ...) still
-  // reads and checks against the real value.
+  // Display only: simplifies the real status (Parsing/Estimated/Optimized/Failed,
+  // see ProjectsContext) to the two labels this page shows (see isProjectComplete).
+  // `project.status` itself is unchanged, and other pages still check the real value.
   const statusLabel = isProjectComplete(project) ? 'Complete' : 'Incomplete';
 
   return (

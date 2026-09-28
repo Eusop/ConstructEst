@@ -4,12 +4,10 @@ import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import { colors } from '../../../theme/palette';
 
 /**
- * Small pill showing which store Brand Selection's prices are quoted
- * against (the store chosen on Store Locator). Renders nothing if no store
- * has been selected yet. Hidden below `sm` — on the narrowest phones the
- * header has no room for it alongside the page title without squeezing the
- * title down to a sliver; the selected store is still visible in the page
- * body itself there, this is just a header convenience.
+ * Small pill showing which store Brand Selection's prices are quoted against
+ * (chosen on Store Locator). Renders nothing if no store is selected. Hidden
+ * below `sm`: on narrow phones there's no room next to the page title, and the
+ * store is still shown in the page body.
  *
  * @param {object} props
  * @param {string} [props.storeName]

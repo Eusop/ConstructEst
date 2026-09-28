@@ -1,13 +1,11 @@
-/* Leaflet's own stylesheet hardcodes "Helvetica Neue" on its root container,
-   which would otherwise override the app-wide Sora font (set on <body> via
-   the MUI theme) for zoom controls, attribution, and tooltip labels. */
+/* Leaflet hardcodes "Helvetica Neue" on its container, which would override
+   the app font (Sora) for zoom controls, attribution and tooltips. */
 .leaflet-container {
   font-family: inherit;
 }
 
-/* Strips Leaflet's default tooltip chrome (white box + border + arrow) for
-   marker labels — the original Google Maps version rendered its label text
-   directly on top of the marker icon, not in a separate speech-bubble. */
+/* Removes Leaflet's default tooltip box, border and arrow so marker labels
+   show as plain text on the marker icon. */
 .leaflet-tooltip.map-marker-label {
   background: transparent;
   border: none;
@@ -22,11 +20,9 @@
   display: none;
 }
 
-/* Phone-only map chrome. Leaflet's attribution renders at its desktop size
-   here, which on a ~390px map is wide enough to wrap onto a second line and
-   sit over the tiles instead of tucking into the corner. Shrinking it keeps
-   the required OpenStreetMap credit fully visible (no truncation) on one
-   line. `sm` and up (600px+) keep Leaflet's stock sizing. */
+/* Phone-only: Leaflet's attribution wraps onto two lines on a ~390px map and
+   covers the tiles. Shrinking it keeps the required OpenStreetMap credit fully
+   visible on one line. `sm` and up (600px+) use the stock size. */
 @media (max-width: 599.98px) {
   .leaflet-control-attribution {
     font-size: 9px;

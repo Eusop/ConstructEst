@@ -11,22 +11,16 @@ import { colors } from '../../../theme/palette';
 
 const ALLOWED_EXTENSIONS = /\.(jpe?g|png|webp)$/i;
 const INVALID_FILE_MESSAGE = 'Only JPG, JPEG, PNG, and WebP image files are allowed.';
-// Matches MAX_AVATAR_BYTES in backend/src/middleware/upload.js. Checked here
-// too so an oversized file is refused instantly instead of after the upload.
+// Matches MAX_AVATAR_BYTES in backend/src/middleware/upload.js. Checked here too
+// so an oversized file is refused before the upload.
 const MAX_BYTES = 2 * 1024 * 1024;
 
 /**
- * Profile page header: a big circular avatar (the uploaded photo, or initials
- * once a name is set — never a hardcoded placeholder identity), the display
- * name + "@employeeId", and the photo actions.
- *
- * Picking a file only *previews* it; nothing is sent until "Save photo" is
- * pressed, which is what the separate `onAvatarSave` is for. It used to
- * commit on selection, but only into React state — the preview was a `blob:`
- * URL that was never uploaded, so the photo silently disappeared at the next
- * login. The preview URL is owned here now (revoked when replaced or on
- * unmount) rather than being handed to UserContext, since it never leaves
- * this component.
+ * Profile page header: a large circular avatar (the uploaded photo, or initials
+ * once a name is set), the display name and "@employeeId", and the photo
+ * actions. Picking a file only previews it; nothing is sent until "Save photo",
+ * which is what `onAvatarSave` is for. The preview URL is owned here (revoked
+ * when replaced or on unmount) since it never leaves this component.
  *
  * @param {object} props
  * @param {string} props.fullName
@@ -42,7 +36,7 @@ function ProfileAvatarSection({ fullName, employeeId, avatarUrl, onAvatarSave, i
   const [previewUrl, setPreviewUrl] = useState(null);
 
   // Object URLs hold the file in memory until revoked, so each one is released
-  // as soon as it is replaced, and the last one on unmount.
+  // when replaced, and the last on unmount.
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
@@ -144,8 +138,8 @@ function ProfileAvatarSection({ fullName, employeeId, avatarUrl, onAvatarSave, i
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'center', alignItems: 'center', mt: 2.5 }}>
         {pendingFile ? (
-          // Only shown once something is actually staged, so this section has
-          // no save button competing for attention the rest of the time.
+          // Only shown once something is staged, so there is no save button competing
+          // for attention the rest of the time.
           <>
             <Button
               onClick={handleSave}

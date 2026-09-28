@@ -27,15 +27,12 @@ function formatDateTime(value) {
 }
 
 /**
- * Admin activity backlog — a real, persisted history of what admins have
- * done (see backend/src/controllers/admin.controller.js's logAdminActivity
- * and the admin_activity_log table), categorized into the two tabs below.
- *
- * Deliberately read-only: this page has no edit or delete control anywhere,
- * and the backend never exposes a route that could change or remove an
- * entry — every row here is the actual, permanent record of what happened,
- * not the ephemeral session-only "Recent activity" widget on the Dashboard
- * (see AdminActivityContext, which is unrelated and left untouched).
+ * Admin activity log: a saved history of what admins have done (see
+ * logAdminActivity in admin.controller.js and the admin_activity_log table),
+ * split into the two tabs below. Read-only: there is no edit or delete control
+ * here, and the backend has no route that could change an entry. This is the
+ * permanent record, not the session-only "Recent activity" widget on the
+ * Dashboard (see AdminActivityContext).
  */
 function AdminActivityLogPage() {
   const [category, setCategory] = useState(CATEGORIES[0].value);
@@ -51,9 +48,8 @@ function AdminActivityLogPage() {
 
   useEffect(() => {
     let cancelled = false;
-    // Deferred a tick so this isn't a synchronous setState call inside the
-    // effect body (see MapView.jsx for the same fix) — fires on the next
-    // microtask, well before paint, so there's no visible flicker.
+    // Deferred a tick so it isn't a synchronous setState in the effect body (see
+    // MapView.jsx). It runs before paint, so there is no flicker.
     queueMicrotask(() => {
       if (!cancelled) setIsLoading(true);
     });
@@ -84,14 +80,9 @@ function AdminActivityLogPage() {
         <Tabs
           value={category}
           onChange={(event, value) => setCategory(value)}
-          // scrollable rather than the default standard variant — at the
-          // narrowest phones (320px) "User Management" + "Store Management"
-          // don't both fit and the second tab was clipped against the
-          // card's edge. scrollable only changes anything when content
-          // actually overflows its own row, so this is a no-op everywhere
-          // both labels already fit (360px and up, and every tablet/desktop
-          // width, which all have far more room than two short tab labels
-          // need).
+          // `scrollable` instead of the default: at 320px "User Management" and
+          // "Store Management" don't both fit and the second tab was clipped. It only
+          // matters when the tabs overflow, so it does nothing at 360px and up.
           variant="scrollable"
           scrollButtons={false}
           sx={{ px: { xs: 1.5, md: 2.5 }, pt: 1, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}

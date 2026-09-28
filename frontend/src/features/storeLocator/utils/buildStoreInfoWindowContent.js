@@ -1,12 +1,9 @@
 import { colors } from '../../../theme/palette';
 import { formatPeso } from '../../../utils/formatNumbers';
 
-// This popup is built as a raw HTML string (see buildStoreInfoWindowContent's
-// own comment below for why), so anything that came from the database -
-// store name, address, etc, set through the admin panel - has to be escaped
-// before it goes in. Otherwise a store name like <img src=x onerror=...>
-// would actually execute in every user's browser who opens that popup, not
-// just render as text.
+// The popup is a raw HTML string (see below), so database values (store name,
+// address, set in the admin panel) must be escaped. Otherwise a name like
+// <img src=x onerror=...> would run in every user's browser that opens the popup.
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -17,11 +14,9 @@ function escapeHtml(value) {
 }
 
 /**
- * Builds the HTML string shown inside a store marker's map popup (Leaflet,
- * via MapView). Popup content has to be plain HTML (it's rendered outside
- * React's tree), so this stays a small template-string builder rather than
- * a component — kept in Store Locator's own utils since the generic
- * MapView component has no knowledge of what a "store" is.
+ * Builds the HTML string shown in a store marker's map popup (Leaflet, via
+ * MapView). Popup content must be plain HTML (rendered outside React), so this is
+ * a small template builder, kept here because MapView knows nothing about stores.
  *
  * @param {object} store One entry from features/storeLocator/data/storesCache.
  */
@@ -30,11 +25,8 @@ export function buildStoreInfoWindowContent(store) {
     ? `<div style="color:${colors.iconGreenFg};font-weight:600;font-size:12px;margin-top:6px;">✓ ${escapeHtml(store.stockLabel)}</div>`
     : `<div style="color:${colors.orange};font-weight:600;font-size:12px;margin-top:6px;">⚠ ${escapeHtml(store.stockLabel)}</div>`;
 
-  // No per-material price breakdown at this level — GET /projects/:id/stores
-  // only returns each store's aggregate optimized total (Table 20); the
-  // itemized per-material prices used to be assumed here from an older mock
-  // shape that never matched what the real endpoint returns, so this popup
-  // just shows the total instead of a (never-actually-populated) price table.
+  // No per-material price breakdown: GET /projects/:id/stores only returns each
+  // store's total (Table 20), so the popup shows just the total.
   const totalLine = store.totalCost
     ? `<div style="font-weight:700;font-size:14px;color:${colors.textPrimary};margin-top:8px;">${formatPeso(store.totalCost)}</div>`
     : '';

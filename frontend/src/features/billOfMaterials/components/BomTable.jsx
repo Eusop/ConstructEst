@@ -61,15 +61,10 @@ function BomMobileCard({ item }) {
 }
 
 /**
- * Final priced material list — material, brand actually sourced, quantity,
- * unit price, and line amount.
- *
- * Renders as a bare content section (no card chrome of its own) — it's
- * composed inside the Bill of Materials page's single parent card alongside
- * the subtotal and download-report sections, not used as a standalone card.
- *
- * Below `md`, swaps the table for one card per line item instead of
- * horizontally scrolling a shrunk desktop table — see BomMobileCard above.
+ * Final priced material list: material, brand sourced, quantity, unit price and
+ * line amount. It is a bare section (no card of its own) inside the Bill of
+ * Materials page's parent card. Below `md` it shows one card per item instead
+ * of a horizontally scrolling table (see BomMobileCard above).
  *
  * @param {object} props
  * @param {Array<{key: string, material: string, brand: string, spec: string|null, available: boolean, quantityLabel: string, unitPrice: number|null, amount: number|null}>} props.items
@@ -79,18 +74,14 @@ function BomTable({ items }) {
 
   return (
     <>
-      {/* Below `md`: the same 14-16 line items as the desktop table, but
-          grouped into the same Structural/Roofing/Formwork & Scaffolding
-          accordions used elsewhere in this flow (Manual Brand Selection,
-          Quantity Take-off) instead of one long flat stack of cards — the
-          single biggest contributor to this page's mobile length. */}
+      {/* Below `md`: the same line items grouped into the Structural / Roofing /
+          Formwork & Scaffolding accordions used elsewhere in this flow, instead
+          of one long stack of cards. */}
       <Stack spacing={1.25} sx={{ display: { xs: 'flex', md: 'none' } }}>
         {categoryGroups.map((group) => (
           <Accordion
             key={group.label}
-            // Every group starts closed on mobile — the user taps whichever
-            // category they want to look at instead of the first one
-            // opening automatically.
+            // Every group starts closed on mobile; the user opens the one they want.
             disableGutters
             elevation={0}
             sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}

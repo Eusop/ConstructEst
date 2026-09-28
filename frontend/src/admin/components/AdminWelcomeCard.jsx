@@ -18,22 +18,12 @@ function getFormattedDate() {
 }
 
 /**
- * Admin dashboard greeting card — the Admin Module's counterpart to the User
- * Module's WelcomeCard (see features/dashboard/components/WelcomeCard),
- * kept as its own component rather than reused directly because the text
- * differs: this always reads "..., Admin" (there's no per-admin display
- * name shown here, unlike the User Module's real userName) and keeps the
- * Admin Dashboard's own existing date format (`Sat, September 19, 2026` —
- * month before day) rather than the User Module's (`Sat, 19 September
- * 2026`). Everything else — the orange gradient, icon treatment, sizing,
- * spacing, and border radius — is copied byte-for-byte from WelcomeCard's
- * current design (both its `sm`+ values, used in this dashboard's unchanged
- * desktop/tablet 2x2 grid, and its `xs` values, used when AdminDashboardPage
- * renders this full-width on phones instead) so the two dashboards' top-left
- * card read as the same design at every breakpoint. In particular, the
- * phone subtitle is no longer dropped (WelcomeCard stopped doing that too)
- * and content is left-aligned rather than centered, matching WelcomeCard's
- * own current layout.
+ * Admin dashboard greeting card, the Admin counterpart of the User Module's
+ * WelcomeCard. It is a separate component because the text differs: it always
+ * reads "..., Admin" and uses the admin dashboard's date format (`Sat,
+ * September 19, 2026`, month before day). The design (orange gradient, icon,
+ * sizes, spacing, radius) matches WelcomeCard at every breakpoint, including
+ * left-aligned content and the subtitle staying visible on phones.
  */
 function AdminWelcomeCard() {
   return (

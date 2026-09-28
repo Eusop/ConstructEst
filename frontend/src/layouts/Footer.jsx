@@ -9,10 +9,7 @@ import BrandMark from '../components/BrandMark';
 import { colors } from '../theme/palette';
 import { ROUTES } from '../routes/paths';
 
-/**
- * Public marketing-site footer: brand mark + tagline, and a final
- * "Create free account" call to action.
- */
+/** Public marketing footer: brand mark, tagline and a "Create free account" call to action. */
 function Footer() {
   return (
     <Box component="footer" sx={{ bgcolor: colors.ctaBackground }}>

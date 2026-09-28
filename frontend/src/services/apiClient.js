@@ -1,8 +1,6 @@
 /**
- * Thin fetch wrapper for the ConstructEst backend (see ../../backend). Every
- * other service file (authService, dxfParserService, the mock-data modules
- * being swapped for real fetches) goes through this one place for the base
- * URL, auth header, and error shape — so none of them duplicate that logic.
+ * Thin fetch wrapper for the ConstructEst backend. All service files use it
+ * for the base URL, auth header and error shape.
  */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const TOKEN_KEY = 'constructest_token';
@@ -27,7 +25,8 @@ export function getAuthToken() {
   return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
 }
 
-/** `persist: true` (the "Keep me signed in" checkbox) survives browser restarts; otherwise the token clears when the tab closes. */
+/** `persist: true` ("Keep me signed in") keeps the token after the browser closes;
+ * otherwise it clears when the tab closes. */
 export function setAuthToken(token, persist = true) {
   clearAuthToken();
   (persist ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
@@ -59,7 +58,7 @@ export async function apiRequest(path, { method = 'GET', body, isMultipart = fal
   try {
     data = await response.json();
   } catch {
-    // No/invalid JSON body (e.g. 204 No Content) — fine, data stays null.
+    // No or invalid JSON body (e.g. 204): data stays null.
   }
 
   if (!response.ok) {
@@ -70,13 +69,12 @@ export async function apiRequest(path, { method = 'GET', body, isMultipart = fal
 }
 
 /**
- * Fetches a file behind an authenticated route and hands the browser a save
- * prompt for it — a plain `<a href>` can't carry the Bearer token these
- * routes require (see admin.controller.js's downloadQuotation), so this
- * pulls it down as a blob first and triggers the download itself.
+ * Downloads a file from an authenticated route. A plain `<a href>` can't send
+ * the Bearer token (see downloadQuotation in admin.controller.js), so this
+ * fetches it as a blob and triggers the download.
  *
  * @param {string} path e.g. '/admin/quotations/172...-quote.pdf'
- * @param {string} [filename] Suggested save-as name; defaults to whatever the path's last segment is.
+ * @param {string} [filename] Suggested save-as name; defaults to the path's last segment.
  */
 export async function downloadFile(path, filename) {
   const headers = {};
@@ -89,7 +87,7 @@ export async function downloadFile(path, filename) {
     try {
       message = (await response.json())?.message || message;
     } catch {
-      // No/invalid JSON body — keep the generic message.
+      // No or invalid JSON body: keep the generic message.
     }
     throw new ApiError(response.status, message);
   }

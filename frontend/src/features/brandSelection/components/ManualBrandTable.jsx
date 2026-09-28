@@ -22,8 +22,8 @@ import { groupMaterialsByCategory } from '../../../data/materialCategories';
 import { formatPeso } from '../../../utils/formatNumbers';
 import { colors } from '../../../theme/palette';
 
-// Fixed widths + tableLayout: 'fixed' below stop the table (and page)
-// from shifting width when a longer/shorter brand name gets picked.
+// Fixed widths and tableLayout: 'fixed' below keep the table from changing
+// width when a longer or shorter brand name is picked.
 const COLUMNS = [
   { label: 'MATERIAL', width: '16%' },
   { label: 'SELECTED BRAND', width: '32%' },
@@ -35,9 +35,8 @@ const COLUMNS = [
 // Truncates instead of wrapping, keeps every row the same height.
 const TRUNCATE_SX = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
-// MUI's TextField defaults to 1rem font, way bigger than the rest of this
-// page's 0.7-0.85rem scale, so everything here is sized down to match.
-// Desktop's table below is untouched.
+// MUI's TextField defaults to 1rem, much bigger than this page's 0.7-0.85rem
+// scale, so everything here is sized down. Desktop's table is untouched.
 function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, estimatedCost }) {
   const options = getStoreBrandOptions(storeId, materialKey);
   const selectedOption = options.find((option) => option.id === choices[materialKey]) ?? options[0];
@@ -93,17 +92,12 @@ function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, est
 }
 
 /**
- * Manual mode: per-material brand dropdown, live price/supplier for
- * whatever's picked. Fixed column widths + truncation so picking a
- * different option never resizes the table.
- *
- * Desktop/tablet (`sm`+) only: the "Estimated total" + "Continue to Bill of
- * Materials" action lives inside this same card now, as a footer that
- * doesn't scroll with the table — the table/list above it is its own
- * `overflow: auto` region (`flex: 1`), while this footer sits below it with
- * `flexShrink: 0`, so scrolling the list can never carry the total/button
- * out of view. Mobile keeps its own separate full-width card for this
- * below this one instead (see BrandSelectionPage) — unchanged by this.
+ * Manual mode: a brand dropdown per material with the live price and supplier.
+ * Fixed column widths and truncation keep the table from resizing. On
+ * desktop/tablet (`sm`+) the "Estimated total" and "Continue to Bill of
+ * Materials" sit in a footer inside this card (`flexShrink: 0`), below the
+ * scrolling table (`flex: 1`, `overflow: auto`), so they never scroll out of
+ * view. Mobile has its own full-width card for this (see BrandSelectionPage).
  *
  * @param {object} props
  * @param {Record<string, string>} props.choices materialKey -> brandOptionId
@@ -115,8 +109,8 @@ function MaterialMobileCard({ materialKey, storeId, choices, onChoiceChange, est
  * @param {boolean} [props.isSaving]
  */
 function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems, grandTotal, onContinue, isSaving = false }) {
-  // Only materials this project actually needs, not the full static list
-  // (which still has roofing even if the project toggled it off).
+  // Only materials this project needs, not the full static list (which still
+  // has roofing even when the project turned it off).
   const availableMaterialKeys = getAvailableMaterialKeys(storeId);
   const categoryGroups = groupMaterialsByCategory(availableMaterialKeys.map((key) => ({ key })));
 
@@ -127,10 +121,8 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems, grandTo
         borderRadius: 3,
         bgcolor: 'common.white',
         boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-        // `overflow: hidden` here (clipping to the rounded corners) instead
-        // of the scrolling itself — that moved to the inner Box below, so
-        // the sm+ footer can sit outside the scrollable region without
-        // itself scrolling away.
+        // `overflow: hidden` clips to the rounded corners. The scrolling moved to
+        // the inner Box below, so the sm+ footer sits outside the scroll region.
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -138,19 +130,15 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems, grandTo
         minWidth: 0,
       }}
     >
-      {/* The actual scrollable region: mobile's accordion list or desktop's
-          table, whichever this breakpoint shows. 'auto' scrolls instead of
-          clipping rows off the bottom when the list is taller than the
-          card (same fix as QuantityTakeoffTable.jsx) — `minHeight` keeps a
-          reasonable minimum on desktop even when the list is short. */}
+      {/* The scrollable region (mobile accordions or desktop table). 'auto' scrolls
+          instead of clipping rows when the list is taller than the card (same as
+          QuantityTakeoffTable.jsx). `minHeight` keeps a minimum on desktop. */}
       <Box sx={{ overflow: 'auto', flex: 1, minHeight: { xs: 0, md: 320 } }}>
         <Stack spacing={1.25} sx={{ display: { xs: 'flex', md: 'none' }, p: { xs: 1.5, sm: 2.5 } }}>
           {categoryGroups.map((group) => (
             <Accordion
               key={group.label}
-              // Every group starts closed on mobile — the user taps whichever
-              // category they want to look at instead of the first one
-              // opening automatically.
+              // Every group starts closed on mobile; the user opens the one they want.
               disableGutters
               elevation={0}
               sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
@@ -261,9 +249,7 @@ function ManualBrandTable({ choices, onChoiceChange, storeId, lineItems, grandTo
       </Box>
 
       {/* Desktop/tablet only: pinned to the bottom of this card, outside the
-          scrollable Box above, so it never scrolls out of view. Mobile
-          keeps its own separate full-width card below this one instead
-          (see BrandSelectionPage) — unaffected by this. */}
+          scrollable Box above. Mobile has its own card (see BrandSelectionPage). */}
       <Stack
         direction="row"
         spacing={2}

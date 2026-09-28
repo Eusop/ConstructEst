@@ -24,10 +24,9 @@ import { useToast } from '../context/ToastContext';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
 
-// Total simulated duration and each step's share of it. Swap
-// useSimulatedParsing for a real backend-polling hook later — everything
-// below only depends on its { percent, activeIndex, isComplete } return
-// shape, not on how progress is produced.
+// Total simulated duration and each step's share. useSimulatedParsing can be
+// swapped for a real polling hook later; the rest only uses its
+// { percent, activeIndex, isComplete } return shape.
 const DURATION_MS = 10000;
 
 function buildSteps(draft) {
@@ -106,11 +105,9 @@ function buildSteps(draft) {
 }
 
 /**
- * Shown right after "Create & parse DXF" while the parsing job runs.
- * By this point `createProjectFromDraft()` has already run (see
- * NewProjectPage), so this page reads the active project, not the draft —
- * the draft was reset the moment the project was created. Automatically
- * moves on to the results page once parsing completes, marking the active
+ * Shown right after "Create & parse DXF" while parsing runs. `createProjectFromDraft()`
+ * has already run (see NewProjectPage), so this page reads the active project, not
+ * the draft. It moves on to the results page when parsing completes and marks the
  * project 'Estimated'.
  */
 function ProjectProcessingPage() {
@@ -144,13 +141,9 @@ function ProjectProcessingPage() {
 
   return (
     <Box>
-      {/* Mobile: dropped — the header above already reads "Processing" (see
-          DashboardLayout's mobile title for this route), and the ring +
-          headline in the card just below repeats the same "what's
-          happening" info, so this was redundant height with nothing else
-          to balance against. Desktop keeps it: there the header is a full
-          "Projects > name > Processing" breadcrumb instead, so this is the
-          only place that names the page in plain language. */}
+      {/* Mobile: dropped, since the header already says "Processing" and the ring
+          card below repeats it. Desktop keeps it: its header is a breadcrumb, so
+          this is the only place naming the page in plain words. */}
       <Box sx={{ display: { xs: 'none', md: 'block' } }}>
         <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
           Processing your project

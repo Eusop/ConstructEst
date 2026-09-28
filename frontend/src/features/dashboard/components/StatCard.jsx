@@ -9,31 +9,14 @@ import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import { colors } from '../../../theme/palette';
 
 /**
- * Reusable dashboard summary card, split into two sections: a colored icon
- * panel on the left (filled with `iconBg`, the same tint every icon tile in
- * the app already pairs with `iconFg` — just extended to the full height of
- * the card instead of a small inset tile, so the color reads as part of the
- * card's own structure rather than a floating chip) and the label/value on
- * a plain white panel to its right. The outer card clips both to one
- * rounded rectangle (`overflow: hidden`), so the left panel is only ever
- * rounded on its own outer corners — the seam between the two stays a
- * flat edge, not a second boxed shape (there's a border around the whole
- * card, see below, but never between its two internal sections).
- *
- * The border + shadow together are deliberately a bit more present than
- * this app's usual `0 2px 10px rgba(20,30,60,0.06)` card shadow (used
- * elsewhere against a plain white page background) — this card's colored
- * left panel already provides some contrast, but the plain-white right
- * panel sat directly on the dashboard's pale-blue page background
- * (`heroBackground`, close to white itself) with nothing but that faint
- * shadow separating the two, so the card read as blending into the page
- * rather than sitting on top of it. Both stay soft/diffuse, not a hard or
- * dramatic elevation.
- *
- * Also carries an optional "View All" affordance in the top-right corner
- * (text on tablet/desktop; a small eye icon on phones whenever `dense` or
- * `iconOnMobile` is set, see below) — that's positioned against the card as
- * a whole, so it lands on the white section regardless.
+ * Dashboard summary card in two sections: a colored icon panel on the left
+ * (`iconBg`, full card height) and the label and value on a white panel on
+ * the right. The outer card clips both to one rounded rectangle
+ * (`overflow: hidden`), so the seam between them stays a flat edge. The
+ * border and shadow are a bit stronger than the usual card shadow, since the
+ * white right panel sat on a near-white page background and blended in. Also
+ * has an optional "View All" link in the top-right (text on tablet/desktop, a
+ * small eye icon on phones when `dense` or `iconOnMobile` is set).
  *
  * @param {object} props
  * @param {string} props.label
@@ -42,18 +25,8 @@ import { colors } from '../../../theme/palette';
  * @param {string} props.iconFg Icon colour.
  * @param {React.ReactNode} props.value
  * @param {string} [props.viewAllTo] Route to link to; omit to hide the "View All" link.
- * @param {boolean} [props.dense] Tighter padding/icon/type sizes on phones only (`xs`) —
- *   for a 2-per-row grid instead of this card's usual full-width phone layout. `sm` and up
- *   are untouched either way, so tablet/desktop looks identical regardless of this flag.
- *   Not currently used by either dashboard (both use the full-width phone carousel — see
- *   ProjectStatsSection — instead of a 2-per-row phone grid), kept for any future card
- *   that does need that denser phone layout. Also switches the phone "View All" to the eye
- *   icon (see `iconOnMobile` below) — a dense card is always narrow enough to need it.
- * @param {boolean} [props.iconOnMobile] Independent of `dense`: swaps "View All" for the
- *   eye icon on phones without touching padding/icon/type sizing. For a phone context
- *   that isn't a cramped 2-per-row cell — e.g. both dashboards' mobile carousel, where each
- *   card gets nearly the full viewport width — but should still use the same compact icon
- *   affordance rather than a wider text link.
+ * @param {boolean} [props.dense] Tighter padding, icon and type on phones (`xs`) only, for a 2-per-row grid. `sm`+ is unchanged. No dashboard uses it now (both use the phone carousel); kept for a future denser layout. Also switches the phone "View All" to the eye icon.
+ * @param {boolean} [props.iconOnMobile] Swaps "View All" for the eye icon on phones without changing sizes (used by the mobile carousel, where cards are nearly full width).
  */
 function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo, dense = false, iconOnMobile = false }) {
   const showMobileIcon = dense || iconOnMobile;
@@ -74,12 +47,9 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo, dense =
     >
       {viewAllTo && (
         <>
-          {/* Phones only, and only when `showMobileIcon` (`dense` or
-              `iconOnMobile`): a small tappable eye icon instead of the
-              "View All" text, so it reads as "view" without needing the
-              width a text link would take. IconButton's own hit-area
-              padding keeps this easy to tap even though the eye glyph
-              itself stays small. */}
+          {/* Phones only, when `showMobileIcon` (`dense` or `iconOnMobile`): a small tappable
+              eye icon instead of the "View All" text, which needs more width. The
+              IconButton's padding keeps it easy to tap. */}
           <Tooltip title="View All">
             <IconButton
               component={RouterLink}
@@ -98,8 +68,8 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo, dense =
             </IconButton>
           </Tooltip>
 
-          {/* Tablet/desktop always, and phones only when `showMobileIcon` is
-              false — unchanged "View All" text link. */}
+          {/* Tablet/desktop always, and phones when `showMobileIcon` is false:
+              the "View All" text link. */}
           <Link
             component={RouterLink}
             to={viewAllTo}
@@ -119,12 +89,8 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo, dense =
         </>
       )}
 
-      {/* Left: the colored panel. Width is deliberately tied to the same
-          padding scale the right panel uses below (icon size + two lots of
-          that padding), so the icon keeps the exact same breathing room
-          around it that it always has — this section is proportioned off
-          existing spacing tokens rather than an arbitrary fraction of the
-          card. */}
+      {/* Left: the colored panel. Its width follows the right panel's padding
+          scale (icon size plus two paddings), so the icon keeps its usual room. */}
       <Box
         sx={{
           flexShrink: 0,
@@ -138,8 +104,7 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo, dense =
         <Icon sx={{ color: iconFg, fontSize: { xs: dense ? 20 : 24, sm: 28 } }} />
       </Box>
 
-      {/* Right: label + value on white, vertically centered against the
-          icon panel's height. */}
+      {/* Right: label and value on white, vertically centered against the icon panel. */}
       <Box
         sx={{
           flex: 1,
@@ -151,12 +116,9 @@ function StatCard({ label, icon: Icon, iconBg, iconFg, value, viewAllTo, dense =
           pr: viewAllTo ? { xs: showMobileIcon ? 3.5 : 6.5, sm: 6.5 } : undefined,
         }}
       >
-        {/* `noWrap` (an ellipsis-on-overflow single line) is what this label
-            used everywhere before `dense` existed — kept byte-for-byte at
-            `sm`+ regardless of `dense`. At a dense phone width there isn't
-            room for e.g. "Completed Projects" on one line without
-            truncating it into nonsense, so that one slot allows a normal
-            wrap instead. */}
+        {/* `noWrap` (single line with ellipsis) is what this label always used and
+            stays at `sm`+. On a dense phone card there isn't room for e.g.
+            "Completed Projects" on one line, so that slot may wrap. */}
         <Typography
           sx={{
             color: 'text.secondary',

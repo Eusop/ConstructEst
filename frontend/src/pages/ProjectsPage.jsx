@@ -13,10 +13,9 @@ import { isProjectComplete } from '../features/projects/utils/projectStatus';
 import { ROUTES } from '../routes/paths';
 
 /**
- * Projects: the full list of created projects. Clicking a card makes it
- * the active project — what every workspace page (Material Estimation,
- * Store Locator, Brand Selection, Bill of Materials) then reads from.
- * Empty by default; no sample/placeholder rows.
+ * Projects: the list of created projects. Clicking a card makes it the active
+ * project, which every workspace page (Material Estimation, Store Locator,
+ * Brand Selection, Bill of Materials) reads from. Empty by default.
  */
 function ProjectsPage() {
   const { projects, activeProjectId, setActiveProject, deleteProject } = useProjects();
@@ -27,9 +26,8 @@ function ProjectsPage() {
 
   const pendingDeleteProject = projects.find((project) => project.id === pendingDeleteId) ?? null;
 
-  // Same Complete/Incomplete split ProjectCard's own status tag uses (see
-  // isProjectComplete) — this just decides which cards are shown, the tag
-  // itself is unchanged.
+  // Same Complete/Incomplete split as ProjectCard's status tag (isProjectComplete);
+  // this only decides which cards are shown.
   const filteredProjects = projects.filter((project) => {
     if (statusFilter === 'complete') return isProjectComplete(project);
     if (statusFilter === 'incomplete') return !isProjectComplete(project);
@@ -52,16 +50,10 @@ function ProjectsPage() {
   };
 
   // Same root cause and fix as ProjectResultsPage: `flex: 1, minHeight: 0`
-  // makes this Stack stretch to fill the remaining viewport height, which
-  // is exactly what EmptyProjectsState wants (it centers itself within
-  // that height) — but once there are enough project cards to make this
-  // page taller than the viewport, that same stretch is what silently
-  // absorbed DashboardLayout's own bottom padding instead of letting it
-  // show below the last card, leaving the list flush against the bottom
-  // edge. Scoped to only the empty case (`projects.length === 0`) rather
-  // than removed outright, so the empty state keeps its current stretched/
-  // centered look exactly as before — the populated list just gets plain
-  // natural-height flow instead, the same fix already applied there.
+  // stretches this Stack to the viewport, which EmptyProjectsState wants (it
+  // centers itself). With many cards it swallowed DashboardLayout's bottom
+  // padding, so it is only applied when `projects.length === 0`; a populated
+  // list uses natural-height flow.
   const fillsViewport = projects.length === 0;
 
   return (

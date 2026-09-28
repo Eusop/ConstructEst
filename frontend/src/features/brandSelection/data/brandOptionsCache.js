@@ -1,23 +1,17 @@
 /**
- * Live cache of one store's real brand catalog, populated by
- * `loadBrandCatalog(storeId, catalog)` (called from BrandSelectionPage
- * after fetching GET /api/projects/:id/brand-catalog) — OptimizationTierCards,
- * RecommendedBrandsSummary, ManualBrandTable, and computeBom.js all read
- * `getStoreBrandOptions`/`OPTIMIZATION_TIERS` synchronously each render, so
- * populating the cache here is all that's needed for real per-store prices
- * to flow through the whole Brand Selection / BOM chain unchanged.
+ * Live cache of one store's real brand catalog, filled by
+ * `loadBrandCatalog(storeId, catalog)` (called from BrandSelectionPage after
+ * GET /api/projects/:id/brand-catalog). OptimizationTierCards,
+ * RecommendedBrandsSummary, ManualBrandTable and computeBom.js read
+ * `getStoreBrandOptions`/`OPTIMIZATION_TIERS` each render, so filling the cache
+ * here is all it takes for real per-store prices to flow through.
  */
 
-// Sand/gravel are commodities with no brand catalog (see the backend's
-// material_brands.is_commodity), so they never get a per-store price from
-// getStoreBrandOptions the way every other material does. These flat 1300/1250
-// literals are the seeded BASE price, i.e. store 1's — every other store
-// applies its own multiplier (seed.sql), so using them as the real price made
-// the Brand Selection totals and the Bill of Materials disagree with the
-// Store Locator by ~P1.5-2.4k on a 2-storey house. Both pages now pass the
-// store's real prices into computeBom as `realUnitPrices`, read off the
-// backend's own BOM; these stay only as the fallback for when that request
-// fails, so a hiccup degrades to the old numbers instead of showing P0.
+// Sand and gravel are commodities with no brand catalog (backend
+// material_brands.is_commodity), so getStoreBrandOptions has no per-store price
+// for them. These flat 1300/1250 values are store 1's base price; other stores
+// apply a multiplier (seed.sql). Both pages pass the store's real prices to
+// computeBom as `realUnitPrices`; these are only the fallback when that request fails.
 export const BASE_PRICING = {
   hollowBlocks: { brand: '', category: 'Masonry' },
   cement: { brand: '', category: 'Cementitious' },
@@ -56,8 +50,8 @@ export const BRAND_MATERIAL_SHORT_LABELS = {
 
 export const BRAND_SELECTABLE_MATERIAL_KEYS = Object.keys(BRAND_MATERIAL_SHORT_LABELS);
 
-// materialKey -> array of { id, brand, spec, price, quality, supplier } for
-// whichever store was last loaded.
+// materialKey -> array of { id, brand, spec, price, quality, supplier } for the
+// store last loaded.
 export const MATERIAL_BRAND_OPTIONS = {};
 let currentStoreId = null;
 
@@ -112,12 +106,10 @@ export function getStoreBrandOptions(storeId, materialKey) {
 }
 
 /**
- * Which brand-selectable materials the current project's catalog actually
- * has options for at this store — i.e. materials the project's estimation
- * needs at all (excludes e.g. roofing when a project has it toggled off,
- * since those never appear in the catalog GET returns in the first place).
- * Callers should render/resolve against this instead of the full static
- * BRAND_SELECTABLE_MATERIAL_KEYS list, which does not shrink per project.
+ * Which brand-selectable materials this project's catalog has options for at
+ * this store, i.e. the ones the estimation needs (excludes e.g. roofing when
+ * turned off). Use this instead of the full static BRAND_SELECTABLE_MATERIAL_KEYS,
+ * which doesn't shrink per project.
  */
 export function getAvailableMaterialKeys(storeId) {
   return BRAND_SELECTABLE_MATERIAL_KEYS.filter((key) => getStoreBrandOptions(storeId, key).length > 0);

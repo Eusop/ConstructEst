@@ -6,11 +6,10 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
-// Keep in sync with LAYER_ALIASES in backend/engine/dxf_reader.py — this is
-// static text, so a layer the engine starts or stops reading has to be
-// updated here too. The notation is Engr. Espiritu's (Reply 4, Sep 2026:
-// show the required layer names so users rename their CAD layers before
-// using the system).
+// Keep in sync with LAYER_ALIASES in backend/engine/dxf_reader.py. This is
+// static text, so a layer the engine starts or stops reading must be updated
+// here too. The notation is Engr. Espiritu's (Reply 4): show the layer names
+// so users rename their CAD layers before uploading.
 const LAYER_GROUPS = [
   { label: 'Required', names: ['WALL', 'DOOR', 'WINDOW', 'COLUMN (or COL)', 'STAIR', 'ROOF', 'FLOOR'] },
   { label: 'Optional', note: 'improves the estimate', names: ['BEAM', 'CANTBEAM', 'TRUSS'] },
@@ -18,9 +17,8 @@ const LAYER_GROUPS = [
 ];
 
 /**
- * "Name your CAD layers like this" guide shown above the DXF upload. Open by
- * default on desktop, collapsed on phones so it doesn't push the dropzone
- * below the fold.
+ * "Name your CAD layers like this" guide above the DXF upload. Open by default
+ * on desktop, collapsed on phones so it doesn't push the dropzone down.
  */
 function LayerNamesGuide() {
   const isMobile = useIsMobile();

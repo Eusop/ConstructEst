@@ -10,16 +10,15 @@ const INITIAL_DRAFT = {
   storeys: 2,
   includeRoofing: true,
   file: null,
-  // Optional, 2-storey only — lets the engine use each floor's own real
-  // geometry instead of scaling the ground floor's footprint by storeys
-  // (see backend/engine/formulas.py's geometry2 parameter).
+  // Optional, 2-storey only: lets the engine use each floor's own geometry
+  // instead of scaling the ground floor (see geometry2 in formulas.py).
   secondFloorFile: null,
 };
 
 const INITIAL_FILE_VALIDATION = { status: 'idle', message: '' };
 
-// Temporary id for a project that's mid-upload — swapped for the real
-// server id once POST /api/projects resolves (see createProjectFromDraft).
+// Temporary id for a project that is mid-upload. Swapped for the server id
+// once POST /api/projects resolves (see createProjectFromDraft).
 function createTempId() {
   return `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -58,15 +57,12 @@ function toContextProject(serverProject, extra = {}) {
 }
 
 /**
- * The app's multi-project workspace — now backed by the real backend (see
- * services/apiClient.js): the project list loads from GET /api/projects on
- * mount, `createProjectFromDraft` uploads the DXF and runs the real
- * rule-based engine, and `deleteProject` calls the real DELETE endpoint.
- * `activeProject.estimation` carries whatever GET /api/projects/:id last
- * returned — pages that need it (Results, Material Estimation, ...) fetch
- * it themselves if it's still null (e.g. after a reload) via
- * `refreshActiveProjectEstimation`, then feed it to the relevant
- * feature/data module (see e.g. features/projects/data/parsedProjectCache).
+ * The multi-project workspace, backed by the real backend (see
+ * services/apiClient.js): the list loads from GET /api/projects on mount,
+ * `createProjectFromDraft` uploads the DXF and runs the engine, and
+ * `deleteProject` calls DELETE. `activeProject.estimation` holds what
+ * GET /api/projects/:id last returned. Pages that need it fetch it themselves
+ * if it is still null (e.g. after a reload) via `refreshActiveProjectEstimation`.
  */
 export function ProjectsProvider({ children }) {
   const [projects, setProjects] = useState([]);
@@ -111,10 +107,9 @@ export function ProjectsProvider({ children }) {
     setProjects((prev) => prev.map((project) => (project.id === id ? { ...project, ...patch } : project)));
   }, []);
 
-  // Kicks off the real upload in the background — NewProjectPage doesn't
-  // (and shouldn't) await this; it navigates straight to Processing, which
-  // watches this project's `status` for completion instead of a fixed
-  // timer (see useSimulatedParsing/ProjectProcessingPage).
+  // Starts the upload in the background. NewProjectPage does not await it; it
+  // goes straight to Processing, which watches this project's `status`
+  // (see useSimulatedParsing and ProjectProcessingPage).
   const createProjectFromDraft = useCallback(() => {
     const tempId = createTempId();
     const { projectName, location, budgetCeiling, storeys, includeRoofing, file, secondFloorFile } = draft;
@@ -185,11 +180,9 @@ export function ProjectsProvider({ children }) {
     setActiveProjectId(id);
   }, []);
 
-  // Awaits the real DELETE before touching local state — deliberately not
-  // optimistic. An optimistic remove-then-fire-and-forget looked instant but
-  // meant a rejected delete silently left the project gone from the screen
-  // while still sitting in the database, only to reappear unexplained on
-  // the next reload. Callers now get a rejected Promise on failure instead.
+  // Waits for the real DELETE before changing local state. An optimistic remove
+  // hid the project even when the delete failed, and it came back on reload.
+  // On failure the caller gets a rejected Promise.
   const deleteProject = useCallback(async (id) => {
     if (typeof id === 'number') {
       await apiRequest(`/projects/${id}`, { method: 'DELETE' });
@@ -198,10 +191,9 @@ export function ProjectsProvider({ children }) {
     setActiveProjectId((prev) => (prev === id ? null : prev));
   }, []);
 
-  // Fetches the full estimation for the active project if it isn't already
-  // in memory (e.g. after a reload, or navigating in from the Projects
-  // list) — pages call this, then feed the result into whichever
-  // feature/data module they read from.
+  // Fetches the full estimation for the active project if it is not in memory
+  // (after a reload, or opened from the Projects list). Pages then feed the
+  // result into the feature/data module they read from.
   const refreshActiveProjectEstimation = useCallback(async () => {
     const id = activeProjectIdRef.current;
     if (typeof id !== 'number') return null;

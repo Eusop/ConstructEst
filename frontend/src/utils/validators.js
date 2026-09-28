@@ -16,10 +16,9 @@ export function isValidEmail(value) {
   return EMAIL_PATTERN.test(value.trim());
 }
 
-// Starts with a letter (rejects "22"), at least 2 characters total, allows
-// spaces/hyphens/apostrophes/periods for real names ("Dela Cruz", "O'Brien",
-// "Jr."). \p{L} (Unicode letter) rather than [A-Za-z] so accented names
-// aren't rejected.
+// Starts with a letter, at least 2 characters. Allows spaces, hyphens,
+// apostrophes and periods ("Dela Cruz", "O'Brien", "Jr."). Uses \p{L} so
+// accented names are not rejected.
 const NAME_PATTERN = /^[\p{L}][\p{L}\s'.-]*$/u;
 
 export function isValidName(value) {
@@ -27,8 +26,7 @@ export function isValidName(value) {
   return trimmed.length >= 2 && NAME_PATTERN.test(trimmed);
 }
 
-// 3-20 characters, starts with a letter, then letters/digits/_/./- only —
-// a fairly standard identifier convention.
+// 3-20 characters, starts with a letter, then letters, digits, _ . - only.
 const EMPLOYEE_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{2,19}$/;
 
 export function isValidEmployeeId(value) {
@@ -36,11 +34,9 @@ export function isValidEmployeeId(value) {
 }
 
 /**
- * What's actually missing from an in-progress Employee ID, spelled out
- * instead of just restating the whole rule — e.g. "22" -> "Needs to start
- * with a letter, be at least 3 characters". Returns null once the value is
- * valid (or empty — a blank field's message is "required", handled
- * separately by the caller).
+ * What is missing from an in-progress Employee ID, e.g. "22" -> "Needs to
+ * start with a letter, be at least 3 characters". Returns null when valid or
+ * empty (the caller handles the "required" message).
  *
  * @param {string} value
  * @returns {string|null}
@@ -58,12 +54,9 @@ export function getEmployeeIdHint(value) {
   return missing.length > 0 ? `Needs to ${missing.join(', ')}` : null;
 }
 
-// 8+ characters with at least one letter and one number. Mirrors the
-// backend's passwordPolicy.js (used on register, reset, change and admin
-// create-user); login is not checked against it, so older accounts that were
-// created under the 6-character rule can still sign in. Deliberately not the
-// old 8-16 chars + upper/lower/number/symbol rule, which was stricter than
-// this project needs.
+// 8+ characters with at least one letter and one number. Same as the
+// backend's passwordPolicy.js. Login is not checked against it, so older
+// 6-character accounts can still sign in.
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_RULE_MESSAGE = `Must be at least ${PASSWORD_MIN_LENGTH} characters with a letter and a number`;
 
@@ -72,12 +65,9 @@ export function isStrongPassword(value) {
 }
 
 /**
- * Live strength rating for a password-in-progress — still checks the same
- * 5 criteria (broken out per-criterion for a checklist UI, plus a 0-5 score
- * and Weak/Fair/Strong label) even though only length, a letter and a number
- * are actually required to pass (see isStrongPassword above) — the rest is
- * guidance, not a gate, so a password field can nudge toward something
- * stronger without blocking one that already meets the real minimum.
+ * Live strength rating for a password being typed: 5 criteria for a checklist
+ * UI, a 0-5 score and a Weak/Fair/Strong label. Only length, a letter and a
+ * number are required to pass (see isStrongPassword). The rest is guidance.
  *
  * @param {string} value
  * @returns {{ criteria: {length:boolean, upper:boolean, lower:boolean, number:boolean, symbol:boolean},

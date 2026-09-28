@@ -6,11 +6,9 @@ import SignUpBrandPanel from './SignUpBrandPanel';
 import SignUpForm from './SignUpForm';
 
 /**
- * Sign Up card. Mirrors LoginCard's structure/breakpoints exactly so both
- * auth pages read as one design: desktop (`md`+) keeps the original
- * two-panel card, below `md` there's no floating card chrome and the full
- * marketing panel collapses to a compact brand mark so the form is visible
- * immediately.
+ * Sign Up card. Same structure and breakpoints as LoginCard so both auth pages
+ * match: two panels on desktop (`md`+), and below `md` no floating card and a
+ * compact brand mark instead of the marketing panel.
  */
 function SignUpCard() {
   return (

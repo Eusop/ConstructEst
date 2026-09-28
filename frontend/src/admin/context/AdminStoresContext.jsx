@@ -9,11 +9,9 @@ import { useAdminToast } from './AdminToastContext';
 const AdminStoresContext = createContext(null);
 
 // Reshapes the backend's `getStoreCatalog` response (every global brand,
-// left-joined against this store's own price/availability — see
-// admin.controller.js's getStoreCatalog) into the `materialKeys`/
-// `materialData` shape AdminStoresPage/AdminMaterialsPage's components
-// already read: only brands this store has actually priced (`storePrice`
-// != null) show up, exactly like the old session-local mock did.
+// left-joined with this store's price/availability, see getStoreCatalog in
+// admin.controller.js) into the `materialKeys`/`materialData` shape the admin
+// pages read. Only brands this store has priced (`storePrice` != null) show up.
 function projectCatalog(catalogGroups) {
   const materialKeys = [];
   const materialData = {};
@@ -47,22 +45,16 @@ function projectCatalog(catalogGroups) {
 }
 
 /**
- * Admin-managed hardware stores and their store-specific material/brand
- * catalog: Store -> Material -> Brand -> Price -> Availability (see
- * AdminStoresPage / AdminMaterialsPage). Backed by the real `stores` /
- * `material_brands` / `store_material_prices` tables — the same catalog the
- * User Module's Store Locator and Brand Selection pages already read from,
- * so a brand added or re-priced here is immediately visible there too.
- *
- * A brand's identity (name, unit, quality/"stars") lives in the global
- * `material_brands` row; its price and in-stock status at a given store
- * live in a separate `store_material_prices` row — "Add Brand" creates
- * both at once, "Remove" only ever deletes the store's price row (the
- * brand definition itself stays, in case another store still prices it).
- *
- * Each store's material catalog is fetched lazily (only once it becomes
- * the active store) — `materialKeys: null` marks "not fetched yet",
- * distinct from `[]` ("fetched, nothing stocked").
+ * Admin-managed hardware stores and their material/brand catalog: Store ->
+ * Material -> Brand -> Price -> Availability (see AdminStoresPage and
+ * AdminMaterialsPage). Backed by the real `stores`, `material_brands` and
+ * `store_material_prices` tables, the same catalog Store Locator and Brand
+ * Selection read, so a change here shows up there. A brand's identity (name,
+ * unit, quality) lives in the global `material_brands` row; its price and stock
+ * at a store live in `store_material_prices`. "Add Brand" creates both, and
+ * "Remove" only deletes the store's price row (the brand stays, in case another
+ * store prices it). A store's catalog is fetched lazily when it becomes active:
+ * `materialKeys: null` means "not fetched yet", `[]` means "fetched, nothing stocked".
  */
 export function AdminStoresProvider({ children }) {
   const [stores, setStores] = useState([]);
@@ -98,10 +90,9 @@ export function AdminStoresProvider({ children }) {
     }
   }, [loadStoreCatalog, showToast]);
 
-  // For UI that needs to read a store's materialKeys/materialData without
-  // making it the active store (e.g. StoreDetailsDialog, opened from either
-  // the map or the list) — a no-op if that store's catalog is already
-  // loaded, so it's safe to call on every render of that dialog.
+  // For UI that reads a store's materialKeys/materialData without making it
+  // active (e.g. StoreDetailsDialog). A no-op if already loaded, so it is safe
+  // to call on every render.
   const ensureStoreCatalogLoaded = useCallback((storeId) => {
     const store = stores.find((s) => s.id === storeId);
     if (store && store.materialKeys === null) {
@@ -122,19 +113,16 @@ export function AdminStoresProvider({ children }) {
     patchStore(storeId, { name, address, lat, lng });
   }, [patchStore]);
 
-  // Reversible alternative to removeStore below — see AdminStoresPage's
-  // typed DEACTIVATE/REACTIVATE confirmation.
+  // Reversible alternative to removeStore below (typed DEACTIVATE/REACTIVATE
+  // confirmation in AdminStoresPage).
   const setStoreActive = useCallback(async (storeId, isActive) => {
     await setAdminStoreActive(storeId, isActive);
     patchStore(storeId, { isActive });
   }, [patchStore]);
 
-  // Awaits the real DELETE before touching local state — see
-  // ProjectsContext.jsx's deleteProject for why this can't be optimistic:
-  // a rejected delete needs to leave the store in place and tell the admin
-  // why, not silently vanish it from the screen while it's still in the
-  // database (and worse here, previously the caller unconditionally showed
-  // a "Store removed" success toast even when this failed).
+  // Waits for the real DELETE before changing local state (see deleteProject in
+  // ProjectsContext.jsx): a failed delete must leave the store in place and tell
+  // the admin, not make it vanish while it is still in the database.
   const removeStore = useCallback(async (storeId) => {
     await deleteAdminStore(storeId);
     setStores((prev) => prev.filter((store) => store.id !== storeId));
@@ -151,11 +139,9 @@ export function AdminStoresProvider({ children }) {
       const group = findCatalogGroup(storeId, key);
       if (!group) continue;
       const unstocked = group.brands.filter((brand) => brand.storePrice == null);
-      // usesCatalogPrice: true — carrying a brand's existing global catalog
-      // price verbatim into its first stocking here isn't a price decision
-      // (nothing was actually decided), so it's exempt from the quotation-
-      // file requirement every other price set/change goes through. See
-      // admin.controller.js's upsertStoreMaterialPrice.
+      // usesCatalogPrice: true. Carrying a brand's existing catalog price into its
+      // first stocking here isn't a price decision, so it skips the quotation file
+      // requirement (see upsertStoreMaterialPrice in admin.controller.js).
       await Promise.all(
         unstocked.map((brand) => setStoreMaterialPrice(storeId, brand.materialBrandId, { price: brand.basePrice, inStock: true, usesCatalogPrice: true })),
       );

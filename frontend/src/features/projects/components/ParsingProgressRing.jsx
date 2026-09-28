@@ -7,8 +7,8 @@ const SIZE = 96;
 const THICKNESS = 4;
 
 /**
- * Overall parsing progress: a light grey track ring with a blue determinate
- * ring layered on top, and the percentage centered inside.
+ * Overall parsing progress: a grey track ring with a blue ring on top and the
+ * percentage in the center.
  *
  * @param {object} props
  * @param {number} props.value Progress percentage (0-100).

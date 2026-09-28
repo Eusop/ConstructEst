@@ -7,14 +7,12 @@ const STATUS_COLORS = {
 };
 
 /**
- * Small colour-coded status pill for the Projects page's project cards
- * (see ProjectCard, its only consumer). "Complete" only for a project with
- * a saved brand selection and generated Bill of Materials (`status ===
- * 'Optimized'` in ProjectsContext); every other project state — still
- * parsing, estimated but no brand selection yet, or failed to parse — reads
- * "Incomplete". ProjectCard is what maps the real project status into one
- * of these two labels; this component just renders whichever it's given.
- * Falls back to a neutral grey tone for any other, unexpected label.
+ * Small colour-coded status pill for the Projects page cards (only used by
+ * ProjectCard). "Complete" means a saved brand selection and generated BOM
+ * (`status === 'Optimized'` in ProjectsContext); every other state (parsing,
+ * estimated without brand selection, failed) reads "Incomplete". ProjectCard
+ * maps the real status to one of these labels; this only renders it. Any other
+ * label falls back to a neutral grey.
  *
  * @param {object} props
  * @param {'Complete' | 'Incomplete'} props.label

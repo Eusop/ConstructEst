@@ -8,11 +8,7 @@ import BrandMark from '../../../components/BrandMark';
 import { colors } from '../../../theme/palette';
 import { ROUTES } from '../../../routes/paths';
 
-/**
- * Dark brand/marketing panel shown alongside the Sign Up form: brand mark,
- * headline, supporting copy, a privacy highlight, and a footer sign-in
- * prompt.
- */
+/** Dark brand panel next to the Sign Up form: brand mark, headline, supporting copy, a privacy highlight and a footer sign-in prompt. */
 function SignUpBrandPanel() {
   return (
     <Box

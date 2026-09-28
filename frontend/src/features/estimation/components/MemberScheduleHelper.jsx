@@ -26,16 +26,13 @@ function rowLength(row) {
 }
 
 /**
- * Optional helper under the beam rebar fields: fills them in from the
- * project's beam schedule, one row per member tag (e.g. B1), following
- * Engr. Espiritu's Reply 7 — members are counted per tag, length comes from
- * the drawing, bar count and size from the schedule. Total bar length =
- * members x length per member x bars per member.
- *
- * Rows live only in this component and aren't saved; "Apply" writes the
- * total and bar size into the two override fields, which are what the
- * engine uses. One bar size per pass — a schedule mixing sizes needs a
- * pre-summed length typed straight into the field instead.
+ * Optional helper under the beam rebar fields. It fills them from the beam
+ * schedule, one row per member tag (e.g. B1), following Engr. Espiritu's Reply 7:
+ * members are counted per tag, length comes from the drawing, and bar count and
+ * size from the schedule. Total bar length = members x length x bars. Rows live
+ * only in this component and are not saved; "Apply" writes the total and bar
+ * size into the two override fields the engine uses. One bar size per pass, so
+ * a schedule with mixed sizes needs a pre-summed length typed into the field.
  *
  * @param {object} props
  * @param {(totalLengthM: number, diameterMm: number) => void} props.onApply
@@ -100,9 +97,8 @@ function MemberScheduleHelper({ onApply }) {
 
           <Stack spacing={1.5}>
             {rows.map((row) => (
-              // Two fields per line: this sits inside the half-width Design
-              // Parameters card, where four number boxes in one line were too
-              // narrow to show their values.
+              // Two fields per line: this sits in the half-width Design Parameters
+              // card, where four number boxes in one line were too narrow.
               <Box
                 key={row.id}
                 sx={{

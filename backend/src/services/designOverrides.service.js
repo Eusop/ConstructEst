@@ -46,17 +46,15 @@ async function fetchRow(projectId) {
   return rows[0];
 }
 
-/** Every field is null if this project (or the admin, for projectId ===
- * null) never saved overrides for it. Only shows what's explicitly set for
- * that project, doesn't mix in the global default (see the "Auto"
- * placeholder in DesignParametersCard). */
+/** Every field is null if this project (or the admin, when projectId is null)
+ * never saved it. Shows only what is explicitly set, without the global
+ * default (see the "Auto" placeholder in DesignParametersCard). */
 export async function getDesignOverrides(projectId) {
   return toApiShape(await fetchRow(projectId));
 }
 
-/** Figures out what the engine should actually use, each field falls back
- * from project override to global default to formulas.py's own hardcoded
- * default. Only used when actually running the engine, not for display. */
+/** What the engine should use: project override, then global default, then the
+ * formulas.py default. Only for running the engine, not for display. */
 export async function getEffectiveDesignOverrides(projectId) {
   const [projectRow, globalRow] = await Promise.all([fetchRow(projectId), fetchRow(null)]);
   const project = toApiShape(projectRow);
@@ -68,10 +66,9 @@ export async function getEffectiveDesignOverrides(projectId) {
   return effective;
 }
 
-/** Saves the override set for a project, or the admin's global default row
- * if projectId is null. Project rows can use ON DUPLICATE KEY UPDATE
- * normally, but the global row can't (MySQL treats every NULL as unique),
- * so that one's upserted by hand instead. */
+/** Saves the override set for a project, or the admin's global row when
+ * projectId is null. The global row is upserted by hand because MySQL treats
+ * every NULL as unique. */
 export async function saveDesignOverrides(projectId, overrides) {
   const columns = FIELDS.map(([, dbColumn]) => dbColumn);
   const values = FIELDS.map(([apiKey]) => {
@@ -106,8 +103,8 @@ export async function saveDesignOverrides(projectId, overrides) {
   return getDesignOverrides(projectId);
 }
 
-/** Strips out null fields so the Python engine only gets keys with a real
- * value, everything else falls back to formulas.py's own defaults. */
+/** Drops null fields so the engine only gets real values and falls back to
+ * formulas.py defaults for the rest. */
 export function toEngineOverrides(apiShapeOverrides) {
   const engineOverrides = {};
   for (const [apiKey] of FIELDS) {

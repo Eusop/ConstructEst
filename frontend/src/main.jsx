@@ -4,8 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// Sora (app-wide typeface) — self-hosted, no external requests. Weights
-// match every fontWeight value actually used across the app (400/500/600/700/800).
+// Sora (app-wide typeface), self-hosted so there are no external requests.
+// The weights match every fontWeight used in the app (400/500/600/700/800).
 import '@fontsource/sora/400.css';
 import '@fontsource/sora/500.css';
 import '@fontsource/sora/600.css';

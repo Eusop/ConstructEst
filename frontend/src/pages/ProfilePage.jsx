@@ -35,16 +35,16 @@ function buildForm(profile) {
   };
 }
 
-// DB stores first/last name separately but the form only has one Full
-// Name field, so split it here. Falls back to reusing the first word if
-// only one was typed, since last_name can't be empty.
+// The DB stores first and last name separately but the form has one Full Name
+// field, so split it. Reuses the first word if only one was typed (last_name
+// can't be empty).
 function splitFullName(fullName) {
   const parts = fullName.trim().split(/\s+/);
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') || parts[0] };
 }
 
-// Split from the password rules below because the two now save separately —
-// "Save changes" must not care whether a password field happens to be filled.
+// Separate from the password rules because they save separately: "Save
+// changes" must not care whether a password field is filled.
 function validateDetails(form) {
   const errors = {};
 
@@ -80,15 +80,11 @@ function validatePassword(form) {
 }
 
 /**
- * Profile page: name, email, avatar, and password change. Employee ID is
- * shown but read-only.
- *
- * Three independent saves rather than one, which is the fix for having to
- * re-enter the current password just to edit a name: "Save changes" only
- * ever sends name/email (PUT /users/me), the Change Password section has its
- * own button (PUT /users/me/password), and the photo uploads on its own
- * (POST /users/me/avatar) the moment it is confirmed. Nothing about a
- * password is read unless the user is deliberately changing one.
+ * Profile page: name, email, avatar and password change. Employee ID is
+ * read-only. There are three separate saves: "Save changes" sends only
+ * name/email (PUT /users/me), Change Password has its own button (PUT
+ * /users/me/password), and the photo uploads when confirmed (POST
+ * /users/me/avatar). A password is only read when the user is changing one.
  */
 function ProfilePage() {
   const profile = useUser();
@@ -103,17 +99,12 @@ function ProfilePage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
 
-  // Recomputed from `form` every render, `touched` just decides which of
-  // these to actually show. The password errors are only surfaced once the
-  // user has started filling that section in, so an untouched Change Password
-  // block never reports "required" at someone editing their email.
-  //
-  // Deliberately excludes currentPassword: browsers eagerly autofill a
-  // "current password"-type field from saved credentials on page load, with
-  // no user intent to change anything, which used to flip this true (and
-  // reveal the Change Password button) on page load alone. newPassword/
-  // confirmPassword aren't autofilled the same way, so they're the real
-  // signal that someone is actually trying to change their password.
+  // Recomputed from `form` every render; `touched` decides which errors show.
+  // Password errors only show once the user starts filling that section, so an
+  // untouched Change Password block never says "required" while editing email.
+  // currentPassword is excluded on purpose: browsers autofill it on page load,
+  // which used to reveal the Change Password button by itself. newPassword and
+  // confirmPassword are the real signal of a password change.
   const isChangingPassword = isRequired(form.newPassword) || isRequired(form.confirmPassword);
   const errors = { ...validateDetails(form), ...(isChangingPassword ? validatePassword(form) : {}) };
 
@@ -125,17 +116,15 @@ function ProfilePage() {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  // The photo is its own save, separate from the page's "Save changes":
-  // picking a file only previews it, and this runs when the user confirms.
-  // `file` null means "remove my photo".
+  // The photo saves on its own, apart from "Save changes": picking a file only
+  // previews it, and this runs on confirm. `file` null means remove the photo.
   const handleAvatarSave = async (file) => {
     setIsSavingPhoto(true);
     try {
       const user = file
         ? await uploadAvatarRequest(file)
         : await removeAvatarRequest();
-      // Server-generated URL, not the local blob preview — that is what makes
-      // the photo survive a logout instead of dying with the browser document.
+      // Use the server URL, not the local blob preview, so the photo survives a logout.
       updateProfile({ avatarUrl: user.avatarUrl });
       setForm((prev) => ({ ...prev, avatarUrl: resolveAssetUrl(user.avatarUrl) }));
       setSavedForm((prev) => ({ ...prev, avatarUrl: resolveAssetUrl(user.avatarUrl) }));
@@ -164,8 +153,7 @@ function ProfilePage() {
     try {
       await changePasswordRequest({ currentPassword: form.currentPassword, newPassword: form.newPassword });
       showToast('Password changed', 'success');
-      // Clearing these is deliberate, not a glitch: the app never holds a
-      // password, so there is nothing to leave in the boxes afterwards.
+      // Cleared on purpose: the app never holds a password, so nothing should stay in the boxes.
       setForm((prev) => ({ ...prev, ...EMPTY_PASSWORD_FIELDS }));
       setTouched((prev) => ({ ...prev, currentPassword: false, newPassword: false, confirmPassword: false }));
     } catch (error) {
@@ -175,8 +163,8 @@ function ProfilePage() {
     }
   };
 
-  // Name and email only. Passwords are handled by handleChangePassword and
-  // the photo by handleAvatarSave, so this never reads a password field.
+  // Name and email only. Passwords go through handleChangePassword and the
+  // photo through handleAvatarSave.
   const handleSave = async () => {
     setTouched((prev) => ({ ...prev, fullName: true, email: true }));
     const detailErrors = validateDetails(form);
@@ -189,8 +177,7 @@ function ProfilePage() {
     try {
       const { firstName, lastName } = splitFullName(form.fullName);
       const user = await updateProfileRequest({ firstName, lastName, email: form.email });
-      // Reflects the server response into UserContext right away, so the
-      // header picks up the new name without a refetch.
+      // Put the server response into UserContext so the header shows the new name.
       updateProfile({ userName: user.userName, email: user.email });
 
       showToast('Profile updated', 'success');
@@ -205,8 +192,8 @@ function ProfilePage() {
   };
 
   return (
-    // Mobile doesn't stretch to fill the viewport, both accordions are
-    // closed by default so that just left an empty gap. sm+ unchanged.
+    // Mobile doesn't stretch to fill the viewport (both accordions start closed,
+    // which left an empty gap). sm+ unchanged.
     <Stack spacing={2.5} sx={{ width: '100%', flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
       <Paper
         elevation={0}
@@ -214,8 +201,8 @@ function ProfilePage() {
           borderRadius: 3,
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
-          // 'auto' not 'hidden', this card can be shorter than its content
-          // and was silently clipping the bottom of the page.
+          // 'auto' not 'hidden': the card can be shorter than its content and
+          // hidden clipped the bottom of the page.
           overflow: 'auto',
           flex: { xs: 'unset', sm: 1 },
           minHeight: { xs: 'auto', sm: 0 },

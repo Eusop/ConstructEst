@@ -11,10 +11,7 @@ import BrandMark from '../components/BrandMark';
 import { colors } from '../theme/palette';
 import { ROUTES } from '../routes/paths';
 
-/**
- * Site navigation bar (Terms/Privacy): brand mark and the Sign in / Get
- * started actions.
- */
+/** Site navigation bar (Terms/Privacy): brand mark and the Sign in / Get started actions. */
 function Navbar() {
   return (
     <AppBar
@@ -44,12 +41,9 @@ function Navbar() {
             >
               Sign in
             </Link>
-            {/* A text CTA, not a filled button: no box/background,
-                brand-blue bold text with a small arrow that nudges forward
-                and an underline that appears on hover/focus so it still
-                unmistakably reads as clickable. A generous min width/height
-                keeps the tap target accessible on mobile even though
-                nothing is visually "boxed". */}
+            {/* A text CTA, not a filled button: brand-blue bold text with a small
+                arrow that nudges forward and an underline on hover/focus. The min
+                width/height keeps the tap target usable on mobile. */}
             <Button
               component={RouterLink}
               to={ROUTES.SIGNUP}

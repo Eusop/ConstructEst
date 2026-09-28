@@ -1,10 +1,6 @@
 import { apiRequest, setAuthToken, clearAuthToken, getAuthToken } from './apiClient';
 
-/**
- * Real backend calls — LoginForm/SignUpForm already call these with the
- * shapes below (see their own comments), so no component changes were
- * needed to wire this up.
- */
+/** Real backend calls, used by LoginForm and SignUpForm. */
 export async function loginRequest({ identifier, password, keepSignedIn }) {
   const { token, user } = await apiRequest('/auth/login', {
     method: 'POST',
@@ -14,11 +10,9 @@ export async function loginRequest({ identifier, password, keepSignedIn }) {
   return user;
 }
 
-// Registration no longer creates a usable session — the new account is
-// unverified/inactive until an admin approves it (see admin.controller.js's
-// verifyUser), so the backend deliberately doesn't return a token here.
-// Only set one if a future response ever does include it, rather than
-// assuming it always will.
+// Registration doesn't create a session: the account stays unverified and
+// inactive until an admin approves it (verifyUser), so no token is returned.
+// Only set one if a response ever includes it.
 export async function signUpRequest(details) {
   const { firstName, lastName, employeeId, email, password } = details;
   const response = await apiRequest('/auth/register', {
@@ -29,10 +23,9 @@ export async function signUpRequest(details) {
   return response;
 }
 
-// Neither of these creates a session (no token involved) — email
-// verification is the first of two gates a new account has to clear before
-// it can log in at all (see auth.controller.js's login: it checks
-// email_verified_at before is_verified/is_active).
+// Neither of these creates a session. Email verification is the first of two
+// gates before login: auth.controller.js checks email_verified_at before
+// is_verified/is_active.
 export async function verifyEmailRequest({ email, code }) {
   return apiRequest('/auth/verify-email', { method: 'POST', body: { email, code } });
 }
@@ -41,24 +34,21 @@ export async function resendCodeRequest({ email }) {
   return apiRequest('/auth/resend-verification-code', { method: 'POST', body: { email } });
 }
 
-/** Asks for a reset code. Always resolves with the same message whether or
- * not the address is registered — the backend answers identically on purpose
- * (see forgotPassword), so callers must not treat success as proof the
+/** Asks for a reset code. Always resolves with the same message whether or not
+ * the address is registered (see forgotPassword), so success does not prove the
  * account exists. */
 export async function forgotPasswordRequest({ email }) {
   return apiRequest('/auth/forgot-password', { method: 'POST', body: { email } });
 }
 
-/** Consumes the emailed code and sets the new password. Unlike the request
- * above this does report real errors (wrong/expired code), since by now the
- * caller already holds a code that was sent to that address. */
+/** Uses the emailed code to set the new password. Unlike the request above, it
+ * reports real errors (wrong or expired code). */
 export async function resetPasswordRequest({ email, code, newPassword }) {
   return apiRequest('/auth/reset-password', { method: 'POST', body: { email, code, newPassword } });
 }
 
-/** Live pre-submit duplicate check (see SignUpForm.jsx's debounced effects)
- * — reveals nothing register() doesn't already reveal via a duplicate-entry
- * error at submit time; this just surfaces it earlier, as the user types.
+/** Live duplicate check for SignUpForm's debounced effects. It reveals nothing
+ * register() doesn't already reveal on a duplicate; it just shows it earlier.
  * @param {'email'|'employeeId'} field
  * @param {string} value
  */

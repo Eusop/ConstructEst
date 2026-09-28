@@ -1,13 +1,10 @@
 /**
- * Mirrors the engine's own hardcoded fallback defaults (backend/engine/
- * formulas.py — verified against the capstone paper's Tables 14/15/17/18/19)
- * so the Design Parameters UI can show the real number that will actually
- * be used instead of a generic "Auto" placeholder.
- *
- * `storeys` is required for the column/footing defaults, which the paper
- * defines separately for 1-storey vs 2-storey buildings (Table 14/17) —
- * pass `null` when there's no specific project in context (e.g. the
- * admin's global defaults page) and both variants are shown instead.
+ * The engine's own fallback defaults (backend/engine/formulas.py, checked
+ * against the paper's Tables 14/15/17/18/19), so Design Parameters can show the
+ * real number instead of a generic "Auto". `storeys` is needed for column and
+ * footing defaults, which the paper gives separately for 1- and 2-storey
+ * (Tables 14/17). Pass `null` when there is no project (e.g. admin global
+ * defaults) and both variants are shown.
  */
 export function getEngineDefaults(storeys) {
   const isTwoStorey = storeys >= 2;
@@ -21,7 +18,7 @@ export function getEngineDefaults(storeys) {
     columnDepthSecond: isTwoStorey ? 0.25 : 0.20,
     beamWidth: 0.20,
     beamDepth: 0.30,
-    beamLength: null, // from the BEAM layer, else wall run length — not a fixed default
+  beamLength: null, // from the BEAM layer, else wall run length (not fixed)
     beamRebarLength: null, // no default: zero unless entered from the beam schedule
     beamRebarDiameterMm: 12, // bar size used when a beam rebar length is entered
     footingWidth: 0.60,
@@ -40,8 +37,7 @@ export function getEngineDefaults(storeys) {
   };
 }
 
-/** Both 1-storey and 2-storey variants, for contexts with no specific
- * project (e.g. admin global defaults) where storeys isn't known yet. */
+/** Both 1-storey and 2-storey variants, for contexts with no project (e.g. admin global defaults). */
 export function getEngineDefaultsBothVariants() {
   return { oneStorey: getEngineDefaults(1), twoStorey: getEngineDefaults(2) };
 }

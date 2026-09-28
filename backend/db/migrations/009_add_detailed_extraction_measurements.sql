@@ -1,11 +1,7 @@
--- Surfaces geometry that the DXF engine already computes (door/window
--- opening area, the floor outline's own perimeter, detected column count,
--- roof perimeter, roof ridge length) but previously discarded before it
--- ever reached the API response — see engine/formulas.py's `measurements`
--- dict and the "Detailed extraction information" section on the Results
--- page. All columns nullable: an existing estimation row simply has none of
--- this until it's recomputed (Recalculate re-runs persistEstimation, which
--- will fill these in going forward).
+-- Saves geometry the engine already computed (door/window area, floor
+-- perimeter, column count, roof perimeter and ridge length) so it reaches the
+-- API response and the "Detailed extraction information" section on Results.
+-- All columns are nullable; older estimations get them after a Recalculate.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/009_add_detailed_extraction_measurements.sql

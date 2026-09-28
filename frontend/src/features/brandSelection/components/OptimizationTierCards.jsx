@@ -17,9 +17,8 @@ const TIER_ICONS = {
 };
 
 /**
- * Premium / Standard / Budget selectable tier cards — each maps to a fixed
- * brand choice per material (see OPTIMIZATION_TIERS); totals are computed
- * live, not hardcoded.
+ * Premium / Standard / Budget tier cards. Each maps to a fixed brand choice per
+ * material (see OPTIMIZATION_TIERS), and totals are computed live.
  *
  * @param {object} props
  * @param {string} props.selectedTier
@@ -32,13 +31,10 @@ const TIER_ICONS = {
  */
 function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPrices = null }) {
   return (
-    // Row at every size now (was xs: column) — below `sm`, all three cards
-    // shrink to fit one horizontal row instead of stacking full-width; the
-    // per-card content below is what actually makes that legible rather
-    // than just squeezing the desktop card smaller (description dropped,
-    // "Recommended" moved from a top-right pill to a small caption under
-    // the label, icon/text sized down). `sm`+ is completely untouched —
-    // every mobile-only tweak below is gated behind that breakpoint.
+    // A row at every size: below `sm` all three cards shrink into one horizontal
+    // row (description dropped, "Recommended" as a small caption under the label,
+    // smaller icon and text). `sm`+ is unchanged; every mobile tweak below is
+    // gated behind that breakpoint.
     <Stack direction="row" spacing={{ xs: 0.75, sm: 2 }}>
       {Object.values(OPTIMIZATION_TIERS).map((tier) => {
         const { Icon, bg, fg } = TIER_ICONS[tier.key];
@@ -83,9 +79,8 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
               >
                 <Icon sx={{ color: fg, fontSize: { xs: 13, sm: 20 } }} />
               </Box>
-              {/* Desktop/tablet only — no room for a pill beside a 24px icon
-                  on a phone; see the compact caption under the label below
-                  for the mobile equivalent. */}
+              {/* Desktop/tablet only: no room for a pill beside a 24px icon on a phone
+                  (the mobile version is the caption under the label below). */}
               {tier.recommended && (
                 <Box sx={{ display: { xs: 'none', sm: 'block' }, bgcolor: colors.iconGreenBg, color: colors.iconGreenFg, borderRadius: 999, px: 1.1, py: 0.3 }}>
                   <Typography sx={{ fontSize: '0.72rem', fontWeight: 700 }}>Recommended</Typography>
@@ -97,29 +92,25 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
               {tier.label}
             </Typography>
 
-            {/* Mobile only: price first, "Recommended" caption below it —
-                swapped from the reverse order so the number (what users
-                actually compare) reads first. Desktop's own price stays in
-                its original position below the description, untouched —
-                see the two `sm`-only blocks after this one. */}
+            {/* Mobile only: price first, then the "Recommended" caption, so the
+                number people compare reads first. Desktop's price stays below the
+                description (see the two `sm`-only blocks after this). */}
             <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
               <Typography sx={{ fontWeight: 800, fontSize: '0.7rem', color: 'text.primary', mt: 0.5 }}>
                 {formatPeso(total)}
               </Typography>
               {tier.recommended && (
-                // Was 0.56rem — below comfortable reading size on a phone
-                // screen even for one short word; bumped to the smallest
-                // size still used elsewhere in the app for captions.
+                // Was 0.56rem, too small to read on a phone. Now the smallest
+                // caption size used elsewhere in the app.
                 <Typography sx={{ fontSize: '0.64rem', fontWeight: 700, color: colors.iconGreenFg, lineHeight: 1.4, mt: 0.25 }}>
                   Recommended
                 </Typography>
               )}
             </Box>
 
-            {/* Description dropped on mobile (not enough width for it to
-                wrap without ballooning card height) — the tier name, price,
-                and "Recommended" caption already say what matters at a
-                glance; the full description is one tap away once selected. */}
+            {/* Description dropped on mobile (not enough width without making the
+                card tall). The name, price and "Recommended" caption say what
+                matters; the full description shows once selected. */}
             <Typography sx={{ display: { xs: 'none', sm: 'block' }, fontSize: '0.82rem', color: 'text.secondary', mb: 1.25, minHeight: 36 }}>
               {tier.description}
             </Typography>

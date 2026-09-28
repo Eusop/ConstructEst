@@ -1,22 +1,15 @@
 """
-DXF geometry extraction — reads the TCC layer convention documented in the
-capstone paper (Table 22): WALL, DOOR, WINDOW, COLUMN, STAIR, ROOF, FLOOR.
-All source coordinates are millimeters (Table 23); every length/area
-returned here is already converted to meters / square meters.
+Reads the DXF layers from the capstone paper (Table 22): WALL, DOOR, WINDOW,
+COLUMN, STAIR, ROOF, FLOOR. Source units are millimeters (Table 23); results
+are returned in meters and square meters.
 
-Also reads the optional layers from Engr. Espiritu's later recommended
-notation (Reply 4, Sep 2026 — see docs/expert-feedback.md): COL as another
-name for COLUMN, and BEAM, CANTBEAM and TRUSS. The optional ones are never
-required — a file without them returns 0 for each and computes exactly as
-before. FTG and FTBEAM from the same notation aren't read yet. Keep the
-layer-names guide on the upload page
-(frontend/src/features/projects/components/LayerNamesGuide.jsx) in sync with
-LAYER_ALIASES.
+Also reads optional layers from Engr. Espiritu's notation (Reply 4): COL (same
+as COLUMN), BEAM, CANTBEAM and TRUSS. A file without them returns 0 for each.
+FTG and FTBEAM are not read. Keep LayerNamesGuide.jsx in sync with LAYER_ALIASES.
 
-Walls: every LINE/polyline on the WALL layer is summed, so a wall drawn as
-two parallel faces (the usual architectural style) is counted twice — a known
-gap (docs/paper-limitations.md entry 6). A wall drawn as an MLINE (AutoCAD
-multiline) is measured once, along its reference line (see mline_length).
+Walls: every LINE/polyline on WALL is summed, so a wall drawn as two parallel
+faces is counted twice (docs/paper-limitations.md entry 6). An MLINE wall is
+measured once along its reference line (see mline_length).
 """
 import math
 import re
@@ -40,23 +33,16 @@ LAYER_ALIASES = {
     "truss": "TRUSS", "trusses": "TRUSS",
 }
 
-# Splits a layer name into tokens on any run of non-alphanumeric characters,
-# so "WALL-150", "A-WALL", and "COLUMN-150x300" all yield a bare "WALL"/
-# "COLUMN" token alongside whatever else is in the name.
+# Splits a layer name on non-alphanumeric characters, so "WALL-150" and
+# "A-WALL" both give a "WALL" token.
 _LAYER_TOKEN_RE = re.compile(r"[^A-Za-z0-9]+")
 
 
 def normalize_layer(name):
-    """Maps a DXF layer name to the paper's convention (WALL/DOOR/etc).
+    """Maps a DXF layer name to the paper's names (WALL, DOOR, etc).
 
-    A real architectural DXF rarely uses that exact bare name — it's much
-    more common to see a discipline prefix (AIA-style "A-WALL", "S-COLUMN")
-    or a dimension suffix ("WALL-150", "COLUMN-150x300"). Matching only the
-    whole string meant any such file silently detected zero of everything,
-    with no error to explain why — the geometry was there, just filed under
-    a name that never matched. Splitting into tokens first and checking each
-    one against LAYER_ALIASES catches both conventions, while still refusing
-    a false hit like "WALLPAPER" (one token, not a separate "WALL" token).
+    Splits the name into tokens and checks each one against LAYER_ALIASES, so
+    "A-WALL" and "WALL-150" match but "WALLPAPER" does not.
     """
     cleaned = (name or "").strip()
     whole = cleaned.lower()
@@ -117,13 +103,10 @@ def entities_on_layer(msp, layer):
 
 
 def is_closed_polyline(entity):
-    """Whether a polyline is actually flagged closed in the file.
+    """True if the polyline is flagged closed.
 
-    LWPOLYLINE exposes `.closed` and old-style POLYLINE exposes `.is_closed`,
-    so checking only one of them silently misses the other; both set bit 1 of
-    group code 70, which is what the `flags` fallback covers. WALL already did
-    this check inline. ROOF used to just assume closed=True, which added a
-    phantom closing segment to any open roof line it read.
+    LWPOLYLINE uses .closed and POLYLINE uses .is_closed. Both set bit 1 of
+    group code 70, so flags is the fallback.
     """
     return (bool(getattr(entity, "closed", False))
             or bool(getattr(entity, "is_closed", False))
@@ -139,8 +122,7 @@ def merge_bounds(current, points):
             max(current[2], xmax), max(current[3], ymax)]
 
 
-# Two endpoints this close (1mm, one drawing unit) count as the same point
-# when stitching loose lines together.
+# Endpoints within 1mm count as the same point when joining loose lines.
 JOIN_TOLERANCE_M = 0.001
 
 
@@ -149,14 +131,11 @@ def _same_point(a, b):
 
 
 def chain_segments(segments):
-    """Stitches loose LINE segments end-to-end and returns the closed loops.
+    """Joins loose LINE segments end to end and returns the closed loops.
 
-    A room outline drawn as four separate LINEs is just as valid a floor plan
-    as one closed polyline, but the FLOOR layer only read polylines, so those
-    plans came back with zero area and failed with an error blaming the layer
-    *name*. Segments arrive in no particular order, so this walks from one
-    chain's end to whichever unused segment touches it, and keeps only the
-    rings that actually close back on themselves.
+    A room drawn as separate LINEs still counts as a floor. Segments come in
+    any order, so this follows each chain to the next segment that touches it
+    and keeps only the loops that close.
     """
     remaining = list(segments)
     loops = []
@@ -184,11 +163,8 @@ def chain_segments(segments):
 def mline_length(entity):
     """Length of an MLINE (AutoCAD multiline) along its reference line.
 
-    A wall drawn with MLINE is one path that AutoCAD displays as two parallel
-    faces, so its reference line is the wall's own run — measuring it avoids
-    counting both faces. With the usual "zero" justification the reference
-    line is the centerline; with top/bottom justification it's one face,
-    which differs from the centerline only at corners.
+    A multiline wall is one path drawn as two faces, so its reference line is
+    the wall's own run. With ZERO justification this is the centerline.
     """
     points = [(v[0] * MM_TO_M, v[1] * MM_TO_M) for v in entity.get_locations()]
     return polyline_length(points, entity.is_closed)
@@ -197,12 +173,10 @@ def mline_length(entity):
 def member_run_length(msp, layer):
     """Total length of the members (beams, trusses) drawn on a layer.
 
-    A member is expected as a centerline: a LINE or an open polyline, whose
-    drawn length is used as-is. A closed polyline is taken as the member's
-    outline (a rectangle drawn at its width), so only its longest side counts
-    — adding the perimeter would roughly double every member. A member drawn
-    as two parallel edge lines still counts twice; that can't be told apart
-    from two real members, so the upload guide asks for centerlines instead.
+    A LINE or open polyline counts its full length. A closed polyline counts
+    only its longest side, since the perimeter would count the member twice.
+    A member drawn as two edge lines still counts twice, so the upload guide
+    asks for centerlines.
     """
     total = 0.0
     for e in entities_on_layer(msp, layer):
@@ -250,15 +224,12 @@ def extract_geometry(doc):
             points = polyline_points(e)
             if len(points) >= 3:
                 floor_area_m2 += shoelace_area(points)
-                # closed=True regardless of the flag here (unlike WALL/ROOF) so
-                # the perimeter stays consistent with shoelace_area, which
-                # closes the ring implicitly.
+                # Always closed so the perimeter matches shoelace_area.
                 floor_perimeter_m += polyline_length(points, closed=True)
                 rooms_detected += 1
                 floor_bounds = merge_bounds(floor_bounds, points)
         elif e.dxftype() == "LINE":
-            # Collected rather than measured one at a time: a single line is
-            # only an edge, it takes a full ring of them to enclose a room.
+            # Collected first: a room needs a full ring of lines, not one line.
             floor_line_segments.append((
                 (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M),
                 (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M),
@@ -283,11 +254,8 @@ def extract_geometry(doc):
                 if not points:
                     continue
                 if len(points) == 2:
-                    # Same span the LINE branch above would measure, so measure
-                    # it the same way. The bounding box below is right for a
-                    # rectangle but understates a 2-point diagonal (a 1.0m
-                    # opening at 45 degrees boxes to 0.707m), which made the
-                    # answer depend on which entity type the drafter picked.
+                    # Measure the span like the LINE case. A bounding box
+                    # understates a diagonal 2-point opening.
                     width = segment_length(points[0], points[1])
                 else:
                     xmin, ymin, xmax, ymax = bounding_box(points)
@@ -300,11 +268,8 @@ def extract_geometry(doc):
     door_area_m2 = opening_area("DOOR", STANDARD_DOOR_HEIGHT_M)
     window_area_m2 = opening_area("WINDOW", STANDARD_WINDOW_HEIGHT_M)
 
-    # Only LWPOLYLINE/POLYLINE entities count as a column — standard practice
-    # draws a column as one rectangle (RECTANG/PLINE), never as loose LINE
-    # segments. Counting every raw entity on the layer overcounted by
-    # including a stray unjoined LINE left over from drafting. (The closed
-    # flag isn't checked: any polyline on the layer counts.)
+    # Only polylines count as columns (a column is drawn as one rectangle).
+    # Loose LINEs are skipped so a stray line is not counted.
     column_count = sum(1 for e in entities_on_layer(msp, "COLUMN") if e.dxftype() in ("LWPOLYLINE", "POLYLINE"))
 
     roof_perimeter_m = 0.0
@@ -315,25 +280,20 @@ def extract_geometry(doc):
         if e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
             points = polyline_points(e)
             if len(points) >= 2:
-                # Was hardcoded closed=True, which invented a closing segment
-                # for an open eave/hip line and inflated every perimeter-driven
-                # roofing accessory (flashing, gutter, angle bar). WALL reads
-                # the real flag, so ROOF does now too.
+                # Use the real closed flag so an open eave line does not get
+                # an extra closing segment.
                 roof_perimeter_m += polyline_length(points, is_closed_polyline(e))
                 roof_bounds = merge_bounds(roof_bounds, points)
         elif e.dxftype() == "LINE":
             p1 = (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M)
             p2 = (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)
             length = segment_length(p1, p2)
-            # A standalone LINE on the ROOF layer is treated as an explicit
-            # ridge line — it wins over the bounding-box estimate below.
+            # A LINE on ROOF is treated as an explicit ridge line.
             roof_ridge_length_m = max(roof_ridge_length_m, length)
 
-    # No explicit ridge LINE was drawn (the common case: ROOF layer is just
-    # one closed outline) — approximate ridge length as the shorter side of
-    # the roof outline's bounding box, i.e. a simple gable running along the
-    # longer axis. Falls back further to the floor boundary when there's no
-    # ROOF layer at all (not from the paper; both are noted assumptions).
+    # With no ridge LINE, the ridge is the shorter side of the roof outline's
+    # bounding box (a simple gable). With no ROOF layer it falls back to the
+    # floor boundary. Both are our assumptions, not from the paper.
     bounds_for_ridge = roof_bounds if roof_bounds else floor_bounds
     if roof_ridge_length_m == 0.0 and bounds_for_ridge:
         xmin, ymin, xmax, ymax = bounds_for_ridge
@@ -343,11 +303,11 @@ def extract_geometry(doc):
         xmin, ymin, xmax, ymax = floor_bounds
         roof_perimeter_m = 2 * ((xmax - xmin) + (ymax - ymin))
 
-    # Optional layers — all 0 when the layer isn't in the file.
+    # Optional layers. All 0 when the layer is missing.
     beam_length_m = member_run_length(msp, "BEAM")
     cantbeam_length_m = member_run_length(msp, "CANTBEAM")
-    # truss_count isn't used by formulas.py yet; it's the count Reply 4 asks
-    # for, kept for when there's a rule turning trusses into angle bar pieces.
+    # truss_count is not used yet. Kept for a future rule turning trusses
+    # into angle bar pieces (Reply 4).
     truss_count = sum(1 for e in entities_on_layer(msp, "TRUSS") if e.dxftype() in ("LINE", "LWPOLYLINE", "POLYLINE"))
     truss_length_m = member_run_length(msp, "TRUSS")
 

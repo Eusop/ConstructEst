@@ -19,8 +19,7 @@ import BrandMark from '../../components/BrandMark';
 import { colors } from '../../theme/palette';
 import { ROUTES, ADMIN_ROUTES } from '../../routes/paths';
 import { useUser } from '../../context/UserContext';
-// Re-export the exact widths the User Module's Sidebar uses, so the Admin
-// shell measures identically instead of drifting from it over time.
+// Same widths as the User Module's Sidebar, so the two shells measure the same.
 import { SIDEBAR_WIDTH_OPEN, SIDEBAR_WIDTH_CLOSED } from '../../layouts/Sidebar';
 
 const NAV_ITEMS = [
@@ -34,11 +33,10 @@ const NAV_ITEMS = [
 
 const UTILITY_ITEMS = [{ label: 'Profile', icon: PersonRoundedIcon, to: ADMIN_ROUTES.PROFILE }];
 
-// Mirrors Sidebar.jsx's NavRow: fixed-size icon, label opacity/max-width
-// animates with the sidebar's open/closed transition. `onNavigate`, when
-// supplied, fires alongside `onClick` — it's how the mobile/tablet overlay
-// closes itself once a destination is actually picked; desktop never passes
-// it, so it's a no-op there (see AdminSidebar below).
+// Same as NavRow in Sidebar.jsx: fixed-size icon, label opacity/max-width
+// animates with the sidebar transition. `onNavigate` runs alongside `onClick`
+// so the mobile/tablet overlay closes when a destination is picked; desktop
+// never passes it.
 function NavRow({ item, open, active, onClick, onNavigate }) {
   const Icon = item.icon;
   const handleClick = (event) => {
@@ -95,21 +93,16 @@ function NavRow({ item, open, active, onClick, onNavigate }) {
 }
 
 /**
- * Admin Module sidebar — same width/collapse behavior, dark background,
- * and nav-row styling as the User Module's Sidebar (see layouts/Sidebar.jsx),
- * but with the Admin-only nav list (Dashboard, User Management, Hardware
- * Stores, Materials & Brands, Activity Log, Estimation Settings, Profile,
- * Logout).
- *
- * Responsive behavior mirrors the User Module's Sidebar exactly: desktop
- * (`md` and up) renders as a normal flex sibling that pushes content over;
- * below `md`, the same nav content renders inside a temporary MUI `Drawer`
- * overlay instead, so it never reserves layout space and never moves the
- * page underneath.
+ * Admin sidebar: same width and collapse behavior, dark background and row
+ * styling as the User Module's Sidebar (layouts/Sidebar.jsx), with the admin nav
+ * (Dashboard, User Management, Hardware Stores, Materials & Brands, Activity
+ * Log, Estimation Settings, Profile, Logout). Responsive like the User Sidebar:
+ * on `md`+ it is a flex sibling that pushes content, and below `md` the same nav
+ * is in a temporary MUI `Drawer` overlay.
  *
  * @param {object} props
  * @param {boolean} props.open Desktop: expanded vs icon-only. Mobile/tablet: overlay shown vs hidden.
- * @param {() => void} [props.onClose] Mobile/tablet only — closes the overlay (backdrop click, Escape, or picking a nav item).
+ * @param {() => void} [props.onClose] Mobile/tablet only: closes the overlay (backdrop click, Escape, or picking a nav item).
  */
 function AdminSidebar({ open, onClose }) {
   const theme = useTheme();

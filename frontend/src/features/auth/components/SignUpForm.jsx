@@ -18,10 +18,9 @@ import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
 import { isRequired, passwordsMatch, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../../utils/validators';
 
-// How long to wait after the last keystroke before pinging the server for
-// "is this already taken" — long enough that normal typing never triggers a
-// request per keystroke, short enough that the check still feels immediate
-// once you pause.
+// How long to wait after the last keystroke before checking if an email or
+// Employee ID is taken: long enough to skip a request per keystroke, short
+// enough to feel immediate.
 const AVAILABILITY_DEBOUNCE_MS = 500;
 
 const IDLE_AVAILABILITY = { checking: false, taken: false };
@@ -78,24 +77,14 @@ function validate(form) {
 }
 
 /**
- * Sign up form: name / Employee ID / email / password fields, a Terms of
- * Service & Privacy Policy agreement, and the primary
- * Create account action.
- *
- * Validation is live, not just on submit: `errors` is recomputed from
- * `validate(form)` on every render (not stored in state), so a field's
- * message updates immediately as you keep typing. It's only *shown* once
- * that field has been blurred at least once (`touched`) or a submit was
- * attempted — matching the same pattern already used for the New Project
- * form (see NewProjectPage.jsx) — so nothing turns red while you're still
- * in the middle of typing it for the first time, but once shown, it stays
- * live-updated rather than freezing until the next submit click.
- *
- * Backed by the real backend (see services/authService.js). Submitting
- * creates the account, but doesn't log it in — new accounts start
- * unverified/inactive until an admin approves them (see the Admin Module's
- * User Management page), so this redirects to Login with an explanatory
- * toast instead of the Dashboard.
+ * Sign up form: name, Employee ID, email and password fields, a Terms and
+ * Privacy agreement, and the Create account action. Validation is live:
+ * `errors` is recomputed from `validate(form)` on every render, but a field's
+ * message only shows after it has been blurred once (`touched`) or a submit was
+ * attempted (same as NewProjectPage.jsx), so nothing turns red while typing the
+ * first time. Uses the real backend (services/authService.js). Submitting
+ * creates the account but doesn't log it in: new accounts stay unverified and
+ * inactive until an admin approves them, so it redirects to Login with a toast.
  */
 function SignUpForm() {
   const [form, setForm] = useState(INITIAL_FORM);
@@ -103,10 +92,9 @@ function SignUpForm() {
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Live "is this already taken" state for the two unique fields — see the
-  // debounced effects below. Distinct from `errors` (which is derived
-  // synchronously from `form` every render) since these come from an async
-  // server round-trip.
+  // Live "already taken" state for the two unique fields (see the debounced
+  // effects below). Separate from `errors`, which is derived synchronously,
+  // since these come from a server round-trip.
   const [emailStatus, setEmailStatus] = useState(IDLE_AVAILABILITY);
   const [employeeIdStatus, setEmployeeIdStatus] = useState(IDLE_AVAILABILITY);
   const navigate = useNavigate();
@@ -114,16 +102,12 @@ function SignUpForm() {
 
   const errors = validate(form);
 
-  // Only pings the server once the field's own format is already valid —
-  // no point checking availability of something that's going to fail sync
-  // validation anyway. Editing the field again immediately clears any prior
-  // "taken" result (via the cleanup below re-running before the new timer
-  // fires) rather than leaving a stale result on screen while the new value
-  // is still being typed.
+  // Only checks the server once the field's format is valid. Editing the field
+  // clears the old "taken" result (the cleanup runs before the new timer), so no
+  // stale result stays while typing.
   useEffect(() => {
     if (!isValidEmail(form.email)) {
-      // Deferred a tick (see MapView.jsx for the same fix) rather than
-      // setting state synchronously in the effect body.
+      // Deferred a tick (see MapView.jsx) instead of setting state in the effect body.
       queueMicrotask(() => setEmailStatus(IDLE_AVAILABILITY));
       return undefined;
     }
@@ -152,29 +136,24 @@ function SignUpForm() {
     return () => clearTimeout(timer);
   }, [form.employeeId]);
 
-  // Shows the instant there's actual (invalid) content — not gated on blur
-  // alone, since a browser autofilling First/Last Name never fires a real
-  // blur event, which meant the error could never appear at all for an
-  // autofilled field even though the underlying state was correct. Still
-  // gated on touched/submitAttempted for the "still empty" case, so a
-  // fresh, untouched field doesn't show "required" the moment the page loads.
+  // Shown as soon as there is invalid content, not only on blur, because browser
+  // autofill of First/Last Name never fires a blur. Still gated on
+  // touched/submitAttempted for the "empty" case, so a fresh field doesn't say
+  // "required" on page load.
   const showError = (field) => {
     const hasContent = form[field]?.trim().length > 0;
-    // Returns the message itself (or '') so it can be used both as a boolean
-    // for the error state and as the helper text. It used to return `true`,
-    // which turned the field red without ever saying why.
+    // Returns the message (or '') so it works as both the error flag and the helper text.
     return errors[field] && (hasContent || touched[field] || submitAttempted) ? errors[field] : '';
   };
 
-  // A field's effective error merges its sync validation with the async
-  // "already taken" result — same display slot, same `showError` gating.
+  // A field's effective error merges its sync validation with the async "already
+  // taken" result, in the same slot and with the same `showError` gating.
   const emailError = errors.email || (emailStatus.taken ? 'This email is already registered' : undefined);
   const employeeIdError = errors.employeeId || (employeeIdStatus.taken ? 'This Employee ID is already taken' : undefined);
   const showEmailError = (Boolean(errors.email) || emailStatus.taken) && (form.email.trim().length > 0 || touched.email || submitAttempted);
   const showEmployeeIdError = (Boolean(errors.employeeId) || employeeIdStatus.taken) && (form.employeeId.trim().length > 0 || touched.employeeId || submitAttempted);
-  // No "touched" gating needed here (unlike the text fields above) — the
-  // checkbox starts checked, so this can only ever become true from a
-  // deliberate uncheck, never on page load.
+  // No "touched" gating: the checkbox starts checked, so this can only become
+  // true from a deliberate uncheck.
   const agreeError = agreeToTerms ? '' : 'You must agree to the Terms of Service and Privacy Policy to continue';
 
   const hasBlockingErrors =
@@ -193,9 +172,8 @@ function SignUpForm() {
     event.preventDefault();
 
     setSubmitAttempted(true);
-    // Defense in depth — the button is already disabled whenever
-    // `hasBlockingErrors` is true, but this guards direct form submission
-    // (e.g. pressing Enter) the same way.
+    // Defense in depth: the button is already disabled when `hasBlockingErrors`,
+    // but this also guards direct submission (e.g. pressing Enter).
     if (hasBlockingErrors) {
       showToast('Please fix the highlighted fields before continuing.');
       return;
@@ -203,11 +181,9 @@ function SignUpForm() {
 
     setIsSubmitting(true);
     try {
-      // No session is created here — the new account needs to clear two
-      // gates before it can log in: confirming this email address (next),
-      // then an admin's approval (see
-      // backend/src/controllers/auth.controller.js's register/login). Send
-      // them to Verify Email with the address they just typed, not Login.
+      // No session yet: the account must confirm this email (next), then get
+      // admin approval (see auth.controller.js register/login). Go to Verify
+      // Email with the address just typed, not Login.
       await signUpRequest(form);
       showToast('Account created — check your email for a verification code.', 'success');
       navigate(ROUTES.VERIFY_EMAIL, { state: { email: form.email } });
@@ -328,11 +304,9 @@ function SignUpForm() {
               placeholder="Confirm password"
               autoComplete="new-password"
               icon={<LockRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
-              // Sora renders this placeholder ~14% wider than Roboto did,
-              // which no longer fits this icon-narrowed field at full
-              // tracking — a small negative letter-spacing (not a font-size
-              // or layout change) recovers the fit without shrinking the
-              // text's rendered size.
+              // Sora renders this placeholder ~14% wider than Roboto did, so a small
+              // negative letter-spacing keeps it fitting the icon-narrowed field
+              // without shrinking the text.
               sx={{ '& .MuiOutlinedInput-input': { letterSpacing: '-0.05em' } }}
               value={form.confirmPassword}
               onChange={handleChange}
@@ -355,8 +329,8 @@ function SignUpForm() {
             label={
               <Typography sx={{ fontSize: '0.9rem', color: 'text.primary' }}>
                 I agree to the{' '}
-                {/* Plain href (new tab), not a router Link — this shouldn't
-                    navigate away from (and lose) an in-progress sign-up form. */}
+                {/* Plain href (new tab), not a router Link, so it doesn't leave and
+                    lose the sign-up form. */}
                 <Link href={ROUTES.TERMS} target="_blank" rel="noopener noreferrer" underline="none" sx={{ color: 'primary.main', fontWeight: 600 }}>
                   Terms of Service
                 </Link>{' '}

@@ -1,14 +1,7 @@
--- Adds the "forgot password" reset flow. The Login page has always had a
--- "Forgot password?" link, but it was <a href="#"> with no route, no page and
--- no endpoint behind it, so it did nothing at all.
---
--- These are deliberately their own columns rather than reusing the
--- email_verification_* set from 012. The two flows can legitimately overlap:
--- someone who registered but never typed their signup code can still ask to
--- reset their password, and sharing one column would let either flow wipe the
--- other's live code. Same storage reasoning as 012 applies to the code itself
--- -- random, single-use, 10-minute-lived, invalidated after 5 wrong guesses,
--- so hashing it would protect nothing that matters.
+-- Adds the forgot password flow (the Login link had no page or endpoint).
+-- Uses its own columns instead of the email_verification_* ones from 012, so
+-- the two flows can't overwrite each other's code. The code is stored in plain
+-- text for the same reasons as 012.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/014_users_password_reset.sql

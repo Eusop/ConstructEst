@@ -11,14 +11,11 @@ import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
 
 /**
- * Last-resort safety net for the whole app: if any component throws during
- * render (e.g. a data/lookup mismatch like a missing icon for an activity
- * type), React unmounts everything below the nearest boundary, which
- * without one meant a blank white screen with no way back. This catches
- * that, shows a recoverable screen instead, and offers a hard navigation
- * (full reload) back to the Dashboard or the same page — safe here since
- * all app state is in-memory Context, so a reload simply resets it rather
- * than risking navigating with a corrupted tree.
+ * Last-resort safety net for the whole app. If a component throws while
+ * rendering, React unmounts everything below the nearest boundary, which would
+ * be a blank white screen. This shows a recoverable screen with a full reload
+ * back to the Dashboard or the same page (safe, since app state is in-memory
+ * Context and a reload just resets it).
  */
 class ErrorBoundary extends Component {
   constructor(props) {

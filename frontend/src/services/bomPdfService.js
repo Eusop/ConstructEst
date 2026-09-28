@@ -3,9 +3,8 @@ import autoTable from 'jspdf-autotable';
 import { colors } from '../theme/palette';
 import { formatAmount } from '../utils/formatNumbers';
 
-// "Php " rather than the peso sign because jsPDF's built-in fonts have no
-// glyph for it. Amount itself is formatted by the shared helper so the PDF
-// and the on-screen table can never disagree on decimals.
+// "Php " instead of the peso sign, since jsPDF's built-in fonts have no glyph
+// for it. Amounts use the shared formatter so the PDF matches the on-screen table.
 function formatCurrency(value) {
   return `Php ${formatAmount(value)}`;
 }
@@ -20,10 +19,8 @@ function hexToRgb(hex) {
 }
 
 /**
- * Builds and downloads a Bill of Materials PDF from data already computed
- * on the page — this function only renders what it's given, so it's
- * frontend-only for now (the page currently passes mocked figures) but
- * needs no changes once that data comes from a real backend instead.
+ * Builds and downloads a Bill of Materials PDF from data already computed on
+ * the page. It only renders what it is given.
  *
  * @param {object} bom
  * @param {string} bom.projectName

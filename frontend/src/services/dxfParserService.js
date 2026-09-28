@@ -1,21 +1,16 @@
 import DxfParser from 'dxf-parser';
 
 /**
- * Frontend DXF parsing — reads a File's text content and extracts a
- * simplified, renderer-friendly shape list (see DXFPreview) plus its
- * bounding box. Entirely client-side for now; a future backend parser
- * would return the same `{ shapes, bounds }` shape, so callers (see
- * DxfDropzone) wouldn't need to change.
- *
- * Only the entity types common in 2D floor plans are supported (lines,
- * polylines, circles, arcs) — anything else is skipped rather than
- * failing the whole parse.
+ * Frontend DXF parsing. Reads a File's text and extracts a simple shape list
+ * (see DXFPreview) plus its bounding box, all client-side. Only common 2D plan
+ * entities are supported (lines, polylines, circles, arcs, MLINE); anything
+ * else is skipped instead of failing the whole parse.
  */
 
-// dxf-parser has no MLINE (AutoCAD multiline) support and silently skips
-// them, so a plan whose walls are drawn with MLINE previewed with no walls at
-// all. This reads the parts the preview needs: layer, visibility, thickness
-// (scale factor), justification, closed flag and the reference-line vertices.
+// dxf-parser skips MLINE (AutoCAD multiline), so walls drawn with it showed
+// nothing in the preview. This reads what the preview needs: layer,
+// visibility, thickness (scale factor), justification, closed flag and the
+// reference line vertices.
 class MLineHandler {
   constructor() {
     this.ForEntityName = 'MLINE';
@@ -46,10 +41,9 @@ class MLineHandler {
 }
 
 // The two faces of a standard two-line MLINE, as offsets from its reference
-// line in units of its scale (the wall thickness): centered for "zero"
-// justification, the reference line being one face for "top"/"bottom".
-// Assumes AutoCAD's Standard style (elements at +0.5 and -0.5); a custom
-// multiline style with more elements would preview as its outer two only.
+// line in units of its scale (wall thickness): centered for "zero"
+// justification, one face for "top"/"bottom". Assumes AutoCAD's Standard
+// style; a custom style with more elements shows only its outer two.
 function mlineFaces(entity) {
   const shift = entity.justification === 0 ? 0.5 : entity.justification === 2 ? -0.5 : 0;
   const offsets = [0.5 - shift, -0.5 - shift].map((o) => o * entity.scale);
@@ -77,10 +71,9 @@ export function isDxfFilename(name) {
   return /\.dxf$/i.test(name ?? '');
 }
 
-// Layers switched off or frozen in the file — AutoCAD doesn't draw them, so
-// the preview shouldn't either (e.g. helper layers like a FLOOR boundary or
-// BEAM/TRUSS kept in the file for the engine but hidden from the plan). This
-// only affects the picture; the backend engine still reads every layer.
+// Layers that are off or frozen are not drawn, matching AutoCAD (e.g. helper
+// layers like FLOOR or BEAM/TRUSS kept for the engine). This only affects the
+// preview; the backend engine still reads every layer.
 function hiddenLayerNames(dxf) {
   const layers = dxf?.tables?.layer?.layers ?? {};
   return new Set(
@@ -167,8 +160,7 @@ function computeBounds(shapes) {
 
 /**
  * Parses a DXF File into `{ shapes, bounds }`. Throws if the file can't be
- * read/parsed, or if it parses but contains no supported geometry — both
- * are treated as "invalid" by callers.
+ * parsed or has no supported geometry (both count as "invalid" for callers).
  *
  * @param {File} file
  */

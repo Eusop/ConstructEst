@@ -5,15 +5,13 @@ import Alert from '@mui/material/Alert';
 const ToastContext = createContext(null);
 
 /**
- * App-wide ephemeral popup feedback — "what just happened" for actions that
- * don't otherwise leave any visible trace: a blocked form submit (validation
- * failed, or the backend rejected it — wrong password, duplicate email...),
- * a background action succeeding/failing, etc.
+ * App-wide popup feedback for actions that leave no other trace: a blocked
+ * form submit (validation failed or the backend rejected it), a background
+ * action succeeding or failing, etc.
  *
- * Mounted once at the very root (see App.jsx), *outside* every route/role
- * gate, so it's available on the unauthenticated Login/Sign up pages too —
- * unlike AdminToastContext (Admin Module only), this one has no login
- * requirement and nothing is kept once dismissed.
+ * Mounted at the root (App.jsx), outside every route and role gate, so it also
+ * works on Login and Sign up. Unlike AdminToastContext (admin only), nothing is
+ * kept once dismissed.
  */
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'error' });

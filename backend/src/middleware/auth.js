@@ -1,9 +1,8 @@
 import { verifyToken } from '../services/token.service.js';
 
 /**
- * Verifies the Bearer token and attaches `{ id, employeeId, accessRole }`
- * as `req.user`. Access role always comes from the token, never trusted
- * from the request body.
+ * Verifies the Bearer token and sets `req.user` ({ id, employeeId, accessRole }).
+ * The role comes from the token, never from the request body.
  */
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -22,9 +21,7 @@ export function requireAuth(req, res, next) {
   }
 }
 
-/**
- * Gate a route to a specific access role. Call after `requireAuth`.
- */
+/** Limits a route to one access role. Call after `requireAuth`. */
 export function requireRole(role) {
   return (req, res, next) => {
     if (req.user?.accessRole !== role) {

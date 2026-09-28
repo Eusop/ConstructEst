@@ -10,20 +10,14 @@ const INITIAL_STATE = {
 const DashboardActivityContext = createContext(null);
 
 /**
- * App-wide dashboard counters and activity feed, updated as the user moves
- * through the New project → Processing → Brand Selection → Bill of
- * Materials flow (see the `log*` calls in those pages). Mounted once at
- * the same level as ProjectsProvider (see routes/AppRoutes.jsx) so it
- * survives navigation across the whole authenticated app, not just one
- * flow.
+ * App-wide dashboard counters and activity feed, updated as the user goes
+ * through New project, Processing, Brand Selection and Bill of Materials (see
+ * the `log*` calls in those pages). Mounted next to ProjectsProvider (see
+ * routes/AppRoutes.jsx) so it lasts across the whole authenticated app.
  *
- * Seeded on mount from GET /api/dashboard, which returns the real project
- * counts and the persisted activity_log rows. Before that fetch existed here,
- * this was purely in-memory: the counters read 0 and the feed was empty after
- * every reload, even for a user whose Projects page listed real projects, and
- * everything logged during a session was lost on refresh. The in-memory
- * `log*`/`increment*` functions are still used so the dashboard updates the
- * instant something happens rather than waiting for a refetch.
+ * Seeded on mount from GET /api/dashboard (project counts and saved
+ * activity_log rows). The in-memory `log*`/`increment*` functions still update
+ * the dashboard right away instead of waiting for a refetch.
  */
 export function DashboardActivityProvider({ children }) {
   const [state, setState] = useState(INITIAL_STATE);
@@ -57,8 +51,8 @@ export function DashboardActivityProvider({ children }) {
     setState((prev) => ({ ...prev, estimationsDone: prev.estimationsDone + 1 }));
   }, []);
 
-  // Newest entry first, each with its own id/timestamp assigned here so
-  // callers just describe *what* happened.
+  // Newest first. Each entry gets its own id and timestamp here, so callers
+  // only describe what happened.
   const logActivity = useCallback((entry) => {
     setState((prev) => ({
       ...prev,

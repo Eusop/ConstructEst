@@ -1,9 +1,7 @@
--- Adds optional second-floor-DXF support: a 2-storey project may now upload
--- a separate DXF for the second floor instead of the engine reusing the
--- ground floor's footprint scaled by storeys (see engine/formulas.py's
--- geometry2 parameter). Both columns are nullable — a project created
--- before this change, or one where the user only ever uploads one file
--- (still fully supported, unchanged behavior), simply leaves them NULL.
+-- Optional second floor DXF: a 2-storey project can upload a separate file
+-- instead of scaling the ground floor by storeys (see geometry2 in
+-- formulas.py). Both columns are nullable, so older and single-file projects
+-- are unchanged.
 --
 -- Run against the existing live database:
 --   mysql -u root -p constructest < db/migrations/005_add_second_floor_dxf.sql

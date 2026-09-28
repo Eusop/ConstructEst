@@ -1,25 +1,20 @@
 /**
- * Live cache of the active project's real per-store cost comparison,
- * populated by `loadStores()` (called from StoreLocatorPage after fetching
- * GET /api/projects/:id/stores) — StoreLocatorPage and BillOfMaterialsPage
- * both read `STORES` directly each render, so populating it here is all
- * that's needed for the real per-store optimized totals (Table 20's cost
- * optimization logic) to show up without changing either page's rendering.
+ * Live cache of the active project's per-store cost comparison, filled by
+ * `loadStores()` (called from StoreLocatorPage after GET
+ * /api/projects/:id/stores). StoreLocatorPage and BillOfMaterialsPage read
+ * `STORES` each render, so filling it here shows the real per-store totals
+ * (Table 20's cost optimization).
  */
 
-// Tarlac City, Philippines — used as the map's default center before any
-// store is selected, and as the distance-reference fallback (see
-// haversineKm/loadStores below) whenever the browser's real geolocation
-// isn't available (denied, unsupported, or timed out) — see
-// hooks/useUserLocation.js, which StoreLocatorPage uses to get the user's
-// actual position when possible.
+// Tarlac City center: the map's default center before a store is selected, and
+// the distance origin whenever the browser's location isn't available (see
+// hooks/useUserLocation.js).
 const CITY_CENTER = { lat: 15.4802, lng: 120.5979 };
 
 export const STORES = [];
 export const CITY_LOCATION = CITY_CENTER;
-// Set by loadStores() each time it runs — lets the UI say honestly whether
-// "distance" is really from the user or just approximated from the city
-// reference point.
+// Set by loadStores() each run, so the UI can say whether distance is from the
+// user or from the city center.
 export let DISTANCE_IS_FROM_USER = false;
 // True once applyRoadDistances() gave at least one store a road distance.
 export let DISTANCE_IS_BY_ROAD = false;
@@ -35,14 +30,9 @@ function haversineKm(a, b) {
 }
 
 /**
- * @param {Array<{storeId:number, name:string, address:string, lat:number, lng:number,
- *   optimizedTotal:number, inStock:boolean, isCheapest:boolean,
- *   missingMaterials:Array<{materialKey:string,name:string,availableAtStores:string[]}>}>} stores
- *   Already sorted (fully-stocked, cheapest-first, then partially-stocked stores).
- * @param {{lat:number,lng:number}} [origin] The point to measure distance from — the
- *   user's real browser geolocation when available (see hooks/useUserLocation.js),
- *   else the fixed city reference point (CITY_CENTER, the previous fallback-only
- *   behavior). Store positions themselves are already real (admin-entered coordinates).
+ * @param {Array<{storeId:number, name:string, address:string, lat:number, lng:number, optimizedTotal:number, inStock:boolean, isCheapest:boolean, missingMaterials:Array<{materialKey:string,name:string,availableAtStores:string[]}>}>} stores
+ *   Already sorted (fully stocked cheapest first, then partially stocked).
+ * @param {{lat:number,lng:number}} [origin] Where to measure distance from: the user's browser location when available (see hooks/useUserLocation.js), else the city center (CITY_CENTER). Store positions are real (admin-entered).
  */
 export function loadStores(stores, origin = CITY_CENTER) {
   DISTANCE_IS_FROM_USER = origin !== CITY_CENTER;
@@ -63,21 +53,18 @@ export function loadStores(stores, origin = CITY_CENTER) {
         // Filled in by applyRoadDistances() when OpenRouteService answers.
         roadKm: null,
         roadMinutes: null,
-        // Straight-line (as the crow flies) until the road distance arrives,
-        // and kept for any store routing couldn't reach. The card's
-        // Directions button opens the real road route in Google Maps.
+        // Straight-line until the road distance arrives, and kept for any store
+        // routing couldn't reach. The Directions button opens the road route in Google Maps.
         distanceLabel: `${distanceKm.toFixed(1)} km straight-line`,
         // Rough estimate: straight-line distance at an assumed 30 km/h.
         travelTimeLabel: `~${Math.max(1, Math.round((distanceKm / 30) * 60))} min drive (est.)`,
         totalCost: store.optimizedTotal,
         isCheapest: store.isCheapest,
-        // "Fully stocked" — still selectable either way (see
-        // StoreLocatorPage/StoreListCard), this just gates the "Cheapest"
-        // badge/label and whether the missing-items warning shows at all.
+        // "Fully stocked": still selectable either way; this only gates the
+        // "Cheapest" badge and whether the missing-items warning shows.
         inStock: store.inStock,
         stockLabel: store.inStock ? 'All materials in stock' : `${store.missingMaterials.length} item(s) unavailable`,
-        // Full list, not just the first — StoreListCard lists every
-        // missing material, not just one.
+        // Full list (not just the first): StoreListCard lists every missing material.
         missingMaterials: store.missingMaterials,
       };
     }),
@@ -86,8 +73,8 @@ export function loadStores(stores, origin = CITY_CENTER) {
 
 /**
  * Swaps in road distance and drive time from POST /api/stores/road-distances
- * (OpenRouteService). Stores missing from `byStoreId` keep their
- * straight-line labels.
+ * (OpenRouteService). Stores missing from `byStoreId` keep straight-line labels.
+ *
  * @param {Record<string, {km:number, minutes:number}>} byStoreId
  */
 export function applyRoadDistances(byStoreId) {

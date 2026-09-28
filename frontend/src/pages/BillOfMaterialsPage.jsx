@@ -22,11 +22,9 @@ import { formatPeso } from '../utils/formatNumbers';
 
 /**
  * Adapts GET /projects/:id/bom to what BomTable and bomPdfService read. The
- * backend sends everything they need except `quantityLabel`, and it sends the
- * full material name where the table shows the trimmed one, so those two are
- * derived here. `category`/`brand` come back null when no priced row was
- * found for a material, and the PDF passes category straight into
- * jspdf-autotable, so both are defaulted rather than left null.
+ * backend sends everything except `quantityLabel` and the trimmed material
+ * name, so those are derived here. `category` and `brand` are null when a
+ * material has no priced row, so they are defaulted (the PDF table needs strings).
  */
 function toDisplayLineItems(lineItems) {
   return lineItems.map((item) => ({
@@ -39,23 +37,14 @@ function toDisplayLineItems(lineItems) {
 }
 
 /**
- * Bill of Materials: the final priced material list plus a cost breakdown
- * against the project's budget ceiling. Self-sufficient regardless of which
- * page the user arrived from (or a reload): fetches the active project's
- * estimation, its selected store's real brand catalog, the store list, and
- * the priced BOM itself.
- *
- * The line items and grand total come from the backend (GET /:id/bom), not
- * from computeBom.js. That matters because computeBom prices sand and gravel
- * from flat BASE_PRICING literals — they're commodities with no brand
- * catalog — while the backend prices every material from store_material_prices,
- * which is per-store. The two therefore disagreed for any store whose price
- * multiplier isn't 1.0, so this page's grand total didn't match the total the
- * Store Locator showed for the same project. Fetching it also means a saved
- * manual brand selection survives a reload: brandSelection lives only in
- * React state (ProjectsContext hardcodes it to null), so the client-side
- * version silently fell back to the Standard tier after a refresh, while the
- * backend still had the user's real picks.
+ * Bill of Materials: the final priced list and a cost breakdown against the
+ * budget ceiling. It loads everything itself (estimation, the selected store's
+ * brand catalog, the store list and the priced BOM), so it works after a reload.
+ * Line items and the grand total come from the backend (GET /:id/bom), not
+ * computeBom.js, because computeBom.js prices sand and gravel from flat
+ * BASE_PRICING and would not match the Store Locator total for stores with a
+ * price multiplier. The backend also keeps the saved brand selection after a
+ * reload (brandSelection is only in React state on the client).
  */
 function BillOfMaterialsPage() {
   const { activeProject, refreshActiveProjectEstimation } = useProjects();
@@ -78,10 +67,8 @@ function BillOfMaterialsPage() {
       if (cancelled) return;
       if (estimation) loadParsedProject(estimation);
 
-      // The brand catalog is still needed even though the BOM is now priced
-      // server-side: the Premium subtotal below has no backend equivalent
-      // (the endpoint prices the *saved* selection, it can't answer "what
-      // would Premium have cost"), so that one figure is still computed here.
+      // The brand catalog is still needed: the Premium subtotal below has no
+      // backend equivalent (the endpoint prices only the saved selection).
       const [{ catalog }, { stores }, fetchedBom] = await Promise.all([
         apiRequest(`/projects/${activeProject.id}/brand-catalog?storeId=${storeId}`),
         apiRequest(`/projects/${activeProject.id}/stores`),
@@ -93,9 +80,8 @@ function BillOfMaterialsPage() {
       setBom({ ...fetchedBom, lineItems: toDisplayLineItems(fetchedBom.lineItems) });
       setLoadedForKey(`${activeProject.id}-${storeId}`);
     })().catch(() => {
-      // Leaves `bom` null, which renders IncompleteBomState below rather than
-      // an error screen — covers the endpoint's own 400 (no store selected
-      // and none saved) and 409 (no current estimation yet).
+      // Leaves `bom` null, which shows IncompleteBomState instead of an error
+      // (covers the endpoint's 400 for no store and 409 for no estimate).
       if (!cancelled) setLoadedForKey(`${activeProject.id}-${storeId}`);
     });
 
@@ -126,18 +112,13 @@ function BillOfMaterialsPage() {
   }
 
   const { lineItems, grandTotal } = bom;
-  // The selected store may not carry everything (see StoreLocatorPage,
-  // which now allows picking a partially-stocked store) — grandTotal only
-  // covers what it does sell, so the budget check below needs to disclose
-  // that rather than silently comparing an incomplete total.
+  // The selected store may not carry everything (StoreLocatorPage allows partial
+  // stores). grandTotal only covers what it sells, so the budget check must say so.
   const missingCount = lineItems.filter((item) => item.available === false).length;
-  // Price the Premium baseline off the same real per-store prices the fetched
-  // BOM used, so the commodities (sand/gravel, which have no brand options and
-  // would otherwise fall back to BASE_PRICING's flat literals) don't drag a
-  // stale number into the saving figure.
-  // Lumber's BOM line is converted to pieces, so its unit price is per piece
-  // while computeBom.js prices the take-off's board feet: leave it out and let
-  // that side use the catalog's per-board-foot brand price instead.
+  // Price the Premium baseline with the same per-store prices as the fetched BOM,
+  // so sand and gravel (no brands) don't use BASE_PRICING's flat prices. Lumber's
+  // BOM line is in pieces while computeBom.js prices board feet, so leave it out
+  // and let that side use the catalog per-board-foot price.
   const realUnitPrices = Object.fromEntries(
     lineItems.filter((item) => !item.pieceConversion).map((item) => [item.key, item.unitPrice]),
   );
@@ -173,11 +154,8 @@ function BillOfMaterialsPage() {
   };
 
   return (
-    // Mobile: no longer forced to stretch and fill the viewport (`flex:1`)
-    // — with the material category groups now closed by default, that
-    // forced stretch left a large empty gap below the short collapsed
-    // content instead of the page simply ending at its natural height.
-    // sm+ keeps the original flex:1 behavior unchanged.
+    // Mobile: not forced to fill the viewport (`flex:1`), since the material groups
+    // are closed by default and it left an empty gap. sm+ keeps flex:1.
     <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
         <Box>
@@ -197,12 +175,8 @@ function BillOfMaterialsPage() {
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
           p: { xs: 1.5, md: 4 },
-          // 'auto' rather than leaving overflow unset (default 'visible') —
-          // without a scroll boundary, this card renders shorter than its
-          // actual content (table + cost summary) once flex-sized, and the
-          // table's later rows/the summary box spill past the white card's
-          // bottom edge instead of scrolling within it (same risk as
-          // ManualBrandTable.jsx's identical Paper shape).
+          // 'auto' so a card shorter than its content (table + cost summary) scrolls
+          // instead of spilling past the white card (same as ManualBrandTable.jsx).
           overflow: 'auto',
           flex: 1,
           minHeight: 0,

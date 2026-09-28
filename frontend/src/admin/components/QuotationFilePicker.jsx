@@ -13,11 +13,9 @@ const ACCEPTED_EXTENSIONS = /\.(pdf|docx?|xlsx?)$/i;
 const INVALID_QUOTATION_MESSAGE = 'Only PDF, Word (.doc/.docx), or Excel (.xls/.xlsx) files are accepted.';
 
 /**
- * "Attach a quotation" file field — required proof (a supplier quote) before
- * an admin can set or change a store's material price (see
- * admin.controller.js's upsertStoreMaterialPrice), shared between
- * BrandFormDialog and BulkMaterialDialog since both let an admin decide a
- * price.
+ * "Attach a quotation" file field: required proof (a supplier quote) before an
+ * admin can set or change a store's material price (see upsertStoreMaterialPrice
+ * in admin.controller.js). Shared by BrandFormDialog and BulkMaterialDialog.
  *
  * @param {object} props
  * @param {File|null} props.file

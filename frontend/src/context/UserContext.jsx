@@ -6,24 +6,19 @@ import { sendHeartbeat } from '../services/usersService';
 const UserContext = createContext(null);
 const INITIAL_PROFILE = { id: null, userName: null, employeeId: null, email: null, avatarUrl: null, accessRole: null };
 
-// Feeds the Admin Module's "online now" indicator (see AdminUsersPage.jsx,
-// which treats last_seen_at within the last ~90s — double this — as
-// online). 45s keeps that reasonably fresh without hammering the backend.
+// Feeds the admin "online now" dot (AdminUsersPage.jsx counts last_seen_at
+// within ~90s, double this, as online).
 const HEARTBEAT_INTERVAL_MS = 45_000;
 
 /**
- * The signed-in user's identity. `userName` is set once on successful
- * sign-up/sign-in (see SignUpForm/LoginForm) and read wherever the app
- * greets the user (see WelcomeCard). `employeeId`/`email` are additionally
- * captured at sign-up for the Profile page to display/edit; `avatarUrl` is
- * only ever set from the Profile page itself. Mounted above the
- * dashboard's own providers in App.jsx since it needs to survive
- * navigating from /login or /signup into the authenticated app.
+ * The signed-in user's identity. `userName` is set on sign-up or sign-in and
+ * read where the app greets the user (WelcomeCard). `employeeId` and `email`
+ * are for the Profile page. `avatarUrl` is only set from the Profile page.
+ * Mounted above the dashboard providers in App.jsx so it survives moving from
+ * /login into the app.
  *
- * Backed by the real backend now (see services/authService.js): on mount,
- * if a token is already stored (a returning "keep me signed in" session),
- * it's validated against GET /auth/me and the profile rehydrated —
- * otherwise the token is stale and gets cleared.
+ * On mount, if a token is stored ("keep me signed in"), it is checked against
+ * GET /auth/me and the profile is restored; a stale token is cleared.
  */
 export function UserProvider({ children }) {
   const [profile, setProfile] = useState(INITIAL_PROFILE);
@@ -45,14 +40,8 @@ export function UserProvider({ children }) {
         setIsAuthenticated(true);
       })
       .catch((error) => {
-        // requireAuth (backend/src/middleware/auth.js) always answers 401 for
-        // a missing/invalid/expired token — that's the only case that means
-        // the stored token is actually bad. Anything else (a transient
-        // network error, a cold-starting backend, a CORS hiccup) used to hit
-        // this same catch and wipe an otherwise still-valid token, silently
-        // logging out someone who checked "Keep me signed in" the moment
-        // they reopened the tab. Leave the token alone for those — the user
-        // just stays logged out for this load and can retry/refresh.
+        // Only a 401 means the token is bad. Network errors or a cold backend
+        // should not log the user out, so the token is kept.
         if (error?.status === 401) {
           logoutRequest();
         }
@@ -61,11 +50,8 @@ export function UserProvider({ children }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Fires once immediately on becoming authenticated (not just after the
-  // first interval delay), then on a steady timer for as long as the
-  // session stays open. Failures are swallowed — a missed heartbeat just
-  // means this account looks briefly offline to an admin, not worth
-  // surfacing as an error to the person using the app.
+  // Runs right after login, then every 45s. Errors are ignored: a missed
+  // beat only makes the user look briefly offline to the admin.
   useEffect(() => {
     if (!isAuthenticated) return undefined;
     sendHeartbeat().catch(() => {});
@@ -82,12 +68,9 @@ export function UserProvider({ children }) {
 
   const updateProfile = useCallback((updates) => {
     setProfile((prev) => {
-      // Avatars are server paths now (/uploads/avatars/...), uploaded via
-      // POST /users/me/avatar, so this revoke no longer has anything to do in
-      // practice: the only object URLs left are the local previews inside
-      // ProfileAvatarSection, which never reach this context and are revoked
-      // there. Kept as a cheap guard in case any other code path ever hands
-      // an object URL to updateProfile again — it costs one string check.
+      // Avatars are server paths now, so this revoke rarely does anything. The
+      // only object URLs left are local previews in ProfileAvatarSection, which
+      // revokes them. Kept as a cheap guard (one string check).
       if ('avatarUrl' in updates && prev.avatarUrl && prev.avatarUrl !== updates.avatarUrl && prev.avatarUrl.startsWith('blob:')) {
         URL.revokeObjectURL(prev.avatarUrl);
       }

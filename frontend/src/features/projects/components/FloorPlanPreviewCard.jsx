@@ -8,8 +8,8 @@ import { colors } from '../../../theme/palette';
 
 const PREVIEW_HEIGHT_DESKTOP = 320;
 const PREVIEW_HEIGHT_MOBILE = 200;
-// Smaller when a second floor is shown alongside it — two full-height boxes
-// side by side would be excessive.
+// Smaller when a second floor is shown beside it (two full-height boxes side
+// by side would be too much).
 const PREVIEW_HEIGHT_DESKTOP_SPLIT = 240;
 const PREVIEW_HEIGHT_MOBILE_SPLIT = 170;
 
@@ -37,30 +37,22 @@ function FloorPreviewBox({ label, caption, shapes, bounds, height, emptyMessage 
 }
 
 /**
- * "Floor plan preview" section: the same rendered DXF preview shown on the
- * New Project page, reused here so the floor plan the user actually
- * uploaded — not a mock diagram — stays visible through the rest of the
- * workflow. `shapes`/`bounds` (and, for a 2-storey project uploaded with a
- * separate second-floor DXF, `secondFloorShapes`/`secondFloorBounds`) come
- * from the project's `fileValidation`/`secondFloorFileValidation` (see
- * context/ProjectsContext) — client-side parse results captured at upload
- * time, so nothing is re-uploaded or re-parsed. That also means they're
- * only available for the duration of the browser session the project was
- * created in — reloading (or opening a project created earlier) shows the
- * "preview unavailable" fallback instead, though the estimate itself is
- * unaffected either way, since it's computed server-side from the actual
- * uploaded files.
- *
- * Renders as a bare content section (no card chrome of its own) — it's
- * composed inside the Results page's single parent card alongside the
- * other sections, not used as a standalone card.
+ * "Floor plan preview" section: the same DXF preview as the New Project page,
+ * reused so the floor plan the user uploaded stays visible through the
+ * workflow. `shapes`/`bounds` (and `secondFloorShapes`/`secondFloorBounds` for a
+ * 2-storey project with a separate second floor DXF) come from the project's
+ * `fileValidation`/`secondFloorFileValidation` (see context/ProjectsContext).
+ * They are client-side parse results from upload time, so they only exist for
+ * the browser session that created the project. After a reload (or for an older
+ * project) the "preview unavailable" fallback shows; the estimate is unaffected
+ * since it is computed server-side. Renders as a bare section (no card) inside
+ * the Results page's parent card.
  *
  * @param {object} props
  * @param {string} props.projectName Shown in the heading as "Floor Plan Preview of {projectName}".
  * @param {Array<object>} [props.shapes]
  * @param {{minX: number, minY: number, maxX: number, maxY: number}} [props.bounds]
- * @param {boolean} [props.hasSecondFloorFile] Whether the project also has a
- *   separate second-floor DXF.
+ * @param {boolean} [props.hasSecondFloorFile] Whether the project also has a separate second-floor DXF.
  * @param {Array<object>} [props.secondFloorShapes]
  * @param {{minX: number, minY: number, maxX: number, maxY: number}} [props.secondFloorBounds]
  */

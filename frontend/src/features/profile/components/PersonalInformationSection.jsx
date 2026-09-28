@@ -6,11 +6,9 @@ import FormTextField from '../../../components/FormTextField';
 const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 };
 
 /**
- * "Personal Information" section body: editable Full Name and Email
- * Address, plus a read-only Employee ID — matching Admin's own Edit User
- * dialog, where Employee ID is disabled once a user exists (it's the login
- * identifier; the backend's updateProfile endpoint doesn't accept renaming
- * it either).
+ * "Personal Information" section: editable Full Name and Email, and a read-only
+ * Employee ID (like the admin Edit User dialog: it is the login identifier, and
+ * the backend's updateProfile doesn't accept renaming it).
  *
  * @param {object} props
  * @param {{fullName: string, employeeId: string, email: string}} props.form

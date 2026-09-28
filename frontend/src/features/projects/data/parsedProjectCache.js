@@ -1,22 +1,16 @@
 /**
- * Live cache of the active project's real parsed measurements + quantity
- * take-off, populated by `loadParsedProject()` (called from
- * ProjectResultsPage/MaterialEstimationPage after fetching
- * GET /api/projects/:id) — every consumer downstream of parsing (Results,
- * Material Estimation, Store Locator's baseline BOM, ...) reads these same
- * exported bindings, so populating them here is all that's needed to make
- * the whole read-only chain reflect real per-project data without touching
- * any of those components.
- *
- * Object/array exports are mutated in place (not reassigned) and primitive
- * exports use `let` — both are live ES module bindings, so every importer
- * sees the update on its next render without re-importing anything.
+ * Live cache of the active project's parsed measurements and quantity take-off,
+ * filled by `loadParsedProject()` (called from ProjectResultsPage and
+ * MaterialEstimationPage after GET /api/projects/:id). Everything after parsing
+ * (Results, Material Estimation, Store Locator's baseline BOM) reads these same
+ * exports, so filling them here updates all of it. Object and array exports are
+ * mutated in place and primitives use `let`, both live ES module bindings, so
+ * importers see updates on their next render.
  */
 import { formatCount, formatMeasurement, formatPeso, formatQuantity } from '../../../utils/formatNumbers';
-// groundFloor/secondFloor stay null unless the project was uploaded with a
-// real separate second-floor DXF (see backend engine's geometry2 param) —
-// with only one file, "ground" and the combined total are the same number,
-// so there's nothing honest to show as a distinct per-floor breakdown.
+// groundFloor/secondFloor stay null unless the project had a separate second
+// floor DXF (see geometry2 in the engine). With one file, "ground" and the
+// total are the same number, so there is no per-floor breakdown to show.
 export const PARSED_MEASUREMENTS = {
   totalWallLength: '—', floorArea: '—', roofArea: '—', roomsDetected: 0,
   doorArea: '—', windowArea: '—', columnCount: '—', floorPerimeter: '—', roofPerimeter: '—', roofRidgeLength: '—',
@@ -26,15 +20,13 @@ export const PARSED_MEASUREMENTS = {
 export let ESTIMATED_COST = '₱0';
 export let ESTIMATED_COST_VALUE = 0;
 
-// Matches the material_key set the backend computes — see
-// features/estimation/data/quantityTakeoffMaterials.js for the full
-// take-off table (this module only carries what Results/Store Locator need).
+// Matches the material_key set the backend computes. See
+// features/estimation/data/quantityTakeoffMaterials.js for the full take-off
+// (this module only carries what Results and Store Locator need).
 export const MATERIALS = [];
 
-// Re-exported for the modules that already import it from here (e.g.
-// BillOfMaterialsPage, which gets raw numeric quantities back from the
-// backend's BOM endpoint) — the implementation now lives in utils/formatNumbers
-// so all three copies of this logic that used to exist can't drift apart.
+// Re-exported for modules that import it from here (e.g. BillOfMaterialsPage).
+// The implementation lives in utils/formatNumbers so the copies can't drift apart.
 export { formatQuantity as formatQuantityLabel };
 
 /**
@@ -46,11 +38,10 @@ export { formatQuantity as formatQuantityLabel };
 export function loadParsedProject(estimation) {
   const { measurements, materials, estimatedCost } = estimation;
 
-  // Every measurement goes through formatMeasurement, which also covers the
-  // detail fields that are NULL on projects computed before the "detailed
-  // extraction information" migration (009) — those render "—" rather than
-  // "null m²" until the project is recomputed. roomsDetected/columnCount are
-  // genuine counts, so they never get decimals.
+  // Every measurement goes through formatMeasurement, which also covers detail
+  // fields that are NULL on projects computed before migration 009 (they show a
+  // dash placeholder until recomputed). roomsDetected and columnCount are counts,
+  // so no decimals.
   PARSED_MEASUREMENTS.totalWallLength = formatMeasurement(measurements.totalWallLength, ' m');
   PARSED_MEASUREMENTS.floorArea = formatMeasurement(measurements.floorArea, ' m²');
   PARSED_MEASUREMENTS.roofArea = formatMeasurement(measurements.roofArea, ' m²');

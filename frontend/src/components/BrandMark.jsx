@@ -4,11 +4,9 @@ import ArchitectureRoundedIcon from '@mui/icons-material/ArchitectureRounded';
 import { colors } from '../theme/palette';
 
 /**
- * ConstructEst marketing-site brand mark: an orange icon tile followed by
- * the "ConstructEst" wordmark. Used by the public Navbar/Footer.
- *
- * (The auth/dashboard header uses the original house-and-bars `Logo`
- * component — this is a distinct mark for the redesigned marketing site.)
+ * ConstructEst marketing-site brand mark: an orange icon tile and the
+ * "ConstructEst" wordmark, used by the public Navbar and Footer. (The auth and
+ * dashboard header use the `Logo` component instead.)
  *
  * @param {object} props
  * @param {number} [props.height=32] Pixel height of the icon tile; wordmark scales with it.

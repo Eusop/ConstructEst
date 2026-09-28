@@ -1,23 +1,11 @@
 /**
- * One place for every number the estimation/BOM screens display, because the
- * same formatter logic used to be copy-pasted in three files and drift between
- * them was inevitable.
+ * One place for how numbers are shown on the estimation and BOM screens.
  *
- * How many decimals each kind of number gets, and why:
- *
- * - Measurements (m, m²) -> 4. The backend rounds to 2 and stores DECIMAL(10,2),
- *   so the last two digits are always zeros. That is deliberate: it keeps the
- *   column visually aligned and makes it obvious the value is a measurement
- *   rather than a count. It also fixes a real bug - these used to be dropped
- *   straight into a template string, so a stored 120.00 arrived from JSON as
- *   the number 120 and rendered as "120 m", losing the decimals entirely.
- * - Quantities -> depends on the unit. Sand/gravel/rebar/tie wire are ordered
- *   by volume or weight and get 4; everything else is a count of physical
- *   items (bags, sheets, pieces) that the engine already rounded up with
- *   ceil(), so showing "962.0000 pcs" of hollow blocks would just look broken.
- * - Money -> 2, the way currency is always written. Everything used to
- *   Math.round() to whole pesos, throwing away the centavos the database
- *   actually stores.
+ * - Measurements (m, m²): 2 decimals (the backend rounds to 2).
+ * - Quantities: sand, gravel, rebar and tie wire (ordered by volume or weight)
+ *   get 4 decimals. Everything else is a count the engine already rounded up,
+ *   so it is shown whole.
+ * - Money: 2 decimals, so centavos are kept.
  */
 
 // Mirrors WHOLE_UNITS / FRACTIONAL_UNITS in backend/engine/formulas.py. Only
@@ -33,9 +21,8 @@ export function decimalsForUnit(unit) {
 }
 
 /**
- * A material quantity, with the unit deciding whether decimals apply.
- * Pass the unit whenever you have it; without it the value is treated as a
- * count and shown whole.
+ * A material quantity. The unit decides whether decimals apply; without a
+ * unit it is treated as a count and shown whole.
  */
 export function formatQuantity(quantity, unit) {
   const decimals = decimalsForUnit(unit);
@@ -46,9 +33,8 @@ export function formatQuantity(quantity, unit) {
 }
 
 /**
- * A measurement read off the DXF (lengths, areas, perimeters). Returns the
- * placeholder for null/undefined, which is what an older estimation row that
- * predates the detailed-extraction migration will have.
+ * A measurement read off the DXF (length, area, perimeter). Returns a
+ * placeholder for null/undefined (older estimations without these fields).
  */
 export function formatMeasurement(value, suffix = '') {
   if (value == null) return '—';

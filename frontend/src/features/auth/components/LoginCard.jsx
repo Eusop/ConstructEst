@@ -6,14 +6,11 @@ import LoginBrandPanel from './LoginBrandPanel';
 import LoginForm from './LoginForm';
 
 /**
- * Sign In card. Desktop (`md`+): the original two-panel layout — a dark
- * brand/marketing panel on the left, the form on the right, inside a
- * shadowed, rounded card. Below `md`: no floating card at all (no shadow/
- * radius — the form sits directly on the page, edge-to-edge, the way a
- * native app's auth screen has no card chrome), and the full marketing
- * panel (headline + highlight list + footer tagline) is replaced by a
- * compact brand mark so the form is visible without scrolling past a
- * second "screen" of marketing content first.
+ * Sign In card. Desktop (`md`+): two panels, a dark brand panel on the left and
+ * the form on the right, in a shadowed rounded card. Below `md`: no floating
+ * card (no shadow or radius), so the form sits edge to edge like a native app,
+ * and the marketing panel is replaced by a compact brand mark so the form shows
+ * without scrolling.
  */
 function LoginCard() {
   return (

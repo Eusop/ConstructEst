@@ -37,9 +37,9 @@ function FallbackState({ icon, title, description }) {
 }
 
 /**
- * Reusable map component using Leaflet + free OpenStreetMap tiles, no API
- * key needed. Just renders markers from plain data and shows a popup on
- * click, doesn't know anything about stores/projects, any page can use it.
+ * Reusable map using Leaflet and free OpenStreetMap tiles (no API key). It
+ * renders markers from plain data and shows a popup on click, and knows nothing
+ * about stores or projects.
  *
  * @param {object} props
  * @param {{lat: number, lng: number}} props.center
@@ -59,29 +59,25 @@ function MapView({ center, zoom = 14, markers, onMarkerClick, onMapClick, getInf
   const markerObjectsRef = useRef(new Map());
   const [status, setStatus] = useState('loading');
 
-  // Keeps onMapClick fresh for the mount-only effect below without adding
-  // it to that effect's deps. Can't write to a ref during render, so it's
-  // done in its own effect.
+  // Keeps onMapClick current for the mount-only effect below without adding it
+  // to that effect's deps (a ref can't be written during render).
   const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
     onMapClickRef.current = onMapClick;
   });
 
-  // Skip the first run of the recenter effect, since L.map() already put
-  // the map at `center` on creation, flying there again is redundant and
-  // risky (container might not have real dimensions yet, see that effect).
+  // Skip the first run of the recenter effect: L.map() already placed the map at
+  // `center`, and flying there again is redundant and risky.
   const skipNextRecenterRef = useRef(true);
-  // True while a flyTo animation is running. The marker-rebuild effect
-  // checks this so a marker list change during a recenter (like selecting
-  // a store, which changes both at once) creates markers already hidden
-  // instead of undoing the fade-out mid-animation.
+  // True while a flyTo animation runs. The marker rebuild checks it so markers
+  // created during a recenter start hidden instead of undoing the fade-out.
   const isRecenteringRef = useRef(false);
 
   // Create the map instance once, on mount.
   useEffect(() => {
     if (!containerRef.current) return undefined;
-    // React StrictMode mounts/unmounts/remounts every effect once in dev,
-    // and Leaflet throws if it sees its old container id still set.
+    // React StrictMode remounts every effect once in dev, and Leaflet throws if
+    // the old container id is still set.
     if (containerRef.current._leaflet_id) {
       containerRef.current._leaflet_id = null;
     }
@@ -93,13 +89,11 @@ function MapView({ center, zoom = 14, markers, onMarkerClick, onMapClick, getInf
         center: initialCenter,
         zoom,
         zoomControl: true,
-        // Canvas renderer instead of the default SVG, our markers lag
-        // behind during an animated zoom otherwise (SVG can't keep up with
-        // the map's own CSS transform, canvas redraws every frame).
+        // Canvas renderer instead of SVG: SVG markers lag behind the map's CSS
+        // transform during an animated zoom, canvas redraws every frame.
         preferCanvas: true,
-        // Below zoom 3 or so Leaflet repeats the world map to fill the
-        // screen. We never need to zoom out that far, so floor it above
-        // that threshold.
+        // Below zoom 3 Leaflet repeats the world map. We never need that far
+        // out, so the minimum is set above it.
         minZoom: 5,
       });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -115,9 +109,8 @@ function MapView({ center, zoom = 14, markers, onMarkerClick, onMapClick, getInf
       queueMicrotask(() => setStatus('error'));
     }
 
-    // Leaflet needs to be told when its container resizes (like a tab
-    // layout settling after first paint), otherwise it can render at a
-    // stale size with gray tiles until the next pan/zoom.
+    // Leaflet must be told when its container resizes (e.g. a tab layout
+    // settling), or it can show a stale size with gray tiles.
     const resizeObserver = new ResizeObserver(() => map?.invalidateSize());
     resizeObserver.observe(containerRef.current);
 
@@ -130,12 +123,10 @@ function MapView({ center, zoom = 14, markers, onMarkerClick, onMapClick, getInf
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pan/zoom to the new center whenever it actually changes (selecting a
-  // store, "locate me", etc). Always resets zoom too so the view doesn't
-  // stay wherever the user last manually zoomed to. flyTo animates this
-  // smoothly instead of snapping. Depends on lat/lng directly rather than
-  // the center object, since callers usually build that object fresh every
-  // render, which would replay the animation on unrelated re-renders.
+  // Pan/zoom to the new center when it changes (selecting a store, "locate
+  // me"). Zoom always resets so it doesn't stay where the user last zoomed.
+  // Depends on lat/lng, not the center object, since callers build a new
+  // object every render and that would replay the animation.
   useEffect(() => {
     if (status !== 'ready' || !mapRef.current) return;
     if (skipNextRecenterRef.current) {
@@ -149,16 +140,13 @@ function MapView({ center, zoom = 14, markers, onMarkerClick, onMapClick, getInf
       return;
     }
     const map = mapRef.current;
-    // flyTo's animation math can go NaN if the container's size is stale
-    // or zero (happens on a narrow layout that hasn't settled yet), even
-    // with valid coordinates. invalidateSize() fixes that; try/catch is a
-    // safety net so it can never crash the page, just falls back to an
-    // instant move.
+    // flyTo can produce NaN if the container size is stale or zero (narrow
+    // layouts not yet settled). invalidateSize() fixes it, and try/catch falls
+    // back to an instant move so it can't crash the page.
     map.invalidateSize();
 
-    // Our markers (circleMarker) visibly lag a frame behind the map during
-    // a flyTo animation, a known Leaflet limitation. Hiding them until the
-    // animation settles reads as an intentional fade instead of a glitch.
+    // circleMarker markers lag a frame behind during flyTo (a Leaflet limit).
+    // Hiding them until it settles looks like an intentional fade.
     const markerObjects = markerObjectsRef.current;
     const showMarkers = () => {
       isRecenteringRef.current = false;
@@ -193,9 +181,8 @@ function MapView({ center, zoom = 14, markers, onMarkerClick, onMapClick, getInf
         console.error('MapView: skipping marker with invalid position', markerData);
         return;
       }
-      // Start hidden if a recenter animation is already running, so a
-      // marker list change in the same commit as a recenter doesn't undo
-      // the fade-out before the animation finishes.
+      // Start hidden if a recenter is already running, so a marker change in
+      // the same commit doesn't undo the fade-out.
       const initialOpacity = isRecenteringRef.current ? 0 : 1;
       const marker = L.circleMarker([markerData.position.lat, markerData.position.lng], {
         radius: markerData.selected ? 14 : 11,
@@ -228,9 +215,8 @@ function MapView({ center, zoom = 14, markers, onMarkerClick, onMapClick, getInf
     };
   }, [status, markers, onMarkerClick, getInfoContent]);
 
-  // Open the popup when selection changes from outside the map (like the
-  // store list). Doesn't re-pan here, the center effect above already
-  // handles that with a smooth flyTo, panning again would cut it short.
+  // Open the popup when selection changes from outside the map (e.g. the store
+  // list). No re-pan here; the center effect above already flies there.
   useEffect(() => {
     if (status !== 'ready' || !selectedMarkerId || !getInfoContent) return;
     const marker = markerObjectsRef.current.get(selectedMarkerId);

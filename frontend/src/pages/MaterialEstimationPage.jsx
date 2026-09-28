@@ -43,17 +43,12 @@ function toUiFactors(constants) {
 }
 
 /**
- * Material Estimation: the itemized quantity take-off, plus the calibration
- * factors and structural design-parameter overrides that feed it — merged
- * onto one page (rather than calibration living on its own Settings page)
- * so tweaking an input and recomputing is a single, local loop instead of a
- * round trip through a different part of the app.
- *
- * Loads the active project's estimation, effective constants (its own
- * override, or the admin-managed global default), and design overrides;
- * "Recalculate" persists both drafts (PUT constants, PUT design-overrides)
- * then re-runs the engine (POST recompute) against the same uploaded DXF,
- * replacing the on-screen take-off with the new run without a re-upload.
+ * Material Estimation: the itemized quantity take-off with the calibration
+ * factors and design-parameter overrides that feed it, on one page so tweaking
+ * an input and recomputing is a single loop. It loads the active project's
+ * estimation, effective constants (its override or the admin global default)
+ * and design overrides. "Recalculate" saves both drafts (PUT constants, PUT
+ * design-overrides), then re-runs the engine (POST recompute) on the same DXF.
  */
 function MaterialEstimationPage() {
   const { activeProject, updateActiveProject, refreshActiveProjectEstimation } = useProjects();
@@ -63,11 +58,9 @@ function MaterialEstimationPage() {
   const [draftFactors, setDraftFactors] = useState(null);
   const [savedOverrides, setSavedOverrides] = useState(null);
   const [draftOverrides, setDraftOverrides] = useState(null);
-  // What the engine will actually use for any field left blank (this
-  // project's saved override -> admin's global default -> formulas.py's
-  // hardcoded default) — lets Design Parameters show the real effective
-  // value as its placeholder instead of always the hardcoded literal, which
-  // silently went stale whenever an admin set a different global default.
+  // What the engine will use for blank fields (project override, then admin
+  // global default, then the formulas.py default). Design Parameters shows it
+  // as the placeholder.
   const [effectiveDefaults, setEffectiveDefaults] = useState(null);
   const [savedIncludeRoofing, setSavedIncludeRoofing] = useState(null);
   const [draftIncludeRoofing, setDraftIncludeRoofing] = useState(null);
@@ -104,8 +97,7 @@ function MaterialEstimationPage() {
           setDraftFactors(SYSTEM_DEFAULT_FACTORS);
           setSavedOverrides(EMPTY_OVERRIDES);
           setDraftOverrides(EMPTY_OVERRIDES);
-          // Left null on failure — DesignParametersCard falls back to its
-          // own hardcoded-literal placeholder rather than showing nothing.
+          // Null on failure: DesignParametersCard falls back to its own placeholder.
           setEffectiveDefaults(null);
         }
       }
@@ -168,11 +160,8 @@ function MaterialEstimationPage() {
   };
 
   return (
-    // Mobile: no longer forced to stretch and fill the viewport (`flex:1`)
-    // — with the quantity take-off's material groups now closed by default,
-    // that forced stretch left a large empty gap below the short collapsed
-    // content instead of the page simply ending at its natural height.
-    // sm+ keeps the original flex:1 behavior unchanged.
+    // Mobile: not forced to fill the viewport (`flex:1`), since the material
+    // groups are closed by default and it left an empty gap. sm+ keeps flex:1.
     <Stack spacing={2.5} sx={{ flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
         <Box>

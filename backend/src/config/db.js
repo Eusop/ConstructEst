@@ -11,11 +11,7 @@ const pool = mysql.createPool({
   decimalNumbers: true, // return DECIMAL columns as JS numbers, not strings
 });
 
-/**
- * Runs a parameterized query and returns just the rows (unwraps mysql2's
- * `[rows, fields]` tuple). Always use `?` placeholders, never string
- * concatenation.
- */
+/** Runs a query and returns just the rows. Always use `?` placeholders. */
 export async function query(sql, params = []) {
   const [rows] = await pool.query(sql, params);
   return rows;

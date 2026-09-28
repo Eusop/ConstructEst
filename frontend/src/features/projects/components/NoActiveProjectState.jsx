@@ -10,10 +10,9 @@ import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
 
 /**
- * Shared guard shown at the top of every workspace page (Material
- * Estimation, Store Locator, Brand Selection, Bill of Materials) when
- * there's no active project — e.g. direct navigation to the URL, or after
- * deleting the active project.
+ * Guard at the top of every workspace page (Material Estimation, Store Locator,
+ * Brand Selection, Bill of Materials) when there is no active project, e.g.
+ * after opening the URL directly or deleting the active project.
  */
 function NoActiveProjectState() {
   return (

@@ -26,14 +26,11 @@ function PerFloorCard({ label, wallLength, floorArea }) {
 }
 
 /**
- * "Extracted measurements" section: the key figures pulled from the parsed
- * floor plan, laid out in a single row on wider screens now that it's
- * composed inside the Results page's full-width parent card instead of a
- * half-width column. Below that, a "Detailed extraction information"
- * section surfaces the rest of what the engine already computes from the
- * same DXF layers (door/window opening area, floor perimeter, column
- * count, roof perimeter/ridge length) — useful for sanity-checking the
- * parse itself, not otherwise needed by the cost estimate.
+ * "Extracted measurements" section: the key figures from the parsed floor plan
+ * in one row on wider screens (it sits in the Results page's full-width card).
+ * Below it, "Detailed extraction information" shows the other values the engine
+ * computes from the same layers (door/window area, floor perimeter, column
+ * count, roof perimeter and ridge length), useful for checking the parse.
  *
  * @param {object} props
  * @param {number} props.storeys Used to label the floor area figure (e.g. "Floor area (2 flr)").
@@ -43,22 +40,19 @@ function ExtractedMeasurementsCard({ storeys }) {
     { label: `Total wall length (${storeys} flr)`, value: PARSED_MEASUREMENTS.totalWallLength },
     { label: `Floor area (${storeys} flr)`, value: PARSED_MEASUREMENTS.floorArea },
     { label: 'Roof area', value: PARSED_MEASUREMENTS.roofArea },
-    // "Rooms detected" was removed: it counted closed FLOOR outlines, not
-    // rooms, so it read 1 for nearly every plan. The engine still returns
-    // roomsDetected and it's still stored; it's just not shown.
+    // "Rooms detected" was removed: it counted closed FLOOR outlines, not rooms,
+    // so it read 1 for nearly every plan. The engine still returns it; it's just not shown.
   ];
 
-  // Additional figures the engine already computes from the same DXF layers
-  // (WALL/DOOR/WINDOW/COLUMN/FLOOR/ROOF) but that don't factor into the
-  // headline numbers above — useful for sanity-checking the parse itself
-  // (e.g. "does that column count match what's actually on the plan?").
+  // Other figures the engine computes from the same layers, not part of the
+  // headline numbers, for sanity-checking the parse (e.g. does the column count
+  // match the plan?).
   const detailedMeasurements = [
     { label: 'Door area', value: PARSED_MEASUREMENTS.doorArea },
     { label: 'Window area', value: PARSED_MEASUREMENTS.windowArea },
-    // Not labelled "detected": this is the count the take-off actually used,
-    // which is the user's own value whenever they set a columnCount override,
-    // and a default of 4 when the DXF has no COLUMN layer at all. Calling an
-    // override "detected" defeated the point of this whole sanity-check panel.
+    // Not labelled "detected": this is the count the take-off used, which is the
+    // user's override if set, or a default of 4 when the DXF has no COLUMN layer.
+    // Calling an override "detected" would be misleading.
     { label: 'Columns used', value: String(PARSED_MEASUREMENTS.columnCount) },
     { label: 'Floor perimeter', value: PARSED_MEASUREMENTS.floorPerimeter },
     { label: 'Roof perimeter', value: PARSED_MEASUREMENTS.roofPerimeter },

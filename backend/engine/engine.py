@@ -41,9 +41,8 @@ def _file_hash(path):
 
 
 def read_and_validate(dxf_path, label):
-    """Reads one DXF file and extracts+validates its geometry. `label` names
-    which file this is in any error message (e.g. "second floor DXF") so a
-    failure on the second file doesn't read like it came from the first."""
+    """Reads one DXF file and validates its geometry. `label` names the file in
+    error messages (e.g. "second floor DXF")."""
     try:
         doc = ezdxf.readfile(dxf_path)
     except (OSError, DXFStructureError, ezdxf.DXFError) as exc:
@@ -57,11 +56,8 @@ def read_and_validate(dxf_path, label):
              "COLUMN, STAIR, ROOF, FLOOR) and that room outlines are "
              "closed polylines.")
 
-    # Without this, a mismatched wall layer name (e.g. "A-WALL") silently
-    # computes wall_length_m as 0 — CHB, wall cement/sand, and wall rebar
-    # all quietly drop out while every other material still looks normal,
-    # so the take-off renders as if it succeeded. Fail loudly instead,
-    # same as the FLOOR check above.
+    # A wrong wall layer name (e.g. "A-WALL") would give 0 wall length and drop
+    # CHB, wall cement/sand and wall rebar without any error, so fail here.
     if geometry["wall_length_m"] <= 0:
         fail(f"No wall entities found on a WALL layer of the {label}. Check that the "
              "DXF uses the expected layer name (WALL, or an alias like "
@@ -95,10 +91,8 @@ def main():
     constants = payload.get("constants") or {}
     overrides = payload.get("overrides") or {}
 
-    # Zero-ambiguity guard: the same file uploaded to both slots would
-    # otherwise silently compute up to 4 floors' worth of columns/roofing
-    # while storeys still reads "2" — there's no legitimate reason two
-    # different floors' DXFs would ever be byte-identical.
+    # The same file in both slots would count up to 4 floors while storeys says 2.
+    # Two different floors are never byte-identical, so reject it.
     if second_floor_dxf_path and _file_hash(dxf_path) == _file_hash(second_floor_dxf_path):
         fail("The same file was uploaded for both the ground floor and second floor. Each "
              "floor needs its own DXF file — re-upload the second floor separately, or "
@@ -113,14 +107,9 @@ def main():
 
 
 if __name__ == "__main__":
-    # Belt and braces around main(). Its own checks cover the failures we can
-    # name, but extract_geometry/compute_materials can still raise on a DXF
-    # that is structurally valid yet shaped in a way the reader does not expect
-    # (a vertex missing coordinates, a degenerate polygon). Without this, those
-    # exited non-zero with a traceback on stderr and NOTHING on stdout, which
-    # breaks the contract in this file's docstring: engine.service.js then just
-    # reports "Estimation engine returned invalid output" and the real reason
-    # is lost. Every exit path now prints one JSON object.
+    # Catch-all so every exit path prints one JSON object. Without it, an
+    # unexpected error (bad vertex, degenerate polygon) leaves stdout empty and
+    # engine.service.js reports "invalid output" with no real reason.
     try:
         main()
     except SystemExit:

@@ -1,22 +1,17 @@
 /**
- * Live cache of the active project's quantity take-off, populated by
- * `loadQuantityTakeoff()` (called from MaterialEstimationPage after
- * fetching GET /api/projects/:id) — QuantityTakeoffTable reads this array
- * each render, so populating it here is all that's needed for the table to
- * show the real per-project take-off without changing the table itself.
- *
- * `unitCost` is each material's cheapest catalog price overall (see the
- * backend's loadCurrentEstimation) — kept here but no longer rendered by
- * QuantityTakeoffTable (it was shown before any store/brand was picked,
- * which implied a precision the app didn't actually have yet); the real
- * priced total now only shows up from Store Locator onward.
+ * Live cache of the active project's quantity take-off, filled by
+ * `loadQuantityTakeoff()` (called from MaterialEstimationPage after GET
+ * /api/projects/:id). QuantityTakeoffTable reads this array each render.
+ * `unitCost` is each material's cheapest catalog price (see loadCurrentEstimation
+ * in the backend). It is kept but no longer shown, since no store or brand is
+ * picked at this point; real prices appear from Store Locator on.
  */
 import { formatQuantity } from '../../../utils/formatNumbers';
 
 export const QUANTITY_TAKEOFF_MATERIALS = [];
 
-// Purely cosmetic row-dot color, keyed by material — the key set is fixed
-// (matches the backend's 16 material_key values), so this stays static.
+// Row-dot color per material. Cosmetic; the key set is fixed (the backend's 16
+// material_key values), so this stays static.
 const MATERIAL_COLORS = {
   hollowBlocks: 'orange',
   cement: 'blue',
@@ -37,12 +32,10 @@ const MATERIAL_COLORS = {
 };
 
 
-/** @param {Array<{key:string, name:string, quantity:number, unit:string, basis:string, unitCost:number,
- *   sourceBreakdown?: {ground:number, second:number, roofing:number, shared:number}}>} materials
- *   `sourceBreakdown` — see backend/engine/formulas.py's SOURCE_CATEGORIES — only meaningfully
- *   non-zero across more than one bucket for a 2-storey project uploaded with a separate
- *   second-floor DXF; carried through unchanged so QuantityTakeoffTable's "By source" view
- *   can group without re-deriving anything. */
+/**
+ * @param {Array<{key:string, name:string, quantity:number, unit:string, basis:string, unitCost:number, sourceBreakdown?: {ground:number, second:number, roofing:number, shared:number}}>} materials
+ *   `sourceBreakdown` (see SOURCE_CATEGORIES in formulas.py) is only non-zero in more than one bucket for a 2-storey project with a separate second floor DXF. It is passed through so the "By source" view can group without re-deriving.
+ */
 export function loadQuantityTakeoff(materials) {
   QUANTITY_TAKEOFF_MATERIALS.length = 0;
   QUANTITY_TAKEOFF_MATERIALS.push(

@@ -15,8 +15,8 @@ import QuotationFilePicker from './QuotationFilePicker';
 import { colors } from '../../theme/palette';
 
 /**
- * Price/availability editor for bulk commodities (Sand, Gravel) — no brand
- * concept at all, per requirement 13, unlike BrandFormDialog.
+ * Price and availability editor for bulk commodities (Sand, Gravel), which have
+ * no brands (unlike BrandFormDialog).
  */
 function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit }) {
   const [form, setForm] = useState({ price: '', available: true });

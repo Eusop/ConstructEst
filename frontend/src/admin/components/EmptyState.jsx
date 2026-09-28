@@ -4,11 +4,10 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 /**
- * Generic "nothing here yet" state shared by the Admin Module's Dashboard,
- * User Management, Hardware Stores, and Materials & Brands pages — mirrors
- * the User Module's EmptyProjectsState/NoStoreSelectedState visual pattern
- * (icon tile, title, description, optional action) instead of introducing a
- * different look for admin-only screens.
+ * Generic "nothing here yet" state shared by the Admin Dashboard, User
+ * Management, Hardware Stores and Materials & Brands pages. Same look as the
+ * User Module's EmptyProjectsState/NoStoreSelectedState (icon tile, title,
+ * description, optional action).
  *
  * @param {object} props
  * @param {React.ElementType} props.icon

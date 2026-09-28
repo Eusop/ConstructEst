@@ -36,8 +36,8 @@ function drawShapes(ctx, shapes, bounds, width, height) {
       ctx.arc(cx, cy, shape.r * scale, 0, Math.PI * 2);
     } else if (shape.type === 'arc') {
       const [cx, cy] = toScreenPoint(shape.cx, shape.cy, bounds, scale, offsetX, offsetY);
-      // DXF angles are degrees, counter-clockwise, Y-up; canvas angles are
-      // radians, clockwise, Y-down — negating both flips consistently.
+      // DXF angles are degrees, counter-clockwise, Y-up. Canvas angles are
+      // radians, clockwise, Y-down, so both are negated.
       const start = (-shape.endAngle * Math.PI) / 180;
       const end = (-shape.startAngle * Math.PI) / 180;
       ctx.arc(cx, cy, shape.r * scale, start, end);
@@ -47,11 +47,9 @@ function drawShapes(ctx, shapes, bounds, width, height) {
 }
 
 /**
- * Reusable canvas renderer for already-parsed DXF geometry (see
- * services/dxfParserService) — rendering-only, no file I/O or validation
- * of its own, so it can be reused anywhere a parsed DXF needs to be drawn.
- * Auto-scales and centers the drawing to fit its container, and redraws
- * responsively when that container resizes.
+ * Canvas renderer for parsed DXF geometry (see services/dxfParserService).
+ * Rendering only, no file I/O or validation. Scales and centers the drawing to
+ * fit its container and redraws when the container resizes.
  *
  * @param {object} props
  * @param {Array<object>} props.shapes

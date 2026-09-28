@@ -17,25 +17,18 @@ import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
 
 function DashboardPage() {
-  // Tablet/desktop gets a real 2x2 grid (greeting as one of its 4 cells);
-  // phones get the greeting as its own full-width card followed by a
-  // swipeable carousel — genuinely different structures, not just a resize
-  // of the same one, so this branches in JS rather than trying to force
-  // one DOM tree to cover both with responsive CSS alone (same reasoning
-  // as Sidebar's own isDesktop branch between a flex sidebar and a Drawer).
-  // `noSsr` is safe/correct here: this app is a client-only SPA, so there's
-  // no server-rendered markup to match on the first paint.
+  // Tablet/desktop uses a 2x2 grid (greeting is one cell). Phones use the
+  // greeting card plus a swipeable carousel. They are different structures, so
+  // this branches in JS (like Sidebar's isDesktop). `noSsr` is fine in this
+  // client-only SPA.
   const theme = useTheme();
   const isTabletUp = useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true });
 
   const { totalProjects, activities } = useDashboardActivity();
   const { projects } = useProjects();
 
-  // Same rule as the Projects page's Complete/Incomplete tag
-  // (isProjectComplete): complete = brand selection saved and BOM generated.
-  // Every other project (estimated only, parsing, failed) is a draft. Before,
-  // Completed counted every estimated project and Draft counted the server's
-  // parsed count, so both showed the same number.
+  // Same rule as the Projects page tag (isProjectComplete): complete = brand
+  // selection saved and BOM generated. Everything else is a draft.
   const completedProjects = projects.filter(isProjectComplete).length;
   const draftProjects = projects.length - completedProjects;
 
@@ -53,9 +46,7 @@ function DashboardPage() {
     iconBg: colors.iconGreenBg,
     iconFg: colors.iconGreenFg,
     value: String(completedProjects),
-    // No dedicated "completed only" view exists yet, so this points at
-    // the same Projects list All Projects does — same "View All"
-    // component/behavior as that card, just no filter applied server-side.
+    // No "completed only" view yet, so this links to the full Projects list.
     viewAllTo: ROUTES.PROJECTS,
   };
   const draftProjectsStat = {
@@ -64,14 +55,12 @@ function DashboardPage() {
     iconBg: colors.iconOrangeBg,
     iconFg: colors.iconOrangeFg,
     value: String(draftProjects),
-    // Same caveat as Completed Projects above: no "drafts only" filter
-    // exists yet, so this is the same Projects list for now.
+    // No "drafts only" filter yet, so this links to the full Projects list.
     viewAllTo: ROUTES.PROJECTS,
   };
 
-  // The phone carousel's left-to-right swipe order — unchanged from before
-  // this task, kept independent of the tablet/desktop grid's own order
-  // below (the two layouts place these three differently on purpose).
+  // Phone carousel swipe order. Kept separate from the tablet/desktop grid order
+  // below on purpose.
   const carouselStats = [allProjectsStat, completedProjectsStat, draftProjectsStat];
 
   const displayActivities = activities.map((activity) => ({
@@ -84,9 +73,8 @@ function DashboardPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {isTabletUp ? (
-        // Tablet/desktop: one 2x2 grid — greeting top-left, All Projects
-        // top-right, Draft Projects bottom-left, Completed Projects
-        // bottom-right.
+        // Tablet/desktop: one 2x2 grid (greeting top-left, All Projects top-right,
+        // Draft bottom-left, Completed bottom-right).
         <Box
           sx={{
             display: 'grid',
@@ -102,8 +90,7 @@ function DashboardPage() {
           <StatCard {...completedProjectsStat} />
         </Box>
       ) : (
-        // Phones: unchanged — full-width greeting, then the swipeable
-        // carousel (see ProjectStatsSection).
+        // Phones: full-width greeting, then the swipeable carousel (ProjectStatsSection).
         <>
           <Box sx={{ mb: 2.5, flexShrink: 0 }}>
             <WelcomeCard />

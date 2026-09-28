@@ -5,23 +5,15 @@ body,
   height: 100%;
 }
 
-/* Reserve the vertical scrollbar's space at all times so pages whose content
-   is short enough to fit the viewport (no scrollbar) don't render narrower
-   than pages tall enough to need one — that mismatch is what causes the
-   layout to visibly shift width when navigating between them. */
+/* Always reserve space for the vertical scrollbar, so pages without one don't
+   render narrower and shift the layout when navigating. */
 html {
   scrollbar-gutter: stable;
-  /* One-step system-wide type scale reduction: every fontSize in this app
-     is a `rem` value, which CSS always resolves relative to this real root
-     font-size (not to theme.js's htmlFontSize, which only affects MUI's
-     own internal px-to-rem math — see the comment there). 93.75% of the
-     16px browser default is 15px, a modest ~6% reduction that keeps this
-     app's smallest existing captions (~0.68rem) comfortably above 10px
-     rather than crowding into hard-to-read territory. `%` (not a fixed px
-     value) so a visitor's own larger browser/OS default font size, if any,
-     is scaled down proportionally rather than overridden outright. Padding,
-     margin, and gap are untouched — MUI's spacing() is px-based, not rem,
-     so layout/spacing stays pixel-for-pixel identical; only text shrinks. */
+  /* Slightly smaller type everywhere: every fontSize is a `rem`, which resolves
+     against this root size (not theme.js htmlFontSize). 93.75% of 16px is 15px,
+     about 6% smaller, and small captions (~0.68rem) stay above 10px. A percent
+     is used so a visitor's larger default font size still scales. Spacing is
+     px-based in MUI, so only text shrinks. */
   font-size: 93.75%;
 }
 

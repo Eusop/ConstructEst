@@ -25,12 +25,10 @@ import { formatQuantity } from '../../../utils/formatNumbers';
 
 const COLUMNS = ['MATERIAL', 'BASIS', 'QUANTITY', 'UNIT'];
 
-// "By source" grouping — see backend/engine/formulas.py's SOURCE_CATEGORIES.
-// "Roofing" and "Shared / Whole building" aren't floors; they're honest
-// labels for contributions that don't belong to one floor at all (a column
-// runs continuously through both, a footing is foundation-level, a roof
-// sits above the top floor) — forcing those into "Ground"/"Second" would
-// be a fake-precise split.
+// "By source" grouping (see SOURCE_CATEGORIES in formulas.py). "Roofing" and
+// "Shared / Whole building" aren't floors: columns run through both floors,
+// footings are foundation level, and the roof sits above the top floor, so
+// forcing them into "Ground" or "Second" would be a false split.
 const SOURCE_CATEGORY_META = [
   { key: 'ground', label: 'Ground floor' },
   { key: 'second', label: 'Second floor' },
@@ -39,10 +37,8 @@ const SOURCE_CATEGORY_META = [
 ];
 
 // Splits each material's total into its 4 source buckets, keeping only
-// materials that actually contributed to that bucket. Per-bucket quantities
-// are plain-rounded (not ceiling'd like the grand total), so they won't
-// always sum to exactly the "Total" view's number — same as any real BOQ's
-// subtotals rounding independently.
+// materials that contributed to a bucket. Bucket quantities are plain-rounded
+// (not ceiling'd like the total), so they may not sum exactly to the Total view.
 function buildSourceGroups(materials) {
   return SOURCE_CATEGORY_META.map(({ key, label }) => ({
     key,
@@ -93,9 +89,8 @@ function MaterialMobileCard({ material }) {
   );
 }
 
-// CHB is the one row whose basis text calls out the storeys count (the way
-// "Footings + slabs (2 flr)" used to for concrete) — every other material's
-// basis is a fixed description of how the rule-based engine derives it.
+// CHB is the one row whose basis text names the storeys count. Every other
+// basis is a fixed description of how the engine derives the quantity.
 function buildMaterials(storeys) {
   return QUANTITY_TAKEOFF_MATERIALS.map((material) => ({
     ...material,
@@ -104,13 +99,10 @@ function buildMaterials(storeys) {
 }
 
 /**
- * Itemized material quantity take-off table, derived from the parsed floor
- * plan measurements and calibration factors — covers the full structural
- * material list the rule-based estimation engine produces (see
- * QUANTITY_TAKEOFF_MATERIALS). No pricing shown here — no store/brand has
- * been picked yet at this point in the flow, so a dollar figure would
- * imply a precision the app doesn't have until Store Locator/Bill of
- * Materials. Scrolls horizontally on narrow viewports instead of clipping.
+ * Itemized material quantity take-off table, from the parsed floor plan
+ * measurements and calibration factors (see QUANTITY_TAKEOFF_MATERIALS). No
+ * prices here, since no store or brand is chosen yet; costs appear from Store
+ * Locator on. Scrolls horizontally on narrow viewports instead of clipping.
  *
  * @param {object} props
  * @param {number} props.storeys Used to label the CHB basis (e.g. "(2 flr)").
@@ -124,16 +116,11 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
   const sourceGroups = viewMode === 'bySource' ? buildSourceGroups(materials) : [];
 
   return (
-    // The extra wrapping Box (rather than margin/padding on the Paper
-    // itself) is the actual fix here: this card is Stack's last direct
-    // child (see MaterialEstimationPage.jsx's spacing={2.5} Stack), and
-    // Stack forcibly resets margin:0 on all its direct children to
-    // implement its own spacing — so a margin-bottom on the Paper gets
-    // silently overridden. Padding on this outer Box isn't touched by that
-    // reset and isn't inside the card itself, so it reliably keeps a gap
-    // below the card (matching the page's own spacing={2.5} rhythm) once
-    // the card's content — now natural-height, see below — overflows the
-    // page's scroll region and would otherwise sit flush against its edge.
+    // The extra wrapping Box is the fix: this card is Stack's last child, and
+    // Stack resets margin to 0 on its direct children, so a margin-bottom on
+    // the Paper is overridden. Padding on this outer Box is not, so it keeps a
+    // gap below the card (matching the page's spacing={2.5}) once the natural-height
+    // card overflows the scroll region.
     <Box sx={{ pb: 2.5 }}>
       <Paper
         elevation={0}
@@ -142,23 +129,17 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
           bgcolor: 'common.white',
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
           minWidth: 0,
-          // Deliberately no flex:1/minHeight/overflow clamp here (that
-          // previously stretched this card to fill leftover viewport space
-          // and scrolled the middle content internally instead of growing).
-          // The card now sizes to its natural content height — including
-          // when a "By source" accordion opens — and the page-level scroll
-          // region (DashboardLayout's Outlet wrapper, `overflow: auto`)
-          // handles anything taller than the viewport instead.
+          // No flex:1/minHeight/overflow clamp: the card sizes to its content
+          // (including when a "By source" accordion opens), and the page-level
+          // scroll region (DashboardLayout's Outlet wrapper) handles anything taller.
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-      {/* Always available, not just for 2-storey/two-file projects — every
-          material's sourceBreakdown already tags ground/roofing/shared
-          contributions regardless of storeys (see backend/engine/formulas.py's
-          SOURCE_CATEGORIES); buildSourceGroups drops any bucket with nothing
-          in it, so a 1-storey project's "By source" view just naturally has
-          no "Second floor" group instead of needing to be hidden outright. */}
+      {/* Always available, not only for 2-storey projects: every material's
+          sourceBreakdown tags ground/roofing/shared regardless of storeys, and
+          buildSourceGroups drops empty buckets, so 1-storey just has no "Second
+          floor" group. */}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1}
@@ -225,9 +206,7 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
             {categoryGroups.map((group) => (
               <Accordion
                 key={group.label}
-                // Every group starts closed on mobile — the user taps whichever
-                // category they want to look at instead of the first one
-                // opening automatically.
+                // Every group starts closed on mobile; the user opens the one they want.
                 disableGutters
                 elevation={0}
                 sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}

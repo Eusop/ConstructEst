@@ -1,9 +1,8 @@
 import Box from '@mui/material/Box';
 
 /**
- * Stand-in "icon" for currency figures — MUI's icon set has no ₱ glyph, so
- * this renders one styled to match the sizing/weight of the surrounding
- * outline icons.
+ * Stand-in icon for currency figures (MUI has no ₱ glyph), styled to match
+ * the surrounding outline icons.
  */
 function PesoIcon({ sx, ...rest }) {
   return (
