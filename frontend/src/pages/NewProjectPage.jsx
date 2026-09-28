@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import ProjectDetailsCard from '../features/projects/components/ProjectDetailsCard';
 import { useProjects } from '../context/ProjectsContext';
@@ -32,11 +32,14 @@ function validate(draft) {
  * project (making it active) and navigates to the (simulated) processing
  * page instead of persisting anything for real.
  *
- * Form values live in ProjectsContext's draft rather than local state, so
- * they survive navigating to the processing page and back via Cancel parsing.
+ * Form values live in ProjectsContext's draft. The draft is cleared every
+ * time this page is opened, including clicking New Project while already
+ * on it (each click is a new location.key). Before, it was only cleared by a
+ * successful create, so leaving the form and coming back later showed the
+ * old name and files. Cancel parsing isn't affected: creating a project
+ * already cleared the draft, so it always came back to an empty form.
  * Field-level validation errors and "has this field been touched" state
- * stay local to this page — they're purely transient UI state, not part of
- * the draft that needs to survive navigation.
+ * stay local to this page — they're purely transient UI state.
  */
 function NewProjectPage() {
   const {
@@ -47,10 +50,17 @@ function NewProjectPage() {
     secondFloorFileValidation,
     setSecondFloorFileValidation,
     createProjectFromDraft,
+    resetDraft,
   } = useProjects();
   const { incrementTotalProjects, logActivity } = useDashboardActivity();
   const [touched, setTouched] = useState({});
   const navigate = useNavigate();
+  const { key: locationKey } = useLocation();
+
+  useEffect(() => {
+    resetDraft();
+    setTouched({});
+  }, [locationKey, resetDraft]);
 
   const isFileValid = fileValidation.status === 'valid';
   // The second floor file is always optional — an empty/untouched second

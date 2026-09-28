@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -84,6 +84,13 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
   const dropzoneHeight = isPhone ? 150 : DROPZONE_HEIGHT;
   const previewCanvasHeight = isPhone ? 122 : PREVIEW_CANVAS_HEIGHT;
+
+  // Same reason as handleRemove below, for when the file is cleared from
+  // outside (the New Project form resetting its draft): otherwise picking
+  // the same file again after the reset does nothing.
+  useEffect(() => {
+    if (!file && inputRef.current) inputRef.current.value = '';
+  }, [file]);
 
   const handleFiles = async (fileList) => {
     const picked = fileList?.[0];
