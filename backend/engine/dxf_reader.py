@@ -12,6 +12,11 @@ before. FTG and FTBEAM from the same notation aren't read yet. Keep the
 layer-names guide on the upload page
 (frontend/src/features/projects/components/LayerNamesGuide.jsx) in sync with
 LAYER_ALIASES.
+
+Walls: every LINE/polyline on the WALL layer is summed, so a wall drawn as
+two parallel faces (the usual architectural style) is counted twice — a known
+gap (docs/paper-limitations.md entry 6). A wall drawn as an MLINE (AutoCAD
+multiline) is measured once, along its reference line (see mline_length).
 """
 import math
 import re
@@ -176,6 +181,19 @@ def chain_segments(segments):
     return loops
 
 
+def mline_length(entity):
+    """Length of an MLINE (AutoCAD multiline) along its reference line.
+
+    A wall drawn with MLINE is one path that AutoCAD displays as two parallel
+    faces, so its reference line is the wall's own run — measuring it avoids
+    counting both faces. With the usual "zero" justification the reference
+    line is the centerline; with top/bottom justification it's one face,
+    which differs from the centerline only at corners.
+    """
+    points = [(v[0] * MM_TO_M, v[1] * MM_TO_M) for v in entity.get_locations()]
+    return polyline_length(points, entity.is_closed)
+
+
 def member_run_length(msp, layer):
     """Total length of the members (beams, trusses) drawn on a layer.
 
@@ -201,6 +219,8 @@ def member_run_length(msp, layer):
                 total += max(xmax - xmin, ymax - ymin)
             else:
                 total += polyline_length(points, closed=False)
+        elif e.dxftype() == "MLINE":
+            total += mline_length(e)
     return total
 
 
@@ -216,6 +236,9 @@ def extract_geometry(doc):
         elif e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
             points = polyline_points(e)
             wall_length_m += polyline_length(points, is_closed_polyline(e))
+        elif e.dxftype() == "MLINE":
+            # One multiline = one wall, however many faces its style draws.
+            wall_length_m += mline_length(e)
 
     floor_area_m2 = 0.0
     rooms_detected = 0

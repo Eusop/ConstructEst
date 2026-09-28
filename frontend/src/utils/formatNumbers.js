@@ -24,7 +24,7 @@
 // the fractional ones can have a meaningful decimal part.
 const FRACTIONAL_UNITS = new Set(['m3', 'tons', 'kg']);
 
-const MEASUREMENT_DECIMALS = 4;
+const MEASUREMENT_DECIMALS = 2;
 const QUANTITY_DECIMALS = 4;
 
 /** Number of decimals a given material unit should be displayed with. */

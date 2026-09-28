@@ -57,8 +57,12 @@ export function loadStores(stores, origin = CITY_CENTER) {
         address: store.address,
         position,
         distanceKm,
-        distanceLabel: `${distanceKm.toFixed(1)} km`,
-        travelTimeLabel: `~${Math.max(1, Math.round((distanceKm / 30) * 60))} min drive`,
+        // Straight-line (as the crow flies), not road distance — a road
+        // route would need a paid or rate-limited routing API. The card's
+        // Directions button opens the real road route in Google Maps.
+        distanceLabel: `${distanceKm.toFixed(1)} km straight-line`,
+        // Rough estimate: straight-line distance at an assumed 30 km/h.
+        travelTimeLabel: `~${Math.max(1, Math.round((distanceKm / 30) * 60))} min drive (est.)`,
         totalCost: store.optimizedTotal,
         isCheapest: store.isCheapest,
         // "Fully stocked" — still selectable either way (see

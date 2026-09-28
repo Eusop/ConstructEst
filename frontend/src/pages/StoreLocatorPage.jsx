@@ -167,6 +167,9 @@ function StoreLocatorPage() {
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
           Total BOM cost and distance for canvassed stores near {activeProject.location}.
         </Typography>
+        <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25 }}>
+          Distances are straight-line. Tap Directions for the actual road route.
+        </Typography>
         {!DISTANCE_IS_FROM_USER && (
           <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25, fontStyle: 'italic' }}>
             Location access unavailable, distances approximated from Tarlac City center.

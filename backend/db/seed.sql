@@ -57,9 +57,9 @@ INSERT INTO material_brands (material_key, material_name, unit, brand, spec, bas
 ('purlins', 'Purlins', 'lengths', 'DN Steel', '2"x3" C-purlin, 6m', 850, 4, 'Roofing', 0),
 ('purlins', 'Purlins', 'lengths', 'Clark Steel', '2"x3" C-purlin, 6m', 980, 5, 'Roofing', 0),
 
-('ridge', 'Ridge', 'lengths', 'MetroTile', 'Ridge roll, 6m', 390, 3, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 6m', 450, 4, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 6m', 520, 5, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'MetroTile', 'Ridge roll, 1.8m length', 117, 3, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 1.8m length', 135, 4, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 1.8m length', 156, 5, 'Roofing', 0),
 
 ('flashing', 'Flashing', 'pcs', 'MetroTile', 'GI flashing, 1.8m length', 270, 3, 'Roofing', 0),
 ('flashing', 'Flashing', 'pcs', 'DN Steel', 'GI flashing, 1.8m length', 324, 4, 'Roofing', 0),
