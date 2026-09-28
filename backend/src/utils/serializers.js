@@ -26,5 +26,7 @@ export function toPublicProject(row) {
     status: row.status,
     selectedStoreId: row.selected_store_id,
     createdAt: row.created_at,
+    // Only the project list query selects this column.
+    ...(row.has_brand_selection !== undefined && { hasBrandSelection: Boolean(row.has_brand_selection) }),
   };
 }

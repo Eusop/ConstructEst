@@ -75,7 +75,14 @@ async function loadCurrentEstimation(projectId) {
 }
 
 export const listProjects = asyncHandler(async (req, res) => {
-  const rows = await query('SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC', [req.user.id]);
+  // has_brand_selection lets the client show a project as Complete after a
+  // reload; before, "Complete" only lived in browser memory and every
+  // project came back Incomplete on the next login.
+  const rows = await query(
+    `SELECT p.*, EXISTS(SELECT 1 FROM project_brand_selections b WHERE b.project_id = p.id) AS has_brand_selection
+     FROM projects p WHERE p.user_id = ? ORDER BY p.created_at DESC`,
+    [req.user.id],
+  );
   res.json({ projects: rows.map(toPublicProject) });
 });
 

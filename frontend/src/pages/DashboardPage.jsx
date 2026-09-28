@@ -11,6 +11,7 @@ import RecentActivity from '../features/dashboard/components/RecentActivity';
 import { ACTIVITY_TYPES, DEFAULT_ACTIVITY_TYPE } from '../features/dashboard/data/activityTypes';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
 import { useProjects } from '../context/ProjectsContext';
+import { isProjectComplete } from '../features/projects/utils/projectStatus';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
@@ -27,14 +28,16 @@ function DashboardPage() {
   const theme = useTheme();
   const isTabletUp = useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true });
 
-  const { totalProjects, estimationsDone, activities } = useDashboardActivity();
+  const { totalProjects, activities } = useDashboardActivity();
   const { projects } = useProjects();
 
-  // Client-side only, from the same project list the Projects page already
-  // loads — an "Estimated" project has a generated material take-off, the
-  // closest existing status to "completed" until a real completed-projects
-  // metric exists server-side.
-  const completedProjects = projects.filter((project) => project.status === 'Estimated').length;
+  // Same rule as the Projects page's Complete/Incomplete tag
+  // (isProjectComplete): complete = brand selection saved and BOM generated.
+  // Every other project (estimated only, parsing, failed) is a draft. Before,
+  // Completed counted every estimated project and Draft counted the server's
+  // parsed count, so both showed the same number.
+  const completedProjects = projects.filter(isProjectComplete).length;
+  const draftProjects = projects.length - completedProjects;
 
   const allProjectsStat = {
     label: 'All Projects',
@@ -55,15 +58,12 @@ function DashboardPage() {
     // component/behavior as that card, just no filter applied server-side.
     viewAllTo: ROUTES.PROJECTS,
   };
-  // UI-only rename (label/icon/color) — still reads `estimationsDone` off
-  // the same dashboard summary until a real "draft projects" count exists
-  // server-side.
   const draftProjectsStat = {
     label: 'Draft Projects',
     icon: EditNoteRoundedIcon,
     iconBg: colors.iconOrangeBg,
     iconFg: colors.iconOrangeFg,
-    value: String(estimationsDone),
+    value: String(draftProjects),
     // Same caveat as Completed Projects above: no "drafts only" filter
     // exists yet, so this is the same Projects list for now.
     viewAllTo: ROUTES.PROJECTS,

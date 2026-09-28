@@ -42,7 +42,12 @@ function toContextProject(serverProject, extra = {}) {
     secondFloorFile: null,
     secondFloorFileValidation: INITIAL_FILE_VALIDATION,
     iconColor: ICON_COLORS[serverProject.id % ICON_COLORS.length],
-    status: serverProject.status === 'parsed' ? 'Estimated' : serverProject.status === 'failed' ? 'Failed' : 'Parsing',
+    // 'Optimized' (Complete) = parsed and a brand selection was saved, the
+    // same state BrandSelectionPage sets in memory right after saving.
+    status:
+      serverProject.status === 'parsed'
+        ? (serverProject.hasBrandSelection ? 'Optimized' : 'Estimated')
+        : serverProject.status === 'failed' ? 'Failed' : 'Parsing',
     selectedStoreId: serverProject.selectedStoreId,
     brandSelection: null,
     createdAt: new Date(serverProject.createdAt).getTime(),
