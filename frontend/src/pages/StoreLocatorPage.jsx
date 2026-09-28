@@ -8,6 +8,9 @@ import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
+import Link from '@mui/material/Link';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
@@ -15,7 +18,9 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import MapView from '../components/MapView';
 import StoreListCard from '../features/storeLocator/components/StoreListCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
-import { STORES, CITY_LOCATION, DISTANCE_IS_FROM_USER, loadStores } from '../features/storeLocator/data/storesCache';
+import {
+  STORES, CITY_LOCATION, DISTANCE_IS_BY_ROAD, loadStores, applyRoadDistances,
+} from '../features/storeLocator/data/storesCache';
 import { buildStoreInfoWindowContent } from '../features/storeLocator/utils/buildStoreInfoWindowContent';
 import { useProjects } from '../context/ProjectsContext';
 import { useUserLocation } from '../hooks/useUserLocation';
@@ -26,6 +31,27 @@ import { colors } from '../theme/palette';
 function badgeColorFor(store) {
   if (!store.inStock) return 'grey.400';
   return store.isCheapest ? colors.iconGreenFg : colors.orange;
+}
+
+const MANUAL_LOCATION_KEY = 'constructest_manual_location';
+
+// try/catch: storage can be blocked (private mode, cleared site data).
+function readManualLocation() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MANUAL_LOCATION_KEY));
+    return Number.isFinite(saved?.lat) && Number.isFinite(saved?.lng) ? { lat: saved.lat, lng: saved.lng } : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeManualLocation(location) {
+  try {
+    if (location) localStorage.setItem(MANUAL_LOCATION_KEY, JSON.stringify(location));
+    else localStorage.removeItem(MANUAL_LOCATION_KEY);
+  } catch {
+    // Not saved; it still applies for this visit.
+  }
 }
 
 // Fake marker id for the user's own position, not a real store, so it's
@@ -52,7 +78,12 @@ function StoreLocatorPage() {
   const [rawStores, setRawStores] = useState(null);
   const [loadedForId, setLoadedForId] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const { location: userLocation, status: geoStatus, refetch: refetchLocation } = useUserLocation();
+  const { location: deviceLocation, status: geoStatus, rejectedDistanceKm, refetch: refetchLocation } = useUserLocation();
+  // A spot the user tapped on the map. Wins over the browser's guess, which
+  // on a laptop can land tens of km off. Remembered in this browser only.
+  const [manualLocation, setManualLocation] = useState(readManualLocation);
+  const [pickingLocation, setPickingLocation] = useState(false);
+  const userLocation = manualLocation ?? deviceLocation;
   // Stays true once geolocation settles once, so a later "locate me"
   // click doesn't re-blank the whole page behind the big spinner (just
   // the button itself shows a small spinner for that).
@@ -88,17 +119,47 @@ function StoreLocatorPage() {
     };
   }, [activeProject?.id]);
 
+  // Bumped whenever STORES is refilled or gets road distances, since it's
+  // mutated in place and displayedStores below is memoized on this.
+  const [storesVersion, setStoresVersion] = useState(0);
+  // 'cheapest' = the server's order (FR-12's cost ranking), 'nearest' = by distance.
+  const [sortMode, setSortMode] = useState('cheapest');
+
   useEffect(() => {
     if (rawStores === null || geoStatus === 'loading' || typeof activeProject?.id !== 'number') return undefined;
     let cancelled = false;
-    loadStores(rawStores, userLocation ?? CITY_LOCATION);
+    const origin = userLocation ?? CITY_LOCATION;
+    loadStores(rawStores, origin);
     queueMicrotask(() => {
-      if (!cancelled) setLoadedForId(activeProject.id);
+      if (cancelled) return;
+      setLoadedForId(activeProject.id);
+      setStoresVersion((version) => version + 1);
     });
+    // Straight-line shows right away; road distance (OpenRouteService)
+    // replaces it when it arrives. Any failure just keeps straight-line.
+    if (rawStores.length > 0) {
+      apiRequest('/stores/road-distances', { method: 'POST', body: { origin: { lat: origin.lat, lng: origin.lng } } })
+        .then((result) => {
+          if (cancelled || !result?.available) return;
+          applyRoadDistances(result.byStoreId);
+          setStoresVersion((version) => version + 1);
+        })
+        .catch(() => {});
+    }
     return () => {
       cancelled = true;
     };
   }, [rawStores, userLocation, geoStatus, activeProject?.id]);
+
+  // Copies with rank = position in the chosen order, so the card and map
+  // numbers always match the list. The Cheapest badge stays on isCheapest.
+  const displayedStores = useMemo(() => {
+    const ordered = sortMode === 'nearest'
+      ? [...STORES].sort((a, b) => (a.roadKm ?? a.distanceKm) - (b.roadKm ?? b.distanceKm))
+      : STORES;
+    return ordered.map((store, index) => ({ ...store, rank: index + 1 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortMode, storesVersion]);
 
   const selectedStoreId = activeProject?.selectedStoreId ?? null;
   // Centers the map on the user instead of the selected store when true,
@@ -114,10 +175,45 @@ function StoreLocatorPage() {
     updateActiveProject({ selectedStoreId: id });
   };
 
+  // The locate button means "use my device's location again".
   const handleLocateRequest = () => {
+    setManualLocation(null);
+    writeManualLocation(null);
+    setPickingLocation(false);
     setFocusOnUser(true);
     refetchLocation();
   };
+
+  const handleMapClick = (lat, lng) => {
+    if (!pickingLocation) return;
+    const picked = { lat, lng };
+    setManualLocation(picked);
+    writeManualLocation(picked);
+    setPickingLocation(false);
+    setFocusOnUser(true);
+  };
+
+  const setLocationLink = (label) => (
+    <Link component="button" type="button" onClick={() => setPickingLocation(true)} sx={{ fontSize: 'inherit', verticalAlign: 'baseline' }}>
+      {label}
+    </Link>
+  );
+  // Always says which point distances come from, so a rejected or blocked
+  // device location is never swapped for the city center silently.
+  let originNote;
+  if (manualLocation) {
+    originNote = <>Distances are from the spot you set on the map. {setLocationLink('Change it')}, or use the locate button for your device location.</>;
+  } else if (geoStatus === 'granted') {
+    originNote = <>Distances are from your device&apos;s location. Wrong? {setLocationLink('Set your location on the map')}.</>;
+  } else if (geoStatus === 'implausible') {
+    originNote = <>Your browser placed you about {rejectedDistanceKm} km from Tarlac City, which looks wrong, so distances are from Tarlac City center. {setLocationLink('Set your location on the map')}.</>;
+  } else if (geoStatus === 'imprecise') {
+    originNote = <>Your browser&apos;s location was too rough to use, so distances are from Tarlac City center. {setLocationLink('Set your location on the map')}.</>;
+  } else if (geoStatus === 'denied') {
+    originNote = <>Location access is blocked, so distances are from Tarlac City center. {setLocationLink('Set your location on the map')}.</>;
+  } else {
+    originNote = <>Your location isn&apos;t available, so distances are from Tarlac City center. {setLocationLink('Set your location on the map')}.</>;
+  }
 
   const selectedStore = STORES.find((store) => store.id === selectedStoreId) ?? null;
   const focusedOnUser = focusOnUser && userLocation;
@@ -126,7 +222,7 @@ function StoreLocatorPage() {
   const mapZoom = selectedStore || focusedOnUser ? 16 : 14;
 
   const markers = useMemo(() => {
-    const storeMarkers = STORES.map((store) => ({
+    const storeMarkers = displayedStores.map((store) => ({
       id: store.id,
       position: store.position,
       title: store.name,
@@ -140,7 +236,7 @@ function StoreLocatorPage() {
       { id: USER_LOCATION_MARKER_ID, position: userLocation, title: 'Your location', label: 'You', color: colors.accentBlue, selected: false },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, ready, userLocation]);
+  }, [selectedStoreId, ready, userLocation, displayedStores]);
 
   const getInfoContent = useCallback((id) => {
     if (id === USER_LOCATION_MARKER_ID) return '<strong>Your location</strong>';
@@ -168,13 +264,20 @@ function StoreLocatorPage() {
           Total BOM cost and distance for canvassed stores near {activeProject.location}.
         </Typography>
         <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25 }}>
-          Distances are straight-line. Tap Directions for the actual road route.
+          {DISTANCE_IS_BY_ROAD
+            ? 'Distances and drive times are by road (OpenRouteService). Tap Directions for the route.'
+            : 'Distances are straight-line. Tap Directions for the actual road route.'}
         </Typography>
-        {!DISTANCE_IS_FROM_USER && (
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25, fontStyle: 'italic' }}>
-            Location access unavailable, distances approximated from Tarlac City center.
-          </Typography>
-        )}
+        <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25 }}>
+          {pickingLocation ? (
+            <>
+              <strong>Tap the map where you are.</strong>{' '}
+              <Link component="button" type="button" onClick={() => setPickingLocation(false)} sx={{ fontSize: 'inherit', verticalAlign: 'baseline' }}>
+                Cancel
+              </Link>
+            </>
+          ) : originNote}
+        </Typography>
         {loadError && (
           <Typography sx={{ color: colors.iconRedFg, fontSize: '0.85rem', mt: 0.5 }}>{loadError}</Typography>
         )}
@@ -202,6 +305,7 @@ function StoreLocatorPage() {
               zoom={mapZoom}
               markers={markers}
               onMarkerClick={setSelectedStoreId}
+              onMapClick={handleMapClick}
               getInfoContent={getInfoContent}
               selectedMarkerId={selectedStoreId}
               onLocateRequest={handleLocateRequest}
@@ -243,7 +347,21 @@ function StoreLocatorPage() {
             }}
           >
             <Stack spacing={{ xs: 1.25, sm: 1.5 }}>
-              {(isMobile ? STORES.slice(0, MOBILE_PREVIEW_COUNT) : STORES).map((store) => (
+              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'text.secondary' }}>Sort by</Typography>
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={sortMode}
+                  onChange={(_, value) => value && setSortMode(value)}
+                  aria-label="Sort stores"
+                >
+                  <ToggleButton value="cheapest" sx={{ textTransform: 'none', px: 1.5, py: 0.4 }}>Cheapest</ToggleButton>
+                  <ToggleButton value="nearest" sx={{ textTransform: 'none', px: 1.5, py: 0.4 }}>Nearest</ToggleButton>
+                </ToggleButtonGroup>
+              </Stack>
+
+              {(isMobile ? displayedStores.slice(0, MOBILE_PREVIEW_COUNT) : displayedStores).map((store) => (
                 <StoreListCard
                   key={store.id}
                   store={store}
@@ -253,11 +371,11 @@ function StoreLocatorPage() {
                 />
               ))}
 
-              {isMobile && STORES.length > MOBILE_PREVIEW_COUNT && (
+              {isMobile && displayedStores.length > MOBILE_PREVIEW_COUNT && (
                 <>
                   <Collapse in={hardwareListExpanded} timeout="auto" unmountOnExit>
                     <Stack spacing={1.25}>
-                      {STORES.slice(MOBILE_PREVIEW_COUNT).map((store) => (
+                      {displayedStores.slice(MOBILE_PREVIEW_COUNT).map((store) => (
                         <StoreListCard
                           key={store.id}
                           store={store}

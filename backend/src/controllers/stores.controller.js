@@ -1,5 +1,18 @@
 import { query } from '../config/db.js';
+import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { getRoadDistances } from '../services/routing.service.js';
+
+// Always 200: when routing isn't available the body says so and Store
+// Locator keeps its straight-line distances.
+export const roadDistances = asyncHandler(async (req, res) => {
+  const lat = Number(req.body?.origin?.lat);
+  const lng = Number(req.body?.origin?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    throw new HttpError(400, 'origin.lat and origin.lng must be valid coordinates.');
+  }
+  res.json(await getRoadDistances({ lat, lng }));
+});
 
 export const listStores = asyncHandler(async (req, res) => {
   const stores = await query(

@@ -21,6 +21,8 @@ export const CITY_LOCATION = CITY_CENTER;
 // "distance" is really from the user or just approximated from the city
 // reference point.
 export let DISTANCE_IS_FROM_USER = false;
+// True once applyRoadDistances() gave at least one store a road distance.
+export let DISTANCE_IS_BY_ROAD = false;
 
 function haversineKm(a, b) {
   const R = 6371;
@@ -44,6 +46,7 @@ function haversineKm(a, b) {
  */
 export function loadStores(stores, origin = CITY_CENTER) {
   DISTANCE_IS_FROM_USER = origin !== CITY_CENTER;
+  DISTANCE_IS_BY_ROAD = false;
   STORES.length = 0;
   STORES.push(
     ...stores.map((store, index) => {
@@ -57,8 +60,11 @@ export function loadStores(stores, origin = CITY_CENTER) {
         address: store.address,
         position,
         distanceKm,
-        // Straight-line (as the crow flies), not road distance — a road
-        // route would need a paid or rate-limited routing API. The card's
+        // Filled in by applyRoadDistances() when OpenRouteService answers.
+        roadKm: null,
+        roadMinutes: null,
+        // Straight-line (as the crow flies) until the road distance arrives,
+        // and kept for any store routing couldn't reach. The card's
         // Directions button opens the real road route in Google Maps.
         distanceLabel: `${distanceKm.toFixed(1)} km straight-line`,
         // Rough estimate: straight-line distance at an assumed 30 km/h.
@@ -76,4 +82,22 @@ export function loadStores(stores, origin = CITY_CENTER) {
       };
     }),
   );
+}
+
+/**
+ * Swaps in road distance and drive time from POST /api/stores/road-distances
+ * (OpenRouteService). Stores missing from `byStoreId` keep their
+ * straight-line labels.
+ * @param {Record<string, {km:number, minutes:number}>} byStoreId
+ */
+export function applyRoadDistances(byStoreId) {
+  for (const store of STORES) {
+    const road = byStoreId[store.id];
+    if (!road) continue;
+    store.roadKm = road.km;
+    store.roadMinutes = road.minutes;
+    store.distanceLabel = `${road.km.toFixed(1)} km by road`;
+    store.travelTimeLabel = `~${road.minutes} min drive`;
+    DISTANCE_IS_BY_ROAD = true;
+  }
 }

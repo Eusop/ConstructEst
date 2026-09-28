@@ -14,7 +14,7 @@ import { useIsMobile } from '../../../hooks/useIsMobile';
 const LAYER_GROUPS = [
   { label: 'Required', names: ['WALL', 'DOOR', 'WINDOW', 'COLUMN (or COL)', 'STAIR', 'ROOF', 'FLOOR'] },
   { label: 'Optional', note: 'improves the estimate', names: ['BEAM', 'CANTBEAM', 'TRUSS'] },
-  { label: 'Recommended', note: 'not used in the computation yet', names: ['FTG', 'FTBEAM'] },
+  // FTG / FTBEAM (also Reply 4) aren't listed: the engine doesn't read them.
 ];
 
 /**

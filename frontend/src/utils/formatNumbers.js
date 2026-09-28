@@ -59,7 +59,7 @@ export function formatMeasurement(value, suffix = '') {
   return `${text}${suffix}`;
 }
 
-/** A whole-number count (rooms detected, columns). Never gets decimals. */
+/** A whole-number count (e.g. columns). Never gets decimals. */
 export function formatCount(value, suffix = '') {
   if (value == null) return '—';
   return `${Number(value).toLocaleString('en-PH')}${suffix}`;

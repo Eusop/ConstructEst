@@ -12,8 +12,11 @@ const MAX_ACCEPTABLE_ACCURACY_M = 50_000;
 // testing from far away, so we reject it too. Trade-off: a real user
 // genuinely far from Tarlac also gets rejected here, fine for how narrow
 // this app's scope is.
+// Was 100 km, which let an IP guess about 90 km away through (a tester in
+// Capas saw 116.6 km by road). 50 km still covers all of Tarlac province
+// (its far towns are about 40-45 km out; Capas is 17 km).
 const TARLAC_CITY_CENTER = { lat: 15.4802, lng: 120.5979 };
-const MAX_PLAUSIBLE_DISTANCE_KM = 100;
+const MAX_PLAUSIBLE_DISTANCE_KM = 50;
 
 function haversineKm(a, b) {
   const R = 6371;
@@ -30,17 +33,22 @@ function haversineKm(a, b) {
  * for the store list, instead of always measuring from a fixed city point.
  * Fetches once on mount, `refetch` re-triggers it for a "locate me" button.
  *
- * Falls back to `status: 'unavailable'` (never hangs) if: geolocation isn't
- * supported, permission is denied, the fetch fails, the fix is too coarse
- * to trust (see MAX_ACCEPTABLE_ACCURACY_M), the fix is confidently wrong
- * (small reported accuracy but way outside Tarlac, see
- * MAX_PLAUSIBLE_DISTANCE_KM), or a 10s failsafe timeout fires while a
- * permission prompt is still pending.
+ * Never hangs; when there's no usable location it says why, so the page can
+ * tell the user instead of silently measuring from somewhere else:
+ * - 'denied': permission refused.
+ * - 'implausible': the fix is more than MAX_PLAUSIBLE_DISTANCE_KM from
+ *   Tarlac City (usually a confidently wrong IP guess); `rejectedDistanceKm`
+ *   says how far.
+ * - 'imprecise': reported accuracy worse than MAX_ACCEPTABLE_ACCURACY_M.
+ * - 'unavailable': unsupported, failed, or the 10s failsafe fired while a
+ *   permission prompt was still pending.
  *
- * @returns {{ location: {lat:number,lng:number}|null, status: 'loading'|'granted'|'unavailable', refetch: () => void }}
+ * @returns {{ location: {lat:number,lng:number}|null,
+ *   status: 'loading'|'granted'|'denied'|'implausible'|'imprecise'|'unavailable',
+ *   rejectedDistanceKm: number|null, refetch: () => void }}
  */
 export function useUserLocation() {
-  const [state, setState] = useState({ location: null, status: 'loading' });
+  const [state, setState] = useState({ location: null, status: 'loading', rejectedDistanceKm: null });
   // Bumped on every locate() call so a slow, superseded request (mount
   // fetch still pending when "locate me" fires a new one) can't overwrite
   // a newer result.
@@ -55,8 +63,10 @@ export function useUserLocation() {
     // mount effect.
     queueMicrotask(() => setIfCurrent((prev) => ({ ...prev, status: 'loading' })));
 
+    const none = (status, rejectedDistanceKm = null) => ({ location: null, status, rejectedDistanceKm });
+
     if (!navigator.geolocation) {
-      queueMicrotask(() => setIfCurrent({ location: null, status: 'unavailable' }));
+      queueMicrotask(() => setIfCurrent(none('unavailable')));
       return;
     }
 
@@ -67,7 +77,7 @@ export function useUserLocation() {
       queueMicrotask(() => setState(next));
     };
 
-    const failsafe = setTimeout(() => settle({ location: null, status: 'unavailable' }), 10_000);
+    const failsafe = setTimeout(() => settle(none('unavailable')), 10_000);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -77,26 +87,27 @@ export function useUserLocation() {
         // extension/emulator setups. Treat it as unavailable instead of
         // passing garbage to the map (which would crash on it).
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-          settle({ location: null, status: 'unavailable' });
+          settle(none('unavailable'));
           return;
         }
         // Too coarse to trust as "your location".
         if (Number.isFinite(accuracy) && accuracy > MAX_ACCEPTABLE_ACCURACY_M) {
-          settle({ location: null, status: 'unavailable' });
+          settle(none('imprecise'));
           return;
         }
         // Confidently wrong: small reported accuracy but nowhere near
         // Tarlac. The accuracy check above only catches fixes that admit
         // they're coarse, not this.
-        if (haversineKm(TARLAC_CITY_CENTER, { lat: latitude, lng: longitude }) > MAX_PLAUSIBLE_DISTANCE_KM) {
-          settle({ location: null, status: 'unavailable' });
+        const kmFromTarlac = haversineKm(TARLAC_CITY_CENTER, { lat: latitude, lng: longitude });
+        if (kmFromTarlac > MAX_PLAUSIBLE_DISTANCE_KM) {
+          settle(none('implausible', Math.round(kmFromTarlac)));
           return;
         }
-        settle({ location: { lat: latitude, lng: longitude }, status: 'granted' });
+        settle({ location: { lat: latitude, lng: longitude }, status: 'granted', rejectedDistanceKm: null });
       },
-      () => {
+      (error) => {
         clearTimeout(failsafe);
-        settle({ location: null, status: 'unavailable' });
+        settle(none(error?.code === 1 ? 'denied' : 'unavailable'));
       },
       { enableHighAccuracy: true, timeout: 8_000, maximumAge: 0 },
     );

@@ -150,32 +150,44 @@ function ProjectDetailsCard({
           </Box>
         </Stack>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.75, sm: 2.5 }} sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}>
-          <Box>
-            <Typography sx={FIELD_LABEL_SX}>Storeys</Typography>
-            <ToggleButtonGroup
-              value={form.storeys}
-              exclusive
-              onChange={(event, value) => value !== null && onFieldChange('storeys', value)}
-              sx={STOREYS_TOGGLE_SX}
-            >
-              <ToggleButton value={1} disableRipple>1 storey</ToggleButton>
-              <ToggleButton value={2} disableRipple>2 storeys</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+        <Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.75, sm: 2.5 }} sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}>
+            <Box>
+              <Typography sx={FIELD_LABEL_SX}>Storeys</Typography>
+              <ToggleButtonGroup
+                value={form.storeys}
+                exclusive
+                onChange={(event, value) => value !== null && onFieldChange('storeys', value)}
+                sx={STOREYS_TOGGLE_SX}
+              >
+                <ToggleButton value={1} disableRipple>1 storey</ToggleButton>
+                <ToggleButton value={2} disableRipple>2 storeys</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
-          <FormControlLabel
-            sx={{ mt: { xs: 0, sm: 2.25 } }}
-            control={
-              <Checkbox
-                checked={form.includeRoofing}
-                onChange={(event) => onFieldChange('includeRoofing', event.target.checked)}
-                sx={{ color: colors.inputBorder, '&.Mui-checked': { color: colors.accentBlue } }}
-              />
-            }
-            label={<Typography sx={{ fontSize: { xs: '0.82rem', sm: '0.88rem' }, color: 'text.primary' }}>Include roofing</Typography>}
-          />
-        </Stack>
+            <FormControlLabel
+              sx={{ mt: { xs: 0, sm: 2.25 } }}
+              control={
+                <Checkbox
+                  checked={form.includeRoofing}
+                  onChange={(event) => onFieldChange('includeRoofing', event.target.checked)}
+                  sx={{ color: colors.inputBorder, '&.Mui-checked': { color: colors.accentBlue } }}
+                />
+              }
+              label={<Typography sx={{ fontSize: { xs: '0.82rem', sm: '0.88rem' }, color: 'text.primary' }}>Include roofing</Typography>}
+            />
+          </Stack>
+          {/* 2 storeys is the default, so a bungalow uploaded without switching
+              would get a second floor estimated from the ground floor (roughly
+              double the walls, slab and columns) with no error. The engine
+              can't tell floor count from one file, so this just says it. */}
+          {form.storeys === 2 && !form.secondFloorFile && (
+            <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mt: 1 }}>
+              With no second floor file, the second floor is estimated from the ground floor. Choose 1 storey for a
+              bungalow.
+            </Typography>
+          )}
+        </Box>
 
         <Box>
           <Typography sx={FIELD_LABEL_SX}>Floor plan (2D AutoCAD DXF)</Typography>

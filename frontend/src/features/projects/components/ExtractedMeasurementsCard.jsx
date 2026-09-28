@@ -43,7 +43,9 @@ function ExtractedMeasurementsCard({ storeys }) {
     { label: `Total wall length (${storeys} flr)`, value: PARSED_MEASUREMENTS.totalWallLength },
     { label: `Floor area (${storeys} flr)`, value: PARSED_MEASUREMENTS.floorArea },
     { label: 'Roof area', value: PARSED_MEASUREMENTS.roofArea },
-    { label: 'Rooms detected', value: String(PARSED_MEASUREMENTS.roomsDetected) },
+    // "Rooms detected" was removed: it counted closed FLOOR outlines, not
+    // rooms, so it read 1 for nearly every plan. The engine still returns
+    // roomsDetected and it's still stored; it's just not shown.
   ];
 
   // Additional figures the engine already computes from the same DXF layers
@@ -71,7 +73,7 @@ function ExtractedMeasurementsCard({ storeys }) {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
+          gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' },
           rowGap: 2.5,
           columnGap: 2,
         }}

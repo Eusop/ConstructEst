@@ -50,4 +50,3 @@ Plywood uses 2.98 m² per sheet (Reply 10), which isn't deployed yet; live still
 ## Notes
 
 - **Hidden layers** in the MLINE and WITH_BEAMS files are still read by the engine; only the drawing and the upload preview hide them.
-- **"Rooms detected"** counts closed FLOOR outlines, not rooms. These files have one outline per floor, so it reads 1 per file.
