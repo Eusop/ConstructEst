@@ -25,6 +25,14 @@ export function errorHandler(err, req, res, next) {
     return res.status(409).json({ message: describeDuplicateEntry(err) });
   }
 
+  // Multer's size limit error has no status, so it would become a generic 500.
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    const maxBytes = err.field === 'avatar'
+      ? Number(process.env.MAX_AVATAR_BYTES) || 2 * 1024 * 1024
+      : Number(process.env.MAX_UPLOAD_BYTES) || 10 * 1024 * 1024;
+    return res.status(413).json({ message: `File is too large (max ${Math.round(maxBytes / (1024 * 1024))} MB).` });
+  }
+
   const status = err.status || 500;
   const message = status === 500 ? 'Something went wrong on our end.' : err.message;
   const body = { message };

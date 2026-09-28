@@ -21,6 +21,10 @@ import { colors } from '../../../theme/palette';
 const DROPZONE_HEIGHT = 172;
 const PREVIEW_CANVAS_HEIGHT = 144;
 
+// Same as the backend's MAX_UPLOAD_BYTES default (upload.js). Checked here so an
+// oversized file is refused right away instead of after uploading it.
+const MAX_DXF_BYTES = 10 * 1024 * 1024;
+
 function formatFileSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -95,6 +99,11 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
 
     if (!isDxfFilename(picked.name)) {
       onFileValidation({ status: 'invalid', message: 'Invalid file type. Please upload a DXF file.' });
+      return;
+    }
+
+    if (picked.size > MAX_DXF_BYTES) {
+      onFileValidation({ status: 'invalid', message: 'File is too large (max 10 MB).' });
       return;
     }
 
