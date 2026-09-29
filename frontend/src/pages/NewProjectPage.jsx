@@ -63,6 +63,9 @@ function NewProjectPage() {
   const errors = validate(draft);
   const isFormValid = Object.keys(errors).length === 0;
   const canSubmit = isFormValid && isFileValid && isSecondFloorFileValid;
+  // Only blocked while a DXF is still being read. Otherwise a click on Create
+  // shows what is missing, instead of a dead button with no reason.
+  const isValidatingFile = fileValidation.status === 'validating' || secondFloorFileValidation.status === 'validating';
 
   const handleFieldBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -70,8 +73,17 @@ function NewProjectPage() {
 
   const handleCreate = (event) => {
     event.preventDefault();
-    setTouched({ projectName: true, location: true, budgetCeiling: true });
-    if (!canSubmit) return;
+    setTouched({ projectName: true, location: true, budgetCeiling: true, file: true });
+    if (!canSubmit) {
+      // Jump to the first problem so the user sees it.
+      const firstBadField = ['projectName', 'location', 'budgetCeiling'].find((field) => errors[field]);
+      if (firstBadField) {
+        document.querySelector(`input[name="${firstBadField}"]`)?.focus();
+      } else {
+        document.getElementById('floor-plan-upload')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
     incrementTotalProjects();
     logActivity({ type: 'project_created', message: `New project ${draft.projectName} created` });
     createProjectFromDraft();
@@ -95,7 +107,9 @@ function NewProjectPage() {
         errors={errors}
         touched={touched}
         onFieldBlur={handleFieldBlur}
-        canSubmit={canSubmit}
+        submitDisabled={isValidatingFile}
+        showSubmitHint={Boolean(touched.file) && !canSubmit}
+        fileMissing={Boolean(touched.file) && !draft.file}
       />
     </Box>
   );

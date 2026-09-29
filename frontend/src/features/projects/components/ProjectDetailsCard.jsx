@@ -71,7 +71,9 @@ function formatBudgetInput(rawValue) {
  * @param {{projectName?: string, location?: string, budgetCeiling?: string}} props.errors Validation messages per field, keyed like `form`.
  * @param {{projectName?: boolean, location?: boolean, budgetCeiling?: boolean}} props.touched Which required fields were already blurred. Errors only show for touched fields, so a fresh empty form doesn't look broken.
  * @param {(field: string) => void} props.onFieldBlur
- * @param {boolean} props.canSubmit True when every required field is valid and the DXF (and the second floor DXF, if attached) validated. Gates the submit button.
+ * @param {boolean} props.submitDisabled True only while a DXF is still being read.
+ * @param {boolean} props.showSubmitHint Shows the "fill in the highlighted fields" line after a blocked Create click.
+ * @param {boolean} props.fileMissing Shows "Upload the floor plan DXF" under the dropzone after a Create click with no file.
  */
 function ProjectDetailsCard({
   form,
@@ -88,7 +90,9 @@ function ProjectDetailsCard({
   errors,
   touched,
   onFieldBlur,
-  canSubmit,
+  submitDisabled,
+  showSubmitHint,
+  fileMissing,
 }) {
   return (
     <Paper
@@ -184,7 +188,7 @@ function ProjectDetailsCard({
           )}
         </Box>
 
-        <Box>
+        <Box id="floor-plan-upload">
           <Typography sx={FIELD_LABEL_SX}>Floor plan (2D AutoCAD DXF)</Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mb: 1 }}>
             This file should represent exactly one floor's geometry. A file with more than one
@@ -198,6 +202,9 @@ function ProjectDetailsCard({
             onFileRemove={onFileRemove}
             onFileValidation={onFileValidation}
           />
+          {fileMissing && (
+            <Typography sx={{ color: 'error.main', fontSize: '0.78rem', mt: 0.75 }}>Upload the floor plan DXF.</Typography>
+          )}
         </Box>
 
         {form.storeys === 2 && (
@@ -237,13 +244,18 @@ function ProjectDetailsCard({
             type="submit"
             variant="contained"
             disableElevation
-            disabled={!canSubmit}
+            disabled={submitDisabled}
             startIcon={<ArrowForwardRoundedIcon />}
             sx={{ flex: 1, bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
           >
             Create &amp; parse DXF
           </Button>
         </Stack>
+        {showSubmitHint && (
+          <Typography role="alert" sx={{ color: 'error.main', fontSize: '0.8rem', mt: { xs: -0.75, sm: -1.25 }, textAlign: 'center' }}>
+            Fill in the highlighted fields before creating the project.
+          </Typography>
+        )}
       </Stack>
     </Paper>
   );
