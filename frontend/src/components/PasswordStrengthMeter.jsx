@@ -12,8 +12,7 @@ const LABEL_COLOR = {
 
 /**
  * Live password strength: a segmented bar and a Weak/Fair/Strong label, from
- * the 5 criteria in `getPasswordStrength`. Only length, a letter and a number
- * are required to pass (`isStrongPassword`); this is guidance (see
+ * the 5 criteria in `getPasswordStrength` (all 5 are required to pass, see
  * utils/validators.js). Shows nothing for an empty field.
  *
  * @param {object} props

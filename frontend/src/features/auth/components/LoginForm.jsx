@@ -173,16 +173,30 @@ function LoginForm() {
           label={<Typography sx={{ fontSize: '0.9rem', color: 'text.primary' }}>Keep me signed in</Typography>}
         />
 
-        <Button
-          type="submit"
-          fullWidth
-          variant="contained"
-          disableElevation
-          disabled={isSubmitting}
-          sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
-        >
-          Sign in
-        </Button>
+        <Box>
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            disableElevation
+            disabled={isSubmitting}
+            sx={{ bgcolor: colors.accentBlue, '&:hover': { bgcolor: colors.accentBlueDark } }}
+          >
+            Sign in
+          </Button>
+          {/* New tab (plain href), like Sign Up, so the login form isn't lost. */}
+          <Typography sx={{ textAlign: 'center', color: 'text.secondary', fontSize: '0.78rem', mt: 1.25 }}>
+            By signing in, you agree to our{' '}
+            <Link href={ROUTES.TERMS} target="_blank" rel="noopener noreferrer" underline="none" sx={{ color: 'primary.main', fontWeight: 600 }}>
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href={ROUTES.PRIVACY} target="_blank" rel="noopener noreferrer" underline="none" sx={{ color: 'primary.main', fontWeight: 600 }}>
+              Privacy Policy
+            </Link>
+            .
+          </Typography>
+        </Box>
 
         <Divider>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>or</Typography>

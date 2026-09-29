@@ -54,20 +54,22 @@ export function getEmployeeIdHint(value) {
   return missing.length > 0 ? `Needs to ${missing.join(', ')}` : null;
 }
 
-// 8+ characters with at least one letter and one number. Same as the
-// backend's passwordPolicy.js. Login is not checked against it, so older
-// 6-character accounts can still sign in.
+// 8 to 16 characters with an uppercase letter, a lowercase letter, a number
+// and a special character. Same as the backend's passwordPolicy.js. Login is
+// not checked against it, so older accounts can still sign in.
 export const PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_RULE_MESSAGE = `Must be at least ${PASSWORD_MIN_LENGTH} characters with a letter and a number`;
+export const PASSWORD_MAX_LENGTH = 16;
+export const PASSWORD_RULE_MESSAGE = `Must be ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters with an uppercase letter, a lowercase letter, a number and a special character`;
 
 export function isStrongPassword(value) {
-  return value.length >= PASSWORD_MIN_LENGTH && /[A-Za-z]/.test(value) && /[0-9]/.test(value);
+  const { criteria } = getPasswordStrength(value);
+  return Object.values(criteria).every(Boolean);
 }
 
 /**
- * Live strength rating for a password being typed: 5 criteria for a checklist
- * UI, a 0-5 score and a Weak/Fair/Strong label. Only length, a letter and a
- * number are required to pass (see isStrongPassword). The rest is guidance.
+ * Live strength rating for a password being typed: the same 5 criteria
+ * isStrongPassword requires, for a checklist UI, plus a 0-5 score and a
+ * Weak/Fair/Strong label.
  *
  * @param {string} value
  * @returns {{ criteria: {length:boolean, upper:boolean, lower:boolean, number:boolean, symbol:boolean},
@@ -75,7 +77,7 @@ export function isStrongPassword(value) {
  */
 export function getPasswordStrength(value) {
   const criteria = {
-    length: value.length >= PASSWORD_MIN_LENGTH,
+    length: value.length >= PASSWORD_MIN_LENGTH && value.length <= PASSWORD_MAX_LENGTH,
     upper: /[A-Z]/.test(value),
     lower: /[a-z]/.test(value),
     number: /[0-9]/.test(value),
