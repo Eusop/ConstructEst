@@ -109,18 +109,30 @@ class MaterialAccumulator:
         self.totals = {}
         self.bases = {}
         self.by_category = {}  # key -> {category: amount}
+        self.steps = {}  # key -> readable computation lines, shown as "Show computation"
 
-    def add(self, key, amount, basis, category="shared"):
+    def add(self, key, amount, basis, category="shared", step=None):
         self.totals[key] = self.totals.get(key, 0.0) + amount
         # The first basis note is kept as the displayed formula.
         self.bases.setdefault(key, basis)
         cat_totals = self.by_category.setdefault(key, {})
         cat_totals[category] = cat_totals.get(category, 0.0) + amount
+        if step:
+            self.steps.setdefault(key, []).append(step)
 
-    def add_concrete_mix(self, volume_m3, cement_factor, basis, category="shared"):
-        self.add("cement", volume_m3 * 9 * cement_factor, basis, category)
-        self.add("sand", volume_m3 * 0.50, basis, category)
-        self.add("gravel", volume_m3 * 1.0, basis, category)
+    def add_concrete_mix(self, volume_m3, cement_factor, basis, category="shared", label=None):
+        cement = volume_m3 * 9 * cement_factor
+        sand = volume_m3 * 0.50
+        gravel = volume_m3 * 1.0
+        self.add("cement", cement, basis, category,
+                 label and f"{label}: {num(volume_m3, 3)} m3 x 9 bags x {num(cement_factor)} cement factor = {num(cement)} bags")
+        self.add("sand", sand, basis, category, label and f"{label}: {num(volume_m3, 3)} m3 x 0.50 = {num(sand, 3)} m3")
+        self.add("gravel", gravel, basis, category, label and f"{label}: {num(volume_m3, 3)} m3 x 1.0 = {num(gravel, 3)} m3")
+
+
+def num(value, decimals=2):
+    """Number for the computation steps, e.g. 1,234.57."""
+    return f"{value:,.{decimals}f}"
 
 
 def compute_materials(geometry, storeys, include_roofing, constants, overrides, geometry2=None):
@@ -161,6 +173,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # Rebar weight is tracked per category. Each contribution uses its own
     # diameter's unit weight, so length is converted to weight where it is added.
     rebar_weight_by_category = {category: 0.0 for category in SOURCE_CATEGORIES}
+    rebar_steps = []  # readable lines for the rebar computation, in kg
 
     # --- Table 12: Wall materials -----------------------------------------
     # floor_to_floor_h drives every per-storey height (walls, stairs, and the
@@ -179,19 +192,33 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
 
         gross_wall_area = storey_wall_length_m * floor_to_floor_h
         net_wall_area = max(gross_wall_area - storey_door_area_m2 - storey_window_area_m2, 0.0)
+        floor_label = 'Ground floor' if storey == 0 else ('Second floor' if storey_geometry is geometry2 else 'Second floor (ground plan reused)')
+        wall_text = (f"{floor_label} walls: {num(storey_wall_length_m)} m x {num(floor_to_floor_h)} m - "
+                     f"{num(storey_door_area_m2)} m2 doors - {num(storey_window_area_m2)} m2 windows = {num(net_wall_area)} m2")
 
-        acc.add("hollowBlocks", net_wall_area * 12.5 * 1.05, "Wall area / coverage", storey_category)
-        acc.add("cement", net_wall_area * 0.522 * cement_factor, "Wall area x mortar rate", storey_category)
-        acc.add("sand", net_wall_area * 0.0435, "Wall area x mortar rate", storey_category)
+        chb = net_wall_area * 12.5 * 1.05
+        mortar_cement = net_wall_area * 0.522 * cement_factor
+        mortar_sand = net_wall_area * 0.0435
+        acc.add("hollowBlocks", chb, "Wall area / coverage", storey_category,
+                f"{wall_text} x 12.5 pcs per m2 x 1.05 = {num(chb)} pcs")
+        acc.add("cement", mortar_cement, "Wall area x mortar rate", storey_category,
+                f"{floor_label} wall mortar: {num(net_wall_area)} m2 x 0.522 bags per m2 x {num(cement_factor)} cement factor = {num(mortar_cement)} bags")
+        acc.add("sand", mortar_sand, "Wall area x mortar rate", storey_category,
+                f"{floor_label} wall mortar: {num(net_wall_area)} m2 x 0.0435 m3 per m2 = {num(mortar_sand, 3)} m3")
 
         vertical_bars = ceil_int(storey_wall_length_m / 0.60) + 1
         horizontal_bars = ceil_int(floor_to_floor_h / 0.60) + 1
         wall_rebar_length_m = vertical_bars * floor_to_floor_h + horizontal_bars * storey_wall_length_m
-        rebar_weight_by_category[storey_category] += wall_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        wall_rebar_kg = wall_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        rebar_weight_by_category[storey_category] += wall_rebar_kg
+        rebar_steps.append(
+            f"{floor_label} walls, 10mm @ 0.60 m: {vertical_bars} vertical bars x {num(floor_to_floor_h)} m + "
+            f"{horizontal_bars} horizontal bars x {num(storey_wall_length_m)} m = {num(wall_rebar_length_m)} m x 0.617 kg/m = {num(wall_rebar_kg)} kg")
 
     # --- Table 13: Slab materials ------------------------------------------
     ground_slab_volume = floor_area_m2 * 0.15
-    acc.add_concrete_mix(ground_slab_volume, cement_factor, "Ground slab volume x mix rate", "ground")
+    acc.add_concrete_mix(ground_slab_volume, cement_factor, "Ground slab volume x mix rate", "ground",
+                         f"Ground slab {num(floor_area_m2)} m2 x 0.15 m")
     bounds = geometry.get("floor_bounds")
     if bounds:
         floor_len = max(bounds[2] - bounds[0], 0.01)
@@ -199,7 +226,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         rebar_len_count = ceil_int(floor_len / 0.30) + 1
         rebar_wid_count = ceil_int(floor_wid / 0.30) + 1
         ground_slab_rebar_length_m = rebar_len_count * floor_wid + rebar_wid_count * floor_len
-        rebar_weight_by_category["ground"] += ground_slab_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        ground_slab_rebar_kg = ground_slab_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        rebar_weight_by_category["ground"] += ground_slab_rebar_kg
+        rebar_steps.append(
+            f"Ground slab, 10mm @ 0.30 m: {rebar_len_count} bars x {num(floor_wid)} m + {rebar_wid_count} bars x "
+            f"{num(floor_len)} m = {num(ground_slab_rebar_length_m)} m x 0.617 kg/m = {num(ground_slab_rebar_kg)} kg")
 
     if storeys >= 2:
         # Use the 2nd floor's own footprint when its DXF is given (it can differ,
@@ -209,7 +240,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         suspended_category = "second" if geometry2 is not None else "ground"
         suspended_floor_area_m2 = suspended_source["floor_area_m2"]
         suspended_slab_volume = suspended_floor_area_m2 * 0.125
-        acc.add_concrete_mix(suspended_slab_volume, cement_factor, "Suspended slab volume x mix rate", suspended_category)
+        acc.add_concrete_mix(suspended_slab_volume, cement_factor, "Suspended slab volume x mix rate", suspended_category,
+                             f"Second floor slab {num(suspended_floor_area_m2)} m2 x 0.125 m")
         suspended_bounds = suspended_source.get("floor_bounds")
         if suspended_bounds:
             suspended_len = max(suspended_bounds[2] - suspended_bounds[0], 0.01)
@@ -217,7 +249,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             rebar_len_count = ceil_int(suspended_len / 0.15) + 1
             rebar_wid_count = ceil_int(suspended_wid / 0.15) + 1
             suspended_slab_rebar_length_m = rebar_len_count * suspended_wid + rebar_wid_count * suspended_len
-            rebar_weight_by_category[suspended_category] += suspended_slab_rebar_length_m * REBAR_UNIT_WEIGHT_12MM_KG_PER_M
+            suspended_slab_rebar_kg = suspended_slab_rebar_length_m * REBAR_UNIT_WEIGHT_12MM_KG_PER_M
+            rebar_weight_by_category[suspended_category] += suspended_slab_rebar_kg
+            rebar_steps.append(
+                f"Second floor slab, 12mm @ 0.15 m: {rebar_len_count} bars x {num(suspended_wid)} m + {rebar_wid_count} bars x "
+                f"{num(suspended_len)} m = {num(suspended_slab_rebar_length_m)} m x 0.889 kg/m = {num(suspended_slab_rebar_kg)} kg")
 
     # --- Table 14: Column materials -----------------------------------------
     col_w, col_d, _ = default_column_size(storeys)
@@ -243,7 +279,9 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         column_floors = [(col_w, col_d, total_col_h, column_count)]
 
     column_volume = sum(w * d * h * n for w, d, h, n in column_floors)
-    acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count (per floor)", "shared")
+    column_parts = ' + '.join(f"{n} x {num(w)} x {num(d)} x {num(h)} m" for w, d, h, n in column_floors)
+    acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count (per floor)", "shared",
+                         f"Columns ({column_parts})")
 
     # Column rebar. Diameter is validated (12mm 1-storey, 16mm 2-storey). Bar
     # count is validated only for a bungalow (Reply 3); for 2-storey it depends
@@ -253,7 +291,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         REBAR_UNIT_WEIGHT_16MM_KG_PER_M if column_rebar_diameter_mm == 16 else REBAR_UNIT_WEIGHT_12MM_KG_PER_M
     )
     column_rebar_length_m = sum(n * COLUMN_REBAR_BAR_COUNT * h for _w, _d, h, n in column_floors)
-    rebar_weight_by_category["shared"] += column_rebar_length_m * column_rebar_unit_weight
+    column_rebar_kg = column_rebar_length_m * column_rebar_unit_weight
+    rebar_weight_by_category["shared"] += column_rebar_kg
+    column_bar_parts = ' + '.join(f"{n} columns x {COLUMN_REBAR_BAR_COUNT} bars x {num(h)} m" for _w, _d, h, n in column_floors)
+    rebar_steps.append(
+        f"Columns, {column_rebar_diameter_mm}mm: {column_bar_parts} = {num(column_rebar_length_m)} m x "
+        f"{num(column_rebar_unit_weight, 3)} kg/m = {num(column_rebar_kg)} kg")
 
     # --- Table 15: Beam materials ------------------------------------------
     beam_w = overrides.get("beamWidth", 0.20)
@@ -284,7 +327,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         beam_basis = "Beam volume (from BEAM layer)"
     else:
         beam_basis = "Beam volume (wall-run approximation)"
-    acc.add_concrete_mix(beam_volume, cement_factor, beam_basis, "shared")
+    beam_source = ('your beam length' if "beamLength" in overrides
+                   else 'from the BEAM layer' if beam_from_layer else 'wall length used as beam run')
+    acc.add_concrete_mix(beam_volume, cement_factor, beam_basis, "shared",
+                         f"Beams {num(beam_w)} x {num(beam_d)} m x {num(beam_length_total)} m ({beam_source})")
 
     # Beam rebar: no paper formula and no safe NSCP default without f'c/fy
     # (docs/nscp-citations.md). Manual override only: total bar length and size
@@ -293,7 +339,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     if beam_rebar_length_m:
         # A blank or 0 bar size falls back to 12mm.
         beam_rebar_diameter_mm = overrides.get("beamRebarDiameterMm") or 12
-        rebar_weight_by_category["shared"] += beam_rebar_length_m * rebar_unit_weight_kg_per_m(beam_rebar_diameter_mm)
+        beam_rebar_kg = beam_rebar_length_m * rebar_unit_weight_kg_per_m(beam_rebar_diameter_mm)
+        rebar_weight_by_category["shared"] += beam_rebar_kg
+        rebar_steps.append(
+            f"Beams, {beam_rebar_diameter_mm}mm (from your beam schedule): {num(beam_rebar_length_m)} m x "
+            f"{num(rebar_unit_weight_kg_per_m(beam_rebar_diameter_mm), 3)} kg/m = {num(beam_rebar_kg)} kg")
 
     # --- Table 16: Roofing materials ----------------------------------------
     # The roof sits on the top floor, so read ROOF from the second floor file if given.
@@ -305,23 +355,37 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     roof_area_m2 = 0.0
     if include_roofing:
         roof_area_m2 = roof_floor_area_m2 * PITCH_MULTIPLIER * roofing_factor
-        acc.add("roofingSheets", roof_area_m2 / (0.80 * 2.44), "Roof area / sheet coverage", "roofing")
+        sheets = roof_area_m2 / (0.80 * 2.44)
+        acc.add("roofingSheets", sheets, "Roof area / sheet coverage", "roofing",
+                f"Roof area: {num(roof_floor_area_m2)} m2 top floor x {num(PITCH_MULTIPLIER, 3)} pitch (1:3) x "
+                f"{num(roofing_factor)} roofing factor = {num(roof_area_m2)} m2 / (0.80 m x 2.44 m per sheet) = {num(sheets)} sheets")
         purlin_run_m = roof_perimeter_m / 2
-        acc.add("purlins", ceil_int(purlin_run_m / 0.60) + 1, "Roof run / purlin spacing", "roofing")
-        acc.add("ridge", ceil_int(roof_ridge_length_m / 1.8), "Ridge length / piece length", "roofing")
-        acc.add("flashing", ceil_int(roof_perimeter_m / 1.8), "Roof perimeter / piece length", "roofing")
+        purlins = ceil_int(purlin_run_m / 0.60) + 1
+        acc.add("purlins", purlins, "Roof run / purlin spacing", "roofing",
+                f"Roof run: {num(roof_perimeter_m)} m roof perimeter / 2 = {num(purlin_run_m)} m / 0.60 m spacing, rounded up, + 1 = {purlins} rows")
+        ridge = ceil_int(roof_ridge_length_m / 1.8)
+        acc.add("ridge", ridge, "Ridge length / piece length", "roofing",
+                f"Ridge length {num(roof_ridge_length_m)} m / 1.8 m per piece, rounded up = {ridge} pieces")
+        flashing = ceil_int(roof_perimeter_m / 1.8)
+        acc.add("flashing", flashing, "Roof perimeter / piece length", "roofing",
+                f"Roof perimeter {num(roof_perimeter_m)} m / 1.8 m per piece, rounded up = {flashing} pieces")
         # Doubled per Engr. Espiritu (Reply 1). The larger size is a catalog
         # matter. Stays a roof-perimeter estimate even with a TRUSS layer,
         # because a plan line is shorter than the real chords and webs.
-        acc.add("angleBar", ceil_int(roof_perimeter_m / 6.0) * 2, "Roof perimeter / piece length x 2 (double angle, per engineer)", "roofing")
-        acc.add("gutter", ceil_int(roof_perimeter_m / 1.8), "Roof eave length / piece length (approximated from roof perimeter)", "roofing")
+        angle_pieces = ceil_int(roof_perimeter_m / 6.0)
+        acc.add("angleBar", angle_pieces * 2, "Roof perimeter / piece length x 2 (double angle, per engineer)", "roofing",
+                f"Roof perimeter {num(roof_perimeter_m)} m / 6 m per piece, rounded up = {angle_pieces} pieces x 2 (double angle) = {angle_pieces * 2} pieces")
+        gutter = ceil_int(roof_perimeter_m / 1.8)
+        acc.add("gutter", gutter, "Roof eave length / piece length (approximated from roof perimeter)", "roofing",
+                f"Eave length taken as the roof perimeter {num(roof_perimeter_m)} m / 1.8 m per piece, rounded up = {gutter} pieces")
 
     # --- Table 17: Footing materials ----------------------------------------
     footing_w = overrides.get("footingWidth", 0.60)
     footing_l = overrides.get("footingLength", 0.60)
     footing_depth = overrides.get("footingDepth", default_footing_depth(storeys))
     footing_volume = footing_w * footing_l * footing_depth * column_count
-    acc.add_concrete_mix(footing_volume, cement_factor, "Footing volume x count", "shared")
+    acc.add_concrete_mix(footing_volume, cement_factor, "Footing volume x count", "shared",
+                         f"Footings {column_count} x {num(footing_w)} x {num(footing_l)} x {num(footing_depth)} m")
 
     # --- Table 18: Stair materials (2-storey only) --------------------------
     if storeys >= 2:
@@ -339,13 +403,18 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         slab_area = slant * stair_width
         slab_volume = slab_area * waist_thickness
         step_volume = 0.5 * riser_height * tread_depth * stair_width * risers
-        acc.add_concrete_mix(slab_volume + step_volume, cement_factor, "Stair slab + step volume", "shared")
+        acc.add_concrete_mix(slab_volume + step_volume, cement_factor, "Stair slab + step volume", "shared",
+                             f"Stairs (waist slab {num(slant)} m x {num(stair_width)} m x {num(waist_thickness)} m + "
+                             f"{risers} steps x 1/2 x {num(riser_height)} x {num(tread_depth)} x {num(stair_width)} m)")
         # The stair rebar diameter is not in the validation form, so 10mm is our assumption.
-        stair_rebar_length_m = (
-            (ceil_int(slant / stair_rebar_spacing) + 1) * stair_width
-            + (ceil_int(stair_width / stair_rebar_spacing) + 1) * slant
-        )
-        rebar_weight_by_category["shared"] += stair_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        stair_across_bars = ceil_int(slant / stair_rebar_spacing) + 1
+        stair_along_bars = ceil_int(stair_width / stair_rebar_spacing) + 1
+        stair_rebar_length_m = stair_across_bars * stair_width + stair_along_bars * slant
+        stair_rebar_kg = stair_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        rebar_weight_by_category["shared"] += stair_rebar_kg
+        rebar_steps.append(
+            f"Stairs, 10mm @ {num(stair_rebar_spacing)} m: {stair_across_bars} bars x {num(stair_width)} m + "
+            f"{stair_along_bars} bars x {num(slant)} m = {num(stair_rebar_length_m)} m x 0.617 kg/m = {num(stair_rebar_kg)} kg")
 
     # --- Table 19: Scaffolding & Formwork ------------------------------------
     # Both floors' real areas when a second floor file is given, else floor area x storeys.
@@ -371,6 +440,15 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     ) / (scaffolding_set_width * scaffolding_set_height)
     # A set-count override (e.g. a contractor quote) skips the formula.
     scaffolding_set_count_override = overrides.get("scaffoldingSetCount")
+    if scaffolding_set_count_override is not None:
+        scaffold_step = f"Your set count: {num(scaffolding_set_count_override)} sets"
+    else:
+        height_note = ("your building height" if "buildingHeight" in overrides
+                       else f"{storeys} x {num(floor_to_floor_h)} m" + (f" + {num(scaffolding_set_height)} m roofing allowance" if include_roofing else ""))
+        truss_part = (f" + truss length {num(truss_run_m)} m x {num(interior_scaffold_height)} m interior height" if truss_run_m > 0 else "")
+        scaffold_step = (f"Ground floor perimeter {num(floor_perimeter_m)} m x height {num(building_height)} m ({height_note}){truss_part} "
+                         f"= {num(floor_perimeter_m * building_height + truss_run_m * interior_scaffold_height)} m2 / "
+                         f"({num(scaffolding_set_width)} m x {num(scaffolding_set_height)} m per set) = {num(computed_scaffolding_sets)} sets")
     acc.add(
         "scaffolding",
         scaffolding_set_count_override if scaffolding_set_count_override is not None else computed_scaffolding_sets,
@@ -378,8 +456,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         else "(Perimeter + truss length) x height / coverage" if truss_run_m > 0
         else "Perimeter x height / coverage",
         "shared",
+        scaffold_step,
     )
-    acc.add("steelProps", total_floor_area_m2 / 1.0, "Slab area / coverage per prop", "shared")
+    acc.add("steelProps", total_floor_area_m2 / 1.0, "Slab area / coverage per prop", "shared",
+            f"Slab area {num(total_floor_area_m2)} m2 (all floors) / 1.0 m2 per prop = {num(total_floor_area_m2 / 1.0)} props")
 
     column_formwork_area = sum(2 * (w + d) * h * n for w, d, h, n in column_floors)
     beam_perimeter = 2 * (beam_w + beam_d)
@@ -391,8 +471,14 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # One 1.22m x 2.44m sheet covers 2.98 m2 (Reply 10). Table 19 said 1 sheet
     # per 1.22 m2, which contradicts its own sheet size. The 5-10% cutting
     # allowance is the wastage multiplier applied below, so it is not added here.
-    acc.add("plywood", formwork_area / (1.22 * 2.44), "Formwork area / sheet coverage (2.98 m2 per sheet)", "shared")
-    acc.add("lumber", formwork_area * 3, "Formwork area x board-feet ratio", "shared")
+    formwork_text = (f"Formwork area: slabs {num(total_floor_area_m2)} m2 + column sides {num(column_formwork_area)} m2 + "
+                     f"beam sides and bottom {num(beam_perimeter)} m x {num(beam_length_total)} m = {num(formwork_area)} m2")
+    plywood = formwork_area / (1.22 * 2.44)
+    lumber = formwork_area * 3
+    acc.add("plywood", plywood, "Formwork area / sheet coverage (2.98 m2 per sheet)", "shared", formwork_text)
+    acc.steps["plywood"].append(f"{num(formwork_area)} m2 / 2.98 m2 per sheet (1.22 m x 2.44 m) = {num(plywood)} sheets")
+    acc.add("lumber", lumber, "Formwork area x board-feet ratio", "shared", formwork_text)
+    acc.steps["lumber"].append(f"{num(formwork_area)} m2 x 3 bd.ft. per m2 = {num(lumber)} bd.ft.")
 
     # --- Reinforcement rollup (rebar and tie wire) ---
     # Computed per category so each breakdown is correct. Weight already uses
@@ -403,6 +489,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         adjusted_weight_kg = weight_kg * steel_factor
         acc.add("steelRebar", adjusted_weight_kg / 1000, "Reinforcement length x unit weight", category)
         acc.add("tieWire", adjusted_weight_kg / 100, "Rebar weight x tie-wire ratio", category)
+    total_rebar_kg = sum(rebar_weight_by_category.values())
+    if total_rebar_kg > 0:
+        adjusted_total_kg = total_rebar_kg * steel_factor
+        acc.steps["steelRebar"] = rebar_steps + [
+            f"Total {num(total_rebar_kg)} kg x {num(steel_factor)} steel factor = {num(adjusted_total_kg)} kg / 1,000 = {num(adjusted_total_kg / 1000, 3)} tons"]
+        acc.steps["tieWire"] = [f"Rebar {num(adjusted_total_kg)} kg x 1 kg of tie wire per 100 kg = {num(adjusted_total_kg / 100)} kg"]
 
     # Wastage applies to items prone to cut or spill loss. CHB already has 5%
     # (Table 12); rebar and tie wire use the Steel Factor instead.
@@ -410,9 +502,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                      "flashing", "angleBar", "gutter", "plywood", "lumber", "steelProps", "scaffolding"}
     for key in wastage_keys:
         if key in acc.totals:
+            before_wastage = acc.totals[key]
             acc.totals[key] *= wastage_multiplier
             for category in acc.by_category[key]:
                 acc.by_category[key][category] *= wastage_multiplier
+            acc.steps.setdefault(key, []).append(
+                f"Subtotal {num(before_wastage, 3)} x {num(wastage_multiplier)} ({num((wastage_multiplier - 1) * 100, 0)}% wastage) = {num(acc.totals[key], 3)}")
 
     material_meta = {
         "hollowBlocks": ("CHB (Concrete Hollow Blocks)", "pcs"),
@@ -450,6 +545,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             category: round(acc.by_category.get(key, {}).get(category, 0.0), 3)
             for category in SOURCE_CATEGORIES
         }
+        steps = list(acc.steps.get(key, []))
+        if len(steps) > 1 and key not in wastage_keys and key not in ("steelRebar", "tieWire"):
+            steps.append(f"Total {num(raw_qty, 3)}")
+        steps.append(f"Rounded up: {qty:,} {unit}" if unit in WHOLE_UNITS else f"Result: {num(qty, 3)} {unit}")
         materials.append({
             "key": key,
             "name": name,
@@ -457,6 +556,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             "unit": unit,
             "basis": acc.bases.get(key, ""),
             "sourceBreakdown": source_breakdown,
+            "steps": steps,
         })
 
     # Per-floor measurements follow the same rule as floorArea: sum both files

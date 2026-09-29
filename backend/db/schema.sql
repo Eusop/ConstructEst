@@ -110,6 +110,8 @@ CREATE TABLE estimation_line_items (
   -- {ground, second, roofing, shared} -> amount (see SOURCE_CATEGORIES in
   -- formulas.py). Used by the "By source" view without changing `quantity`.
   source_breakdown JSON NULL,
+  -- Step-by-step computation lines from the engine ("Show computation").
+  calc_steps JSON NULL,
   CONSTRAINT fk_line_item_estimation FOREIGN KEY (estimation_id) REFERENCES estimation_results(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

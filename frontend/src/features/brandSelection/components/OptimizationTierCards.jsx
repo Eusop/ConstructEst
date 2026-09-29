@@ -35,6 +35,7 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
     // row (description dropped, "Recommended" as a small caption under the label,
     // smaller icon and text). `sm`+ is unchanged; every mobile tweak below is
     // gated behind that breakpoint.
+    <Stack spacing={1}>
     <Stack direction="row" spacing={{ xs: 0.75, sm: 2 }}>
       {Object.values(OPTIMIZATION_TIERS).map((tier) => {
         const { Icon, bg, fg } = TIER_ICONS[tier.key];
@@ -121,6 +122,11 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
           </Paper>
         );
       })}
+    </Stack>
+    {/* How each tier picks its brands (see pickBudget, pickStandard, pickPremium). */}
+    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+      For each material at this store: Budget takes the cheapest brand, Standard the middle-priced brand, and Premium the brand with the highest quality rating.
+    </Typography>
     </Stack>
   );
 }

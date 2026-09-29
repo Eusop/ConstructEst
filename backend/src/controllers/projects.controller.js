@@ -35,7 +35,7 @@ async function loadCurrentEstimation(projectId) {
   // Uses the cheapest catalog price per material as a rough estimate
   // before a store is picked. Real pricing comes later from brand selection.
   const lineItems = await query(
-    `SELECT eli.material_key AS \`key\`, eli.name, eli.quantity, eli.unit, eli.basis, eli.source_breakdown,
+    `SELECT eli.material_key AS \`key\`, eli.name, eli.quantity, eli.unit, eli.basis, eli.source_breakdown, eli.calc_steps,
             COALESCE((SELECT MIN(base_price) FROM material_brands WHERE material_key = eli.material_key), 0) AS unitCost
      FROM estimation_line_items eli
      WHERE eli.estimation_id = ?`,
@@ -62,13 +62,15 @@ async function loadCurrentEstimation(projectId) {
   return {
     measurements,
     estimatedCost: estimation.estimated_cost,
-    materials: lineItems.map(({ source_breakdown, ...item }) => ({
+    materials: lineItems.map(({ source_breakdown, calc_steps, ...item }) => ({
       ...item,
       quantity: Number(item.quantity),
       unitCost: Number(item.unitCost),
       totalCost: Math.round(Number(item.quantity) * Number(item.unitCost) * 100) / 100,
       // mysql2 usually parses JSON columns already; the typeof check is a fallback.
       sourceBreakdown: typeof source_breakdown === 'string' ? JSON.parse(source_breakdown) : source_breakdown,
+      // Null for estimations saved before migration 023 (recalculate to get them).
+      steps: typeof calc_steps === 'string' ? JSON.parse(calc_steps) : calc_steps,
     })),
   };
 }
@@ -202,11 +204,12 @@ async function persistEstimation(projectId, engineResult) {
 
   for (const material of engineResult.materials) {
     await query(
-      `INSERT INTO estimation_line_items (estimation_id, material_key, name, quantity, unit, basis, source_breakdown)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO estimation_line_items (estimation_id, material_key, name, quantity, unit, basis, source_breakdown, calc_steps)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         estResult.insertId, material.key, material.name, material.quantity, material.unit, material.basis,
         material.sourceBreakdown ? JSON.stringify(material.sourceBreakdown) : null,
+        material.steps ? JSON.stringify(material.steps) : null,
       ],
     );
   }

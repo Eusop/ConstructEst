@@ -69,7 +69,76 @@ function StatCell({ label, value }) {
   );
 }
 
-function MaterialMobileCard({ material }) {
+// Toggle link for the engine's step by step numbers of one material.
+function ComputationToggle({ open, onToggle }) {
+  return (
+    <Button
+      size="small"
+      onClick={onToggle}
+      endIcon={<ExpandMoreRoundedIcon sx={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />}
+      sx={{ textTransform: 'none', fontSize: '0.75rem', fontWeight: 600, color: colors.accentBlue, px: 0.5, minWidth: 0 }}
+    >
+      {open ? 'Hide computation' : 'Show computation'}
+    </Button>
+  );
+}
+
+// Lists the steps saved by the engine. Old estimations have none, so the
+// user is told to recalculate.
+function ComputationSteps({ steps }) {
+  if (!steps || steps.length === 0) {
+    return (
+      <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
+        No computation saved for this estimation. Recalculate the project to see the steps.
+      </Typography>
+    );
+  }
+  return (
+    <Box component="ol" sx={{ m: 0, pl: 2.5, bgcolor: 'grey.50', borderRadius: 2, py: 1, pr: 1.5 }}>
+      {steps.map((step, index) => (
+        <Typography component="li" key={index} sx={{ fontSize: '0.78rem', color: 'text.primary', fontFamily: 'monospace', py: 0.25, wordBreak: 'break-word' }}>
+          {step}
+        </Typography>
+      ))}
+    </Box>
+  );
+}
+
+function MaterialTableRow({ material }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <TableRow sx={{ '& td': { borderBottom: open ? 0 : undefined } }}>
+        <TableCell sx={{ borderColor: 'divider' }}>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25 }}>
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOT_COLORS[material.color], flexShrink: 0 }} />
+            <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+              {material.name}
+            </Typography>
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem', borderColor: 'divider', whiteSpace: 'nowrap' }}>
+          {material.basis}
+          <Box>
+            <ComputationToggle open={open} onToggle={() => setOpen((value) => !value)} />
+          </Box>
+        </TableCell>
+        <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>{material.quantityLabel}</TableCell>
+        <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{material.unit}</TableCell>
+      </TableRow>
+      {open && (
+        <TableRow>
+          <TableCell colSpan={COLUMNS.length} sx={{ borderColor: 'divider', pt: 0 }}>
+            <ComputationSteps steps={material.steps} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
+function MaterialMobileCard({ material, showComputation = false }) {
+  const [open, setOpen] = useState(false);
   return (
     <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', p: 1.75 }}>
       <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
@@ -85,6 +154,13 @@ function MaterialMobileCard({ material }) {
         <StatCell label="Quantity" value={material.quantityLabel} />
         <StatCell label="Unit" value={material.unit} />
       </Box>
+
+      {showComputation && (
+        <Box sx={{ mt: 1 }}>
+          <ComputationToggle open={open} onToggle={() => setOpen((value) => !value)} />
+          {open && <ComputationSteps steps={material.steps} />}
+        </Box>
+      )}
     </Paper>
   );
 }
@@ -219,7 +295,7 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
                 <AccordionDetails sx={{ pt: 0 }}>
                   <Stack spacing={1.25}>
                     {group.items.map((material) => (
-                      <MaterialMobileCard key={material.key} material={material} />
+                      <MaterialMobileCard key={material.key} material={material} showComputation />
                     ))}
                   </Stack>
                 </AccordionDetails>
@@ -244,21 +320,7 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
 
               <TableBody>
                 {materials.map((material) => (
-                  <TableRow key={material.key} sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                    <TableCell sx={{ borderColor: 'divider' }}>
-                      <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DOT_COLORS[material.color], flexShrink: 0 }} />
-                        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                          {material.name}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem', borderColor: 'divider', whiteSpace: 'nowrap' }}>
-                      {material.basis}
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>{material.quantityLabel}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{material.unit}</TableCell>
-                  </TableRow>
+                  <MaterialTableRow key={material.key} material={material} />
                 ))}
               </TableBody>
             </Table>

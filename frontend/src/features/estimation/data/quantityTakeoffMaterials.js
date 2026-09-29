@@ -48,6 +48,8 @@ export function loadQuantityTakeoff(materials) {
       unitCost: material.unitCost,
       basis: material.basis,
       sourceBreakdown: material.sourceBreakdown ?? null,
+      // Engine computation lines for "Show computation". Null on old estimations.
+      steps: material.steps ?? null,
       color: MATERIAL_COLORS[material.key] ?? 'blue',
     })),
   );
