@@ -243,27 +243,44 @@ def extract_geometry(doc):
             floor_bounds = merge_bounds(floor_bounds, loop)
 
     def opening_area(layer, standard_height):
-        total = 0.0
+        # An opening is often drawn as several pieces (a frame rectangle plus
+        # glass lines and jamb ticks, or a door leaf plus its swing arc), so
+        # each shape is measured once and loose lines inside it are skipped.
+        shapes = []  # (points, is_closed) for polylines of 3+ points
+        segments = []  # 2-point pieces: LINEs and 2-point polylines
         for e in entities_on_layer(msp, layer):
             if e.dxftype() == "LINE":
-                p1 = (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M)
-                p2 = (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)
-                width = segment_length(p1, p2)
+                segments.append([(e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M),
+                                 (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)])
             elif e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
                 points = polyline_points(e)
-                if not points:
-                    continue
                 if len(points) == 2:
-                    # Measure the span like the LINE case. A bounding box
-                    # understates a diagonal 2-point opening.
-                    width = segment_length(points[0], points[1])
-                else:
-                    xmin, ymin, xmax, ymax = bounding_box(points)
-                    width = max(xmax - xmin, ymax - ymin)
-            else:
+                    segments.append(points)
+                elif len(points) > 2:
+                    shapes.append((points, is_closed_polyline(e)))
+
+        total_width = 0.0
+        shape_boxes = []
+        for points, closed in shapes:
+            xmin, ymin, xmax, ymax = bounding_box(points)
+            width, depth = xmax - xmin, ymax - ymin
+            # Closed shape (opening drawn in the wall): its long side.
+            # Open shape (door leaf plus swing arc): its short side, since the
+            # arc makes the box longer than the door is wide.
+            total_width += max(width, depth) if closed else min(width, depth)
+            shape_boxes.append((xmin, ymin, xmax, ymax))
+
+        def inside_a_shape(p1, p2, tol=0.01):  # 10 mm tolerance
+            return any(all(xmin - tol <= x <= xmax + tol and ymin - tol <= y <= ymax + tol for x, y in (p1, p2))
+                       for xmin, ymin, xmax, ymax in shape_boxes)
+
+        for p1, p2 in segments:
+            # Glass lines, jamb ticks and leaf lines sit inside a shape above.
+            if inside_a_shape(p1, p2):
                 continue
-            total += width * standard_height
-        return total
+            # Measure the span, since a bounding box understates a diagonal line.
+            total_width += segment_length(p1, p2)
+        return total_width * standard_height
 
     door_area_m2 = opening_area("DOOR", STANDARD_DOOR_HEIGHT_M)
     window_area_m2 = opening_area("WINDOW", STANDARD_WINDOW_HEIGHT_M)
