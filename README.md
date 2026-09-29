@@ -28,7 +28,7 @@ mysql -u root -p < backend/db/schema.sql
 mysql -u root -p < backend/db/seed.sql
 
 # 2. Backend
-cd backend && npm install && cp .env.example .env   # fill in DB password, JWT_SECRET, Gmail SMTP creds
+cd backend && npm install && cp .env.example .env   # fill in DB password, JWT_SECRET, BREVO_API_KEY
 npm run dev                                          # http://localhost:4000
 
 # 3. Frontend (separate terminal)
@@ -36,7 +36,7 @@ cd frontend && npm install && cp .env.example .env
 npm run dev                                          # http://localhost:5173
 ```
 
-Seeded admin login: Employee ID `admin`, password `ChangeMe123!`. (Self-registered accounts need real Gmail SMTP credentials in the backend's `.env` to receive their verification code; see `backend/README.md`.)
+Seeded admin login: Employee ID `admin`, password `ChangeMe123!`. (Self-registered accounts need a real Brevo API key and verified sender in the backend's `.env` to receive their verification code, and `ORS_API_KEY` turns on road distances in Store Locator; see `backend/README.md`.)
 
 ## Stack
 
