@@ -124,7 +124,7 @@ function BomTable({ items }) {
                   {item.material}
                 </TableCell>
                 <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{item.brand}</TableCell>
-                <TableCell sx={{ color: 'text.secondary', fontSize: '0.82rem', borderColor: 'divider' }}>{item.spec}</TableCell>
+                <TableCell sx={{ color: 'text.secondary', fontSize: '0.82rem', borderColor: 'divider' }}>{item.spec || '—'}</TableCell>
                 <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{item.quantityLabel}</TableCell>
                 {item.available === false ? (
                   <TableCell sx={{ color: 'text.secondary', fontStyle: 'italic', borderColor: 'divider' }} colSpan={2}>

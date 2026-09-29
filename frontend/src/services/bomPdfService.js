@@ -68,7 +68,8 @@ export function generateBomPdf({ projectName, projectInfo, lineItems, grandTotal
     body: lineItems.map((item) => [
       item.material,
       item.category,
-      item.spec ?? '',
+      // Sand and gravel have no spec, so show a dash like the on-screen table.
+      item.spec || '—',
       item.quantityLabel,
       item.unit,
       item.available === false ? 'Not available' : formatCurrency(item.unitPrice),

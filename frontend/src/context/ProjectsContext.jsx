@@ -25,6 +25,19 @@ function createTempId() {
 
 const ICON_COLORS = ['blue', 'green', 'orange', 'purple'];
 
+// The open project is kept for this browser tab so a page refresh doesn't
+// lose it. sessionStorage clears when the tab closes.
+const ACTIVE_PROJECT_KEY = 'constructest.activeProjectId';
+
+function readSavedActiveProjectId() {
+  try {
+    const saved = Number(sessionStorage.getItem(ACTIVE_PROJECT_KEY));
+    return Number.isInteger(saved) && saved > 0 ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
 const ProjectsContext = createContext(null);
 
 function toContextProject(serverProject, extra = {}) {
@@ -66,7 +79,10 @@ function toContextProject(serverProject, extra = {}) {
  */
 export function ProjectsProvider({ children }) {
   const [projects, setProjects] = useState([]);
-  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [activeProjectId, setActiveProjectId] = useState(readSavedActiveProjectId);
+  // False until GET /api/projects answers, so pages can show a spinner
+  // instead of "No project selected" while a saved project is loading.
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [draft, setDraft] = useState(INITIAL_DRAFT);
   const [fileValidation, setFileValidation] = useState(INITIAL_FILE_VALIDATION);
   const [secondFloorFileValidation, setSecondFloorFileValidation] = useState(INITIAL_FILE_VALIDATION);
@@ -78,10 +94,24 @@ export function ProjectsProvider({ children }) {
   }, [activeProjectId]);
 
   useEffect(() => {
+    try {
+      if (typeof activeProjectId === 'number') sessionStorage.setItem(ACTIVE_PROJECT_KEY, String(activeProjectId));
+      else if (activeProjectId === null) sessionStorage.removeItem(ACTIVE_PROJECT_KEY);
+    } catch {
+      // Storage blocked: the open project just won't survive a refresh.
+    }
+  }, [activeProjectId]);
+
+  useEffect(() => {
     if (!isLoggedIn()) return;
     apiRequest('/projects')
-      .then(({ projects: rows }) => setProjects(rows.map((row) => toContextProject(row))))
-      .catch(() => showToast('Could not load your projects. Try refreshing the page.'));
+      .then(({ projects: rows }) => {
+        setProjects(rows.map((row) => toContextProject(row)));
+        // Drop a saved id that isn't in this account's list (deleted, or another user).
+        setActiveProjectId((prev) => (typeof prev === 'number' && !rows.some((row) => row.id === prev) ? null : prev));
+      })
+      .catch(() => showToast('Could not load your projects. Try refreshing the page.'))
+      .finally(() => setProjectsLoaded(true));
   }, [showToast]);
 
   const updateDraft = useCallback((field, value) => {
@@ -210,6 +240,7 @@ export function ProjectsProvider({ children }) {
   const value = useMemo(
     () => ({
       projects,
+      projectsLoaded,
       activeProjectId,
       activeProject,
       draft,
@@ -227,6 +258,7 @@ export function ProjectsProvider({ children }) {
     }),
     [
       projects,
+      projectsLoaded,
       activeProjectId,
       activeProject,
       draft,

@@ -89,7 +89,7 @@ function ComputationSteps({ steps }) {
   if (!steps || steps.length === 0) {
     return (
       <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
-        No computation saved for this estimation. Recalculate the project to see the steps.
+        No computation saved for this estimation. Click Recalculate to see the steps.
       </Typography>
     );
   }

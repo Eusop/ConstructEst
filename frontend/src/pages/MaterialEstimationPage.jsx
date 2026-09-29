@@ -131,6 +131,10 @@ function MaterialEstimationPage() {
     JSON.stringify(draftFactors) !== JSON.stringify(savedFactors) ||
     JSON.stringify(draftOverrides) !== JSON.stringify(savedOverrides) ||
     draftIncludeRoofing !== savedIncludeRoofing;
+  // Estimations saved before the steps were added have none, so Recalculate
+  // stays clickable for them even with nothing changed.
+  const isMissingSteps = (activeProject.estimation?.materials ?? []).some((material) => !material.steps);
+  const canRecalculate = hasChanges || isMissingSteps;
 
   const handleRecalculate = async () => {
     setIsRecalculating(true);
@@ -195,12 +199,12 @@ function MaterialEstimationPage() {
 
           <Button
             onClick={handleRecalculate}
-            variant={hasChanges || isRecalculating ? 'contained' : 'outlined'}
+            variant={canRecalculate || isRecalculating ? 'contained' : 'outlined'}
             disableElevation
-            disabled={!hasChanges || isRecalculating}
+            disabled={!canRecalculate || isRecalculating}
             startIcon={isRecalculating ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : <RefreshRoundedIcon />}
             sx={
-              hasChanges || isRecalculating
+              canRecalculate || isRecalculating
                 ? {
                     bgcolor: colors.accentBlue,
                     color: 'common.white',

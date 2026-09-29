@@ -4,10 +4,12 @@ import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
+import { useProjects } from '../../../context/ProjectsContext';
 
 /**
  * Guard at the top of every workspace page (Material Estimation, Store Locator,
@@ -15,6 +17,18 @@ import { colors } from '../../../theme/palette';
  * after opening the URL directly or deleting the active project.
  */
 function NoActiveProjectState() {
+  const { projectsLoaded, activeProjectId } = useProjects();
+
+  // After a refresh the saved project is still loading, so wait instead of
+  // flashing "No project selected".
+  if (!projectsLoaded && typeof activeProjectId === 'number') {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, minHeight: 240 }}>
+        <CircularProgress size={28} />
+      </Box>
+    );
+  }
+
   return (
     <Paper
       elevation={0}
