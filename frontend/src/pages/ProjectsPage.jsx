@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -21,8 +21,16 @@ function ProjectsPage() {
   const { projects, activeProjectId, setActiveProject, deleteProject } = useProjects();
   const { showToast } = useToast();
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
+
+  // The tab is kept in the URL (?status=complete or incomplete) so the dashboard
+  // cards can open a tab directly, and a refresh keeps it. Anything else is All.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusParam = searchParams.get('status');
+  const statusFilter = statusParam === 'complete' || statusParam === 'incomplete' ? statusParam : 'all';
+  const setStatusFilter = (value) => {
+    setSearchParams(value === 'all' ? {} : { status: value }, { replace: true });
+  };
 
   const pendingDeleteProject = projects.find((project) => project.id === pendingDeleteId) ?? null;
 

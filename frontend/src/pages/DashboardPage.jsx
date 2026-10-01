@@ -46,8 +46,8 @@ function DashboardPage() {
     iconBg: colors.iconGreenBg,
     iconFg: colors.iconGreenFg,
     value: String(completedProjects),
-    // No "completed only" view yet, so this links to the full Projects list.
-    viewAllTo: ROUTES.PROJECTS,
+    // Opens the Projects page on the Complete tab.
+    viewAllTo: `${ROUTES.PROJECTS}?status=complete`,
   };
   const draftProjectsStat = {
     label: 'Draft Projects',
@@ -55,8 +55,8 @@ function DashboardPage() {
     iconBg: colors.iconOrangeBg,
     iconFg: colors.iconOrangeFg,
     value: String(draftProjects),
-    // No "drafts only" filter yet, so this links to the full Projects list.
-    viewAllTo: ROUTES.PROJECTS,
+    // Drafts are the Incomplete tab on the Projects page.
+    viewAllTo: `${ROUTES.PROJECTS}?status=incomplete`,
   };
 
   // Phone carousel swipe order. Kept separate from the tablet/desktop grid order
