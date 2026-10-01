@@ -271,7 +271,8 @@ function AdminStoresPage() {
         onToggleActiveRequest={handleToggleActiveRequest}
       />
       <TypedConfirmDialog
-        key={pendingRemoveId ?? 'closed'}
+        // Each dialog needs its own closed key, or React sees two 'closed' siblings.
+        key={pendingRemoveId ? `remove-${pendingRemoveId}` : 'remove-closed'}
         open={Boolean(pendingRemoveId)}
         title="Remove store"
         message={
@@ -285,7 +286,7 @@ function AdminStoresPage() {
         onConfirm={handleConfirmRemove}
       />
       <TypedConfirmDialog
-        key={pendingToggleActiveStore?.id ?? 'closed'}
+        key={pendingToggleActiveStore?.id ? `toggle-${pendingToggleActiveStore.id}` : 'toggle-closed'}
         open={Boolean(pendingToggleActiveStore)}
         title={pendingToggleActiveStore?.isActive === false ? 'Reactivate store' : 'Deactivate store'}
         confirmWord={pendingToggleActiveStore?.isActive === false ? 'REACTIVATE' : 'DEACTIVATE'}

@@ -543,7 +543,8 @@ function AdminUsersPage() {
       <UserFormDialog open={dialogOpen} user={editingUser} onClose={() => setDialogOpen(false)} onSubmit={handleSubmit} />
 
       <TypedConfirmDialog
-        key={pendingToggleUser?.id ?? 'closed'}
+        // Each dialog needs its own closed key, or React sees two 'closed' siblings.
+        key={pendingToggleUser?.id ? `toggle-${pendingToggleUser.id}` : 'toggle-closed'}
         open={Boolean(pendingToggleUser)}
         title={pendingToggleUser?.isActive ? 'Deactivate user' : 'Reactivate user'}
         confirmWord={pendingToggleUser?.isActive ? 'DEACTIVATE' : 'REACTIVATE'}
@@ -563,7 +564,7 @@ function AdminUsersPage() {
       />
 
       <TypedConfirmDialog
-        key={pendingVerifyUser?.id ?? 'closed'}
+        key={pendingVerifyUser?.id ? `verify-${pendingVerifyUser.id}` : 'verify-closed'}
         open={Boolean(pendingVerifyUser)}
         title="Activate user"
         confirmWord="ACTIVATE"
