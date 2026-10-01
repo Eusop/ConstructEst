@@ -6,9 +6,8 @@ body,
 }
 
 /* Always reserve space for the vertical scrollbar, so pages without one don't
-   render narrower and shift the layout when navigating. The Dashboard and
-   Admin layouts turn this off (components/NoPageScrollbarGutter.jsx): the page
-   never scrolls there, so the gutter was just an empty white strip. */
+   render narrower and shift the layout when navigating. App layouts turn this
+   off (see NoPageScrollbarGutter.jsx). */
 html {
   scrollbar-gutter: stable;
   /* Slightly smaller type everywhere: every fontSize is a `rem`, which resolves

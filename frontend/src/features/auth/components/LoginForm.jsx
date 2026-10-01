@@ -59,7 +59,7 @@ function LoginForm() {
   // autofill never fires a blur (see SignUpForm.jsx).
   const showError = (field) => {
     const hasContent = form[field]?.trim().length > 0;
-    // Returns the message (or '') so it works as both the error flag and the helper text.
+    // Returns the error message, or '' if none.
     return errors[field] && (hasContent || touched[field] || submitAttempted) ? errors[field] : '';
   };
 
