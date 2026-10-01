@@ -170,7 +170,7 @@ function AdminStoresPage() {
         <Box>
           <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.15rem', sm: '1.4rem' }, color: 'text.primary' }}>Store Directory</Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-            Find stores using Google Maps, add them to the system, then manage their materials and brands.
+            Find stores on the map (OpenStreetMap), add them to the system, then manage their materials and brands.
           </Typography>
         </Box>
         <Button
