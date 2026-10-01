@@ -74,6 +74,7 @@ function formatBudgetInput(rawValue) {
  * @param {boolean} props.submitDisabled True only while a DXF is still being read.
  * @param {boolean} props.showSubmitHint Shows the "fill in the highlighted fields" line after a blocked Create click.
  * @param {boolean} props.fileMissing Shows "Upload the floor plan DXF" under the dropzone after a Create click with no file.
+ * @param {boolean} props.secondFileMissing Same, for a 2-storey project with no second floor file.
  */
 function ProjectDetailsCard({
   form,
@@ -93,6 +94,7 @@ function ProjectDetailsCard({
   submitDisabled,
   showSubmitHint,
   fileMissing,
+  secondFileMissing,
 }) {
   return (
     <Paper
@@ -177,15 +179,6 @@ function ProjectDetailsCard({
               label={<Typography sx={{ fontSize: { xs: '0.82rem', sm: '0.88rem' }, color: 'text.primary' }}>Include roofing</Typography>}
             />
           </Stack>
-        {/* 2 storeys is the default, so a bungalow uploaded without switching would
-            get a second floor estimated from the ground floor (roughly double) with
-            no error. The engine can't tell floor count from one file, so this says it. */}
-          {form.storeys === 2 && !form.secondFloorFile && (
-            <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mt: 1 }}>
-              With no second floor file, the second floor is estimated from the ground floor. Choose 1 storey for a
-              bungalow.
-            </Typography>
-          )}
         </Box>
 
         <Box id="floor-plan-upload">
@@ -201,18 +194,21 @@ function ProjectDetailsCard({
             onFileSelect={onFileSelect}
             onFileRemove={onFileRemove}
             onFileValidation={onFileValidation}
+            error={fileMissing}
           />
           {fileMissing && (
             <Typography sx={{ color: 'error.main', fontSize: '0.78rem', mt: 0.75 }}>Upload the floor plan DXF.</Typography>
           )}
         </Box>
 
+        {/* Required for 2 storeys (see NewProjectPage). The engine reads the roof
+            from this file only, so the ROOF layer belongs here. */}
         {form.storeys === 2 && (
-          <Box>
-            <Typography sx={FIELD_LABEL_SX}>Second floor plan (optional)</Typography>
+          <Box id="second-floor-upload">
+            <Typography sx={FIELD_LABEL_SX}>Second floor plan (2D AutoCAD DXF)</Typography>
             <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mb: 1 }}>
-              Upload it for more accurate materials, or leave blank to estimate the 2nd floor from the ground
-              floor.
+              Upload the second floor as its own file, with the same layer names as the ground floor. Draw the
+              ROOF layer in this file. Choose 1 storey for a bungalow.
             </Typography>
             <DxfDropzone
               file={form.secondFloorFile}
@@ -220,8 +216,14 @@ function ProjectDetailsCard({
               onFileSelect={onSecondFloorFileSelect}
               onFileRemove={onSecondFloorFileRemove}
               onFileValidation={onSecondFloorFileValidation}
-              helperText="Second floor (optional) · same layer names as above"
+              helperText="Second floor · same layer names as above"
+              error={secondFileMissing}
             />
+            {secondFileMissing && (
+              <Typography sx={{ color: 'error.main', fontSize: '0.78rem', mt: 0.75 }}>
+                Upload the second floor DXF, or choose 1 storey.
+              </Typography>
+            )}
           </Box>
         )}
 

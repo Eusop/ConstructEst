@@ -74,8 +74,9 @@ function ValidationBadge({ status, message }) {
  * @param {(result: object) => void} props.onFileValidation
  * @param {string} [props.helperText] Override for the placeholder's second line
  *   (e.g. the second-floor dropzone shouldn't claim "one plan per project").
+ * @param {boolean} [props.error] Red border, after a Create click with no file.
  */
-function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileValidation, helperText }) {
+function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileValidation, helperText, error = false }) {
   const theme = useTheme();
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -158,7 +159,7 @@ function DxfDropzone({ file, fileValidation, onFileSelect, onFileRemove, onFileV
           boxSizing: 'border-box',
           overflow: 'hidden',
           border: '1.5px dashed',
-          borderColor: isDragOver ? 'primary.main' : colors.inputBorder,
+          borderColor: isDragOver ? 'primary.main' : error ? 'error.main' : colors.inputBorder,
           borderRadius: 2,
           bgcolor: colors.heroBackground,
           cursor: 'pointer',

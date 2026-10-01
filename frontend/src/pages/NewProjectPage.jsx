@@ -57,9 +57,11 @@ function NewProjectPage() {
   }, [locationKey, resetDraft]);
 
   const isFileValid = fileValidation.status === 'valid';
-  // The second floor file is optional. Empty never blocks submit, but an
-  // attached invalid file does, so a bad file can't be silently dropped.
-  const isSecondFloorFileValid = !draft.secondFloorFile || secondFloorFileValidation.status === 'valid';
+  // A 2-storey project needs its own second floor file. Copying the ground
+  // floor gave a silent guess, so a missing or invalid file blocks submit.
+  const needsSecondFloorFile = draft.storeys === 2;
+  const isSecondFloorFileValid = !needsSecondFloorFile
+    || (Boolean(draft.secondFloorFile) && secondFloorFileValidation.status === 'valid');
   const errors = validate(draft);
   const isFormValid = Object.keys(errors).length === 0;
   const canSubmit = isFormValid && isFileValid && isSecondFloorFileValid;
@@ -73,14 +75,15 @@ function NewProjectPage() {
 
   const handleCreate = (event) => {
     event.preventDefault();
-    setTouched({ projectName: true, location: true, budgetCeiling: true, file: true });
+    setTouched({ projectName: true, location: true, budgetCeiling: true, file: true, secondFile: true });
     if (!canSubmit) {
       // Jump to the first problem so the user sees it.
       const firstBadField = ['projectName', 'location', 'budgetCeiling'].find((field) => errors[field]);
       if (firstBadField) {
         document.querySelector(`input[name="${firstBadField}"]`)?.focus();
       } else {
-        document.getElementById('floor-plan-upload')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const uploadId = isFileValid ? 'second-floor-upload' : 'floor-plan-upload';
+        document.getElementById(uploadId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       return;
     }
@@ -110,6 +113,7 @@ function NewProjectPage() {
         submitDisabled={isValidatingFile}
         showSubmitHint={Boolean(touched.file) && !canSubmit}
         fileMissing={Boolean(touched.file) && !draft.file}
+        secondFileMissing={Boolean(touched.secondFile) && needsSecondFloorFile && !draft.secondFloorFile}
       />
     </Box>
   );

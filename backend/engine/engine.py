@@ -95,9 +95,8 @@ def main():
     # Two different floors are never byte-identical, so reject it.
     if second_floor_dxf_path and _file_hash(dxf_path) == _file_hash(second_floor_dxf_path):
         fail("The same file was uploaded for both the ground floor and second floor. Each "
-             "floor needs its own DXF file — re-upload the second floor separately, or "
-             "remove it and let the system estimate the 2nd floor from the ground floor "
-             "instead.")
+             "floor needs its own DXF file. Re-upload the second floor as its own file, "
+             "or choose 1 storey.")
 
     geometry = read_and_validate(dxf_path, "DXF file")
     geometry2 = read_and_validate(second_floor_dxf_path, "second floor DXF") if second_floor_dxf_path else None

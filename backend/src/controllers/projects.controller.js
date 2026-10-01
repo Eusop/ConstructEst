@@ -116,9 +116,14 @@ export const createProject = asyncHandler(async (req, res) => {
   if (!Number.isFinite(budgetCeiling) || budgetCeiling <= 0) throw new HttpError(400, 'Budget ceiling must be greater than 0.');
   const primaryFile = req.files?.dxfFile?.[0];
   if (!primaryFile) throw new HttpError(400, 'A .dxf floor plan file is required.');
-  // Optional second-floor DXF for 2-storey projects, lets the engine use
-  // each floor's real geometry instead of just scaling the ground floor.
+  // A 2-storey project needs its own second floor DXF, so the engine uses each
+  // floor's real geometry (and the roof from the second floor file).
   const secondFloorFile = req.files?.secondFloorDxfFile?.[0] ?? null;
+  if (storeys === 2 && !secondFloorFile) {
+    // Remove the file multer already saved, since no project will use it.
+    fs.rm(primaryFile.path, { force: true }, () => {});
+    throw new HttpError(400, 'A second floor .dxf file is required for a 2-storey project.');
+  }
 
   const insertResult = await query(
     `INSERT INTO projects (user_id, project_name, location, budget_ceiling, storeys, include_roofing, status, dxf_file_path, dxf_original_name, second_floor_dxf_path, second_floor_dxf_original_name)
