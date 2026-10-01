@@ -142,7 +142,7 @@ function UserProfileReview({ user, intro }) {
       <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: 'divider' }}>
         <Stack spacing={0.75}>
           <ProfileReviewRow label="Name" value={user.userName} />
-          <ProfileReviewRow label="Employee ID" value={user.employeeId} />
+          <ProfileReviewRow label="User ID" value={user.userId} />
           <ProfileReviewRow label="Email" value={user.email} />
           <ProfileReviewRow label="Registered" value={formatDate(user.createdAt)} />
         </Stack>
@@ -169,7 +169,7 @@ function UserMobileCard({ user, onOpenMenu }) {
             {user.userName}
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem' }} noWrap>
-            {user.employeeId} · {user.email}
+            {user.userId} · {user.email}
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.68rem' }} noWrap>
             {formatLastSeen(user)}
@@ -259,7 +259,7 @@ function AdminUsersPage() {
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return users;
-    return users.filter((user) => [user.userName, user.employeeId, user.email].some((value) => value?.toLowerCase().includes(term)));
+    return users.filter((user) => [user.userName, user.userId, user.email].some((value) => value?.toLowerCase().includes(term)));
   }, [users, search]);
 
   const handleAdd = () => {
@@ -281,9 +281,10 @@ function AdminUsersPage() {
       logActivity({ message: `User updated: ${form.firstName} ${form.lastName}`, icon: EditRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
       showToast('User updated');
     } else {
-      await createAdminUser(form);
+      // The admin passes the new User ID to the person, so show it.
+      const { user: created } = await createAdminUser(form);
       logActivity({ message: `User account created: ${form.firstName} ${form.lastName}`, icon: AddRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg });
-      showToast('User created');
+      showToast(`User created. User ID: ${created.userId}`);
     }
     setDialogOpen(false);
     load();
@@ -384,7 +385,7 @@ function AdminUsersPage() {
             <SearchRoundedIcon sx={{ fontSize: 20, color: 'text.secondary', flexShrink: 0 }} />
             <Box
               component="input"
-              placeholder="Search users by name, employee ID, or email"
+              placeholder="Search users by name, User ID, or email"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               sx={{ border: 'none', outline: 'none', bgcolor: 'transparent', width: '100%', minWidth: 0, font: 'inherit', color: 'text.primary' }}
@@ -425,7 +426,7 @@ function AdminUsersPage() {
             description={
               users.length === 0
                 ? 'Accounts you create will show up here, ready to manage.'
-                : 'Try a different name, employee ID, or email.'
+                : 'Try a different name, User ID, or email.'
             }
             action={
               users.length === 0 ? (
@@ -449,7 +450,7 @@ function AdminUsersPage() {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Employee ID</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>User ID</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Role</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</TableCell>
@@ -473,7 +474,7 @@ function AdminUsersPage() {
                         </Box>
                       </Stack>
                     </TableCell>
-                    <TableCell sx={{ color: 'text.secondary' }}>{user.employeeId}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>{user.userId}</TableCell>
                     <TableCell sx={{ color: 'text.secondary' }}>{user.email}</TableCell>
                     <TableCell>
                       <Chip

@@ -36,7 +36,7 @@ cd frontend && npm install && cp .env.example .env
 npm run dev                                          # http://localhost:5173
 ```
 
-Seeded admin login: Employee ID `admin`, password `ChangeMe123!`. (Self-registered accounts need a real Brevo API key and verified sender in the backend's `.env` to receive their verification code, and `ORS_API_KEY` turns on road distances in Store Locator; see `backend/README.md`.)
+Seeded admin login: User ID `20260001` (or email `admin@constructest.local`), password `ChangeMe123!`. User IDs are assigned by the system (year + 4 digits). (Self-registered accounts need a real Brevo API key and verified sender in the backend's `.env` to receive their verification code, and `ORS_API_KEY` turns on road distances in Store Locator; see `backend/README.md`.)
 
 ## Stack
 

@@ -21,7 +21,7 @@ npm run lint       # eslint
 
 ## Two modules, two logins
 
-The same seeded admin account (Employee ID `admin` / `ChangeMe123!`) works for both; the app routes by the logged-in user's `accessRole`.
+The same seeded admin account (User ID `20260001` or `admin@constructest.local` / `ChangeMe123!`) works for both; the app routes by the logged-in user's `accessRole`.
 
 Self-registering a new account (`/signup`) doesn't log straight in; it goes to `/verify-email` for the 6-digit code emailed to the address given (see `backend/README.md`'s "Registration & verification"), then still needs an admin to approve it in the Admin module before it can sign in at all.
 

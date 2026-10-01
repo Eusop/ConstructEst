@@ -1,7 +1,7 @@
 import { verifyToken } from '../services/token.service.js';
 
 /**
- * Verifies the Bearer token and sets `req.user` ({ id, employeeId, accessRole }).
+ * Verifies the Bearer token and sets `req.user` ({ id, userId, accessRole }).
  * The role comes from the token, never from the request body.
  */
 export function requireAuth(req, res, next) {
@@ -14,7 +14,7 @@ export function requireAuth(req, res, next) {
 
   try {
     const payload = verifyToken(token);
-    req.user = { id: payload.sub, employeeId: payload.employeeId, accessRole: payload.accessRole };
+    req.user = { id: payload.sub, userId: payload.userId, accessRole: payload.accessRole };
     return next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token.' });

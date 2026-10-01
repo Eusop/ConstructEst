@@ -16,11 +16,11 @@ import { signUpRequest, checkAvailability } from '../../../services/authService'
 import { useToast } from '../../../context/ToastContext';
 import { ROUTES } from '../../../routes/paths';
 import { colors } from '../../../theme/palette';
-import { isRequired, passwordsMatch, isValidEmail, isValidName, isValidEmployeeId, getEmployeeIdHint, isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../../utils/validators';
+import { isRequired, passwordsMatch, isValidEmail, isValidName, isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../../utils/validators';
 
-// How long to wait after the last keystroke before checking if an email or
-// Employee ID is taken: long enough to skip a request per keystroke, short
-// enough to feel immediate.
+// How long to wait after the last keystroke before checking if an email is
+// taken: long enough to skip a request per keystroke, short enough to feel
+// immediate.
 const AVAILABILITY_DEBOUNCE_MS = 500;
 
 const IDLE_AVAILABILITY = { checking: false, taken: false };
@@ -28,7 +28,6 @@ const IDLE_AVAILABILITY = { checking: false, taken: false };
 const INITIAL_FORM = {
   firstName: '',
   lastName: '',
-  employeeId: '',
   email: '',
   password: '',
   confirmPassword: '',
@@ -47,12 +46,6 @@ function validate(form) {
     errors.lastName = 'Last name is required';
   } else if (!isValidName(form.lastName)) {
     errors.lastName = 'Must start with a letter and be at least 2 characters';
-  }
-
-  if (!isRequired(form.employeeId)) {
-    errors.employeeId = 'Employee ID is required';
-  } else if (!isValidEmployeeId(form.employeeId)) {
-    errors.employeeId = getEmployeeIdHint(form.employeeId) ?? '3–20 characters: start with a letter, then letters, numbers, or _ . -';
   }
 
   if (!isRequired(form.email)) {
@@ -77,7 +70,7 @@ function validate(form) {
 }
 
 /**
- * Sign up form: name, Employee ID, email and password fields, a Terms and
+ * Sign up form: name, email and password fields, a Terms and
  * Privacy agreement, and the Create account action. Validation is live:
  * `errors` is recomputed from `validate(form)` on every render, but a field's
  * message only shows after it has been blurred once (`touched`) or a submit was
@@ -92,11 +85,10 @@ function SignUpForm() {
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Live "already taken" state for the two unique fields (see the debounced
-  // effects below). Separate from `errors`, which is derived synchronously,
-  // since these come from a server round-trip.
+  // Live "already taken" state for the email (see the debounced effect below).
+  // Separate from `errors`, which is derived synchronously, since this comes
+  // from a server round-trip. The User ID is assigned by the server.
   const [emailStatus, setEmailStatus] = useState(IDLE_AVAILABILITY);
-  const [employeeIdStatus, setEmployeeIdStatus] = useState(IDLE_AVAILABILITY);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -121,21 +113,6 @@ function SignUpForm() {
     return () => clearTimeout(timer);
   }, [form.email]);
 
-  useEffect(() => {
-    if (!isValidEmployeeId(form.employeeId)) {
-      queueMicrotask(() => setEmployeeIdStatus(IDLE_AVAILABILITY));
-      return undefined;
-    }
-    queueMicrotask(() => setEmployeeIdStatus({ checking: true, taken: false }));
-    const employeeId = form.employeeId;
-    const timer = setTimeout(() => {
-      checkAvailability('employeeId', employeeId)
-        .then(({ available }) => setEmployeeIdStatus({ checking: false, taken: !available }))
-        .catch(() => setEmployeeIdStatus(IDLE_AVAILABILITY));
-    }, AVAILABILITY_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [form.employeeId]);
-
   // Shown as soon as there is invalid content, not only on blur, because browser
   // autofill of First/Last Name never fires a blur. Still gated on
   // touched/submitAttempted for the "empty" case, so a fresh field doesn't say
@@ -149,15 +126,13 @@ function SignUpForm() {
   // A field's effective error merges its sync validation with the async "already
   // taken" result, in the same slot and with the same `showError` gating.
   const emailError = errors.email || (emailStatus.taken ? 'This email is already registered' : undefined);
-  const employeeIdError = errors.employeeId || (employeeIdStatus.taken ? 'This Employee ID is already taken' : undefined);
   const showEmailError = (Boolean(errors.email) || emailStatus.taken) && (form.email.trim().length > 0 || touched.email || submitAttempted);
-  const showEmployeeIdError = (Boolean(errors.employeeId) || employeeIdStatus.taken) && (form.employeeId.trim().length > 0 || touched.employeeId || submitAttempted);
   // No "touched" gating: the checkbox starts checked, so this can only become
   // true from a deliberate uncheck.
   const agreeError = agreeToTerms ? '' : 'You must agree to the Terms of Service and Privacy Policy to continue';
 
   const hasBlockingErrors =
-    Object.keys(errors).length > 0 || emailStatus.taken || employeeIdStatus.taken || emailStatus.checking || employeeIdStatus.checking || !agreeToTerms;
+    Object.keys(errors).length > 0 || emailStatus.taken || emailStatus.checking || !agreeToTerms;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -183,10 +158,11 @@ function SignUpForm() {
     try {
       // No session yet: the account must confirm this email (next), then get
       // admin approval (see auth.controller.js register/login). Go to Verify
-      // Email with the address just typed, not Login.
-      await signUpRequest(form);
+      // Email with the address just typed, not Login. The new User ID goes
+      // along so the Verify Email page can show it.
+      const { userId } = await signUpRequest(form);
       showToast('Account created — check your email for a verification code.', 'success');
-      navigate(ROUTES.VERIFY_EMAIL, { state: { email: form.email } });
+      navigate(ROUTES.VERIFY_EMAIL, { state: { email: form.email, userId } });
     } catch (error) {
       showToast(error.message || 'Could not create your account. Please try again.');
     } finally {
@@ -237,45 +213,26 @@ function SignUpForm() {
           </Box>
         </Stack>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
-          <Box sx={{ flex: 1 }}>
-            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.75 }}>
-              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
-                Employee ID
-              </Typography>
-              {employeeIdStatus.checking && <CircularProgress size={12} sx={{ color: 'text.disabled' }} />}
-            </Stack>
-            <FormTextField
-              name="employeeId"
-              placeholder="mreyes"
-              autoComplete="username"
-              value={form.employeeId}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={Boolean(showEmployeeIdError)}
-              helperText={(showEmployeeIdError && employeeIdError) || ' '}
-            />
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.75 }}>
-              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
-                Email
-              </Typography>
-              {emailStatus.checking && <CircularProgress size={12} sx={{ color: 'text.disabled' }} />}
-            </Stack>
-            <FormTextField
-              name="email"
-              type="email"
-              placeholder="m.reyes@email.com"
-              autoComplete="email"
-              value={form.email}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={Boolean(showEmailError)}
-              helperText={(showEmailError && emailError) || ' '}
-            />
-          </Box>
-        </Stack>
+        <Box>
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.75 }}>
+            <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary' }}>
+              Email
+            </Typography>
+            {emailStatus.checking && <CircularProgress size={12} sx={{ color: 'text.disabled' }} />}
+          </Stack>
+          <FormTextField
+            name="email"
+            type="email"
+            placeholder="m.reyes@email.com"
+            autoComplete="email"
+            value={form.email}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            error={Boolean(showEmailError)}
+            // Shown until there is an error, so users know where the ID comes from.
+            helperText={(showEmailError && emailError) || 'Your User ID is given to you after you sign up.'}
+          />
+        </Box>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
           <Box sx={{ flex: 1 }}>

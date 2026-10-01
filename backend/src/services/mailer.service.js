@@ -65,13 +65,16 @@ export async function sendPasswordChangedEmail(toEmail, name) {
   });
 }
 
-/** Sends the 6-digit verification code. Throws on failure; the caller
+/** Sends the 6-digit verification code, plus the account's User ID so the
+ * user has it in writing. Throws on failure; the caller
  * (register/resendVerificationCode) decides what to do. */
-export async function sendVerificationCodeEmail(toEmail, code) {
+export async function sendVerificationCodeEmail(toEmail, code, userId) {
+  const idText = userId ? ` Your User ID is ${userId}. You can sign in with it or with this email.` : '';
+  const idHtml = userId ? `<p>Your User ID is <strong>${userId}</strong>. You can sign in with it or with this email.</p>` : '';
   await send({
     to: toEmail,
     subject: 'Your ConstructEst verification code',
-    text: `Your ConstructEst verification code is ${code}. It expires in 10 minutes.`,
-    html: `<p>Your ConstructEst verification code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p><p>This code expires in 10 minutes.</p>`,
+    text: `Your ConstructEst verification code is ${code}. It expires in 10 minutes.${idText}`,
+    html: `<p>Your ConstructEst verification code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p><p>This code expires in 10 minutes.</p>${idHtml}`,
   });
 }

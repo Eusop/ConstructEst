@@ -26,34 +26,6 @@ export function isValidName(value) {
   return trimmed.length >= 2 && NAME_PATTERN.test(trimmed);
 }
 
-// 3-20 characters, starts with a letter, then letters, digits, _ . - only.
-const EMPLOYEE_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{2,19}$/;
-
-export function isValidEmployeeId(value) {
-  return EMPLOYEE_ID_PATTERN.test(value.trim());
-}
-
-/**
- * What is missing from an in-progress Employee ID, e.g. "22" -> "Needs to
- * start with a letter, be at least 3 characters". Returns null when valid or
- * empty (the caller handles the "required" message).
- *
- * @param {string} value
- * @returns {string|null}
- */
-export function getEmployeeIdHint(value) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  const missing = [];
-  if (!/^[A-Za-z]/.test(trimmed)) missing.push('start with a letter');
-  if (trimmed.length < 3) missing.push('be at least 3 characters');
-  if (trimmed.length > 20) missing.push('be 20 characters or fewer');
-  if (!/^[A-Za-z0-9_.-]*$/.test(trimmed)) missing.push('only use letters, numbers, and _ . -');
-
-  return missing.length > 0 ? `Needs to ${missing.join(', ')}` : null;
-}
-
 // 8 to 16 characters with an uppercase letter, a lowercase letter, a number
 // and a special character. Same as the backend's passwordPolicy.js. Login is
 // not checked against it, so older accounts can still sign in.

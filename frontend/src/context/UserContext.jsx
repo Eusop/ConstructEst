@@ -4,7 +4,7 @@ import { resolveAssetUrl } from '../services/apiClient';
 import { sendHeartbeat } from '../services/usersService';
 
 const UserContext = createContext(null);
-const INITIAL_PROFILE = { id: null, userName: null, employeeId: null, email: null, avatarUrl: null, accessRole: null };
+const INITIAL_PROFILE = { id: null, userName: null, userId: null, email: null, avatarUrl: null, accessRole: null };
 
 // Feeds the admin "online now" dot (AdminUsersPage.jsx counts last_seen_at
 // within ~90s, double this, as online).
@@ -12,7 +12,7 @@ const HEARTBEAT_INTERVAL_MS = 45_000;
 
 /**
  * The signed-in user's identity. `userName` is set on sign-up or sign-in and
- * read where the app greets the user (WelcomeCard). `employeeId` and `email`
+ * read where the app greets the user (WelcomeCard). `userId` and `email`
  * are for the Profile page. `avatarUrl` is only set from the Profile page.
  * Mounted above the dashboard providers in App.jsx so it survives moving from
  * /login into the app.
@@ -32,7 +32,7 @@ export function UserProvider({ children }) {
         setProfile({
           id: user.id,
           userName: user.userName,
-          employeeId: user.employeeId,
+          userId: user.userId,
           email: user.email,
           avatarUrl: resolveAssetUrl(user.avatarUrl),
           accessRole: user.accessRole,

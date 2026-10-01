@@ -28,7 +28,7 @@ const EMPTY_PASSWORD_FIELDS = { currentPassword: '', newPassword: '', confirmPas
 function buildForm(profile) {
   return {
     fullName: profile.userName ?? '',
-    employeeId: profile.employeeId ?? '',
+    userId: profile.userId ?? '',
     email: profile.email ?? '',
     avatarUrl: profile.avatarUrl ?? null,
     ...EMPTY_PASSWORD_FIELDS,
@@ -80,7 +80,7 @@ function validatePassword(form) {
 }
 
 /**
- * Profile page: name, email, avatar and password change. Employee ID is
+ * Profile page: name, email, avatar and password change. User ID is
  * read-only. There are three separate saves: "Save changes" sends only
  * name/email (PUT /users/me), Change Password has its own button (PUT
  * /users/me/password), and the photo uploads when confirmed (POST
@@ -211,7 +211,7 @@ function ProfilePage() {
         <Stack divider={<Divider />}>
           <ProfileAvatarSection
             fullName={form.fullName}
-            employeeId={form.employeeId}
+            userId={form.userId}
             avatarUrl={form.avatarUrl}
             onAvatarSave={handleAvatarSave}
             isSaving={isSavingPhoto}

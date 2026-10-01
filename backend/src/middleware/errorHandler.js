@@ -3,7 +3,7 @@ export function notFoundHandler(req, res) {
 }
 
 // Maps a column name to a readable label for duplicate-key errors.
-const DUPLICATE_FIELD_LABELS = { employee_id: 'Employee ID', email: 'email address' };
+const DUPLICATE_FIELD_LABELS = { user_id: 'User ID', email: 'email address' };
 
 function describeDuplicateEntry(err) {
   const sqlMessage = err.sqlMessage || err.message || '';
@@ -41,7 +41,7 @@ export function errorHandler(err, req, res, next) {
   // carry a system code like 'ECONNREFUSED' that should not leak.
   if (err.code && status !== 500) body.code = err.code;
   // Only set with EMAIL_NOT_VERIFIED, so the frontend can redirect to
-  // /verify-email with the real email even if the user logged in with Employee ID.
+  // /verify-email with the real email even if the user logged in with their User ID.
   if (err.email && status !== 500) body.email = err.email;
   return res.status(status).json(body);
 }

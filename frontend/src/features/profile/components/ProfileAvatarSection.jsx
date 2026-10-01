@@ -17,19 +17,19 @@ const MAX_BYTES = 2 * 1024 * 1024;
 
 /**
  * Profile page header: a large circular avatar (the uploaded photo, or initials
- * once a name is set), the display name and "@employeeId", and the photo
+ * once a name is set), the display name and "User ID 20260001", and the photo
  * actions. Picking a file only previews it; nothing is sent until "Save photo",
  * which is what `onAvatarSave` is for. The preview URL is owned here (revoked
  * when replaced or on unmount) since it never leaves this component.
  *
  * @param {object} props
  * @param {string} props.fullName
- * @param {string} props.employeeId
+ * @param {string} props.userId
  * @param {string|null} props.avatarUrl The saved photo, as a server path.
  * @param {(file: File|null) => Promise<void>} props.onAvatarSave `null` removes.
  * @param {boolean} [props.isSaving]
  */
-function ProfileAvatarSection({ fullName, employeeId, avatarUrl, onAvatarSave, isSaving = false }) {
+function ProfileAvatarSection({ fullName, userId, avatarUrl, onAvatarSave, isSaving = false }) {
   const inputRef = useRef(null);
   const [fileError, setFileError] = useState('');
   const [pendingFile, setPendingFile] = useState(null);
@@ -131,7 +131,7 @@ function ProfileAvatarSection({ fullName, employeeId, avatarUrl, onAvatarSave, i
       {fullName && (
         <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.2rem' }, color: 'text.primary', mt: 2 }}>{fullName}</Typography>
       )}
-      {employeeId && <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.82rem', sm: '0.9rem' } }}>@{employeeId}</Typography>}
+      {userId && <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.82rem', sm: '0.9rem' } }}>User ID {userId}</Typography>}
       <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mt: 0.5 }}>
         Manage your account information
       </Typography>

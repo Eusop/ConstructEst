@@ -5,7 +5,7 @@ export function toPublicUser(row) {
     firstName: row.first_name,
     lastName: row.last_name,
     userName: `${row.first_name} ${row.last_name}`.trim(),
-    employeeId: row.employee_id,
+    userId: row.user_id,
     email: row.email,
     avatarUrl: row.avatar_url,
     accessRole: row.access_role,

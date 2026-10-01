@@ -7,6 +7,7 @@ import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { isValidPassword, PASSWORD_RULE_MESSAGE } from '../utils/passwordPolicy.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
+import { generateUserId } from '../services/userId.service.js';
 import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
 import { UPLOAD_DIR } from '../middleware/upload.js';
 
@@ -59,23 +60,28 @@ export const listUsers = asyncHandler(async (req, res) => {
 });
 
 export const createUser = asyncHandler(async (req, res) => {
-  const { firstName, lastName, employeeId, email, password, accessRole = 'user' } = req.body;
-  if (!firstName || !lastName || !employeeId || !email || !password) {
-    throw new HttpError(400, 'firstName, lastName, employeeId, email, and password are required.');
+  const { firstName, lastName, email, password, accessRole = 'user' } = req.body;
+  if (!firstName || !lastName || !email || !password) {
+    throw new HttpError(400, 'firstName, lastName, email, and password are required.');
   }
   if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
   if (!isValidPassword(password)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
+  // Same as register: check the email before using up a User ID number.
+  const [existing] = await query('SELECT id FROM users WHERE email = ?', [email]);
+  if (existing) throw new HttpError(409, 'That email address is already in use.');
+
   const passwordHash = bcrypt.hashSync(password, 10);
+  const userId = await generateUserId();
   // Set email_verified_at right away. An admin creating the account is trusted,
   // so no email check is needed.
   const result = await query(
-    `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, email_verified_at)
+    `INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role, email_verified_at)
      VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-    [firstName, lastName, employeeId, email, passwordHash, accessRole],
+    [firstName, lastName, userId, email, passwordHash, accessRole],
   );
   const [user] = await query('SELECT * FROM users WHERE id = ?', [result.insertId]);
-  await logAdminActivity(req.user.id, 'user_management', 'user_created', `Created user account: ${firstName} ${lastName} (${employeeId})`);
+  await logAdminActivity(req.user.id, 'user_management', 'user_created', `Created user account: ${firstName} ${lastName} (${userId})`);
   res.status(201).json({ user: toPublicUser(user) });
 });
 
@@ -153,7 +159,7 @@ export const verifyUser = asyncHandler(async (req, res) => {
 });
 
 export const deleteUser = asyncHandler(async (req, res) => {
-  const [target] = await query('SELECT first_name, last_name, employee_id, access_role FROM users WHERE id = ?', [req.params.id]);
+  const [target] = await query('SELECT first_name, last_name, user_id, access_role FROM users WHERE id = ?', [req.params.id]);
   if (!target) throw new HttpError(404, 'User not found.');
   // Same rule as setUserActive: admin accounts can't be deactivated or deleted.
   // Deleting a user cascades to their projects and estimations (see schema.sql),
@@ -162,7 +168,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
   if (target.access_role === 'admin') {
     throw new HttpError(403, 'Admin accounts cannot be deleted. Change the role to user first, then delete.');
   }
-  const name = `${target.first_name} ${target.last_name} (${target.employee_id})`;
+  const name = `${target.first_name} ${target.last_name} (${target.user_id})`;
   await query('DELETE FROM users WHERE id = ?', [req.params.id]);
   await logAdminActivity(req.user.id, 'user_management', 'user_deleted', `Deleted user account: ${name}`);
   res.status(204).end();

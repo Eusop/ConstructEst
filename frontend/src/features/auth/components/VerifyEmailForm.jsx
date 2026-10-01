@@ -33,6 +33,7 @@ function VerifyEmailForm() {
   const { showToast } = useToast();
 
   const [email, setEmail] = useState(location.state?.email ?? '');
+  const userId = location.state?.userId ?? null;
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -116,9 +117,21 @@ function VerifyEmailForm() {
           Verify your email
         </Typography>
       </Stack>
-      <Typography sx={{ color: 'primary.main', fontSize: '0.9rem', mb: 3 }}>
+      <Typography sx={{ color: 'primary.main', fontSize: '0.9rem', mb: userId ? 2 : 3 }}>
         Enter the 6-digit code we sent to your email address.
       </Typography>
+
+      {/* Only right after sign up (router state). The same ID is in the email. */}
+      {userId && (
+        <Box sx={{ bgcolor: colors.iconBlueBg, borderRadius: 2, px: 2, py: 1.5, mb: 3 }}>
+          <Typography sx={{ fontSize: '0.9rem', color: 'text.primary' }}>
+            Your User ID is <Box component="strong" data-testid="new-user-id" sx={{ fontSize: '1.05rem' }}>{userId}</Box>
+          </Typography>
+          <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 0.25 }}>
+            Keep it to sign in, or sign in with your email.
+          </Typography>
+        </Box>
+      )}
 
       <Stack spacing={2.5}>
         <Box>

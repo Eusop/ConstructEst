@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { signToken } from '../services/token.service.js';
+import { generateUserId } from '../services/userId.service.js';
 import { toPublicUser } from '../utils/serializers.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -28,31 +29,35 @@ function isValidCode(value) {
 }
 
 export const register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, employeeId, email, password } = req.body;
+  const { firstName, lastName, email, password } = req.body;
 
   if (!firstName || !lastName) throw new HttpError(400, 'First and last name are required.');
-  if (!employeeId || String(employeeId).length < 3) throw new HttpError(400, 'Employee ID must be at least 3 characters.');
   if (!isValidEmail(email)) throw new HttpError(400, 'A valid email is required.');
   if (!isValidPassword(password)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
+  // Stop here before using up a User ID number on an email that is taken.
+  const [existing] = await query('SELECT id FROM users WHERE email = ?', [email]);
+  if (existing) throw new HttpError(409, 'That email address is already in use.');
+
   const passwordHash = bcrypt.hashSync(password, 10);
   const code = generateVerificationCode();
+  const userId = await generateUserId();
 
   // New accounts start inactive and unverified, admin has to approve them
   // later (see verifyUser). No token given here so they can't log in yet.
   // Also saves a verification code right away since that's checked first.
   const insertResult = await query(
-    `INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, is_active, is_verified,
+    `INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role, is_active, is_verified,
                          email_verification_code, email_verification_expires_at, email_verification_last_sent_at)
      VALUES (?, ?, ?, ?, ?, 'user', 0, 0, ?, NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE, NOW())`,
-    [firstName, lastName, employeeId, email, passwordHash, code],
+    [firstName, lastName, userId, email, passwordHash, code],
   );
 
   try {
-    await sendVerificationCodeEmail(email, code);
+    await sendVerificationCodeEmail(email, code, userId);
   } catch (err) {
-    // If the email fails, delete the new row. Otherwise the unique email and
-    // employeeId would block that person from registering again.
+    // If the email fails, delete the new row. Otherwise the unique email
+    // would block that person from registering again.
     await query('DELETE FROM users WHERE id = ?', [insertResult.insertId]);
     console.error('Failed to send verification email:', err);
     throw new HttpError(400, "We couldn't send a verification email to that address. Double-check it and try again.", 'EMAIL_SEND_FAILED');
@@ -61,18 +66,19 @@ export const register = asyncHandler(async (req, res) => {
   res.status(201).json({
     message: 'Account created. Check your email for a 6-digit code to verify your address.',
     pendingVerification: true,
+    userId,
   });
 });
 
-// Only these two columns are allowed, never taken directly from the request.
-const AVAILABILITY_FIELDS = { email: 'email', employeeId: 'employee_id' };
+// Only this column is allowed, never taken directly from the request.
+const AVAILABILITY_FIELDS = { email: 'email' };
 
-// Used by the sign up form to check live if an email/Employee ID is
-// already taken, before the user even submits.
+// Used by the sign up form to check live if an email is already taken,
+// before the user even submits.
 export const checkAvailability = asyncHandler(async (req, res) => {
   const { field, value } = req.query;
   const column = AVAILABILITY_FIELDS[field];
-  if (!column) throw new HttpError(400, 'field must be "email" or "employeeId".');
+  if (!column) throw new HttpError(400, 'field must be "email".');
   if (!value) throw new HttpError(400, 'value is required.');
 
   const [existing] = await query(`SELECT id FROM users WHERE ${column} = ?`, [value]);
@@ -81,17 +87,17 @@ export const checkAvailability = asyncHandler(async (req, res) => {
 
 export const login = asyncHandler(async (req, res) => {
   const { identifier, password } = req.body;
-  if (!identifier || !password) throw new HttpError(400, 'Email/Employee ID and password are required.');
+  if (!identifier || !password) throw new HttpError(400, 'Email/User ID and password are required.');
 
   // Fetch the user even if pending or deactivated, so a wrong password gives
-  // the same generic error either way.
+  // the same generic error either way. Trim since a copied ID may have spaces.
   const [user] = await query(
-    'SELECT * FROM users WHERE (email = ? OR employee_id = ?)',
-    [identifier, identifier],
+    'SELECT * FROM users WHERE (email = ? OR user_id = ?)',
+    [identifier, String(identifier).trim()],
   );
 
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    throw new HttpError(401, 'Incorrect email/Employee ID or password.');
+    throw new HttpError(401, 'Incorrect email/User ID or password.');
   }
 
   // Check email verification first. An admin could approve an account before
@@ -171,7 +177,7 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
   const code = generateVerificationCode();
   // Send first, save after, so a failed send keeps the old code working.
   try {
-    await sendVerificationCodeEmail(user.email, code);
+    await sendVerificationCodeEmail(user.email, code, user.user_id);
   } catch (err) {
     console.error('Failed to resend verification email:', err);
     throw new HttpError(502, 'Could not send the email. Try again in a moment.', 'EMAIL_SEND_FAILED');

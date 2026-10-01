@@ -16,7 +16,7 @@ Node/Express API + a Python rule-based DXF engine, backing the `frontend/` React
    ```
    `schema.sql` creates the `constructest` database and all tables. `seed.sql` populates it with an admin account, the 16-material brand catalog (3 brands each for the 14 brand-selectable materials, flat pricing for the 2 commodities (sand and gravel), 4 Tarlac City stores with per-store pricing, and the global default calibration constants.
 
-   Seeded admin login: **Employee ID `admin`, password `ChangeMe123!`**; change the password via `PUT /api/users/me/password` once logged in.
+   Seeded admin login: **User ID `20260001` (or email `admin@constructest.local`), password `ChangeMe123!`**; change the password via `PUT /api/users/me/password` once logged in.
 
    `schema.sql`/`seed.sql` alone are enough for a fresh install. If you're upgrading a database that was already seeded before a schema change, run the relevant files in `db/migrations/` in order instead (`npm run migrate -- db/migrations/00N_*.sql`); each one documents what it does and why at the top of the file.
 
@@ -62,7 +62,7 @@ uploads/       uploaded DXF files (gitignored)
 
 All routes except `/api/health` and the pre-session auth endpoints (`register`, `check-availability`, `verify-email`, `resend-verification-code`, `login`) require `Authorization: Bearer <token>`. `/api/admin/*` additionally requires the `admin` access role.
 
-- **Auth**: `POST /auth/register`, `GET /auth/check-availability?field=email|employeeId&value=` (live duplicate check as a signup form is filled in), `POST /auth/verify-email`, `POST /auth/resend-verification-code`, `POST /auth/login`, `GET /auth/me` (requires auth, unlike the rest of this list)
+- **Auth**: `POST /auth/register`, `GET /auth/check-availability?field=email&value=` (live duplicate email check as the signup form is filled in; the User ID, year + 4 digits like `20260001`, is assigned by `register` through `src/services/userId.service.js` and returned as `userId`), `POST /auth/verify-email`, `POST /auth/resend-verification-code`, `POST /auth/login`, `GET /auth/me` (requires auth, unlike the rest of this list)
 - **Users**: `PUT /users/me`, `PUT /users/me/password`
 - **Projects**: `GET/POST /projects`, `GET/DELETE /projects/:id`, `POST /projects/:id/recompute` (re-runs the engine against the already-uploaded DXF with current constants/overrides)
 - **Estimation**: `GET/PUT/DELETE /projects/:id/constants` (project-level calibration override), `GET/PUT /projects/:id/design-overrides` (project-level structural dimension overrides: column/beam/footing size, floor-to-floor height, etc.)
@@ -78,7 +78,7 @@ All routes except `/api/health` and the pre-session auth endpoints (`register`, 
 
 A self-registered account has to clear two independent gates before it can log in, checked in this order:
 
-1. **Email ownership.** `register` emails a 6-digit code (via `src/services/mailer.service.js`, Brevo's HTTP API) and creates the account with `email_verified_at = NULL`; `POST /auth/verify-email` (`{ email, code }`) sets it once the correct code is typed back (10-minute expiry, 5 wrong attempts before it's invalidated and a fresh one has to be requested via `POST /auth/resend-verification-code`, 45s cooldown between resends). If the email genuinely can't be sent, the just-created row is rolled back rather than left as an unverifiable, permanently-squatting `email`/`employee_id`.
+1. **Email ownership.** `register` emails a 6-digit code (via `src/services/mailer.service.js`, Brevo's HTTP API) and creates the account with `email_verified_at = NULL`; `POST /auth/verify-email` (`{ email, code }`) sets it once the correct code is typed back (10-minute expiry, 5 wrong attempts before it's invalidated and a fresh one has to be requested via `POST /auth/resend-verification-code`, 45s cooldown between resends). If the email genuinely can't be sent, the just-created row is rolled back rather than left as an unverifiable, permanently-squatting `email` (its User ID number is not reused).
 2. **Admin approval.** Independent of the above; an admin reviews and approves the account (`PATCH /admin/users/:id/verify`, `is_verified`/`is_active`), same as before this feature existed.
 
 `login` checks email verification first, then admin approval, then active status, each with its own distinct error code (`EMAIL_NOT_VERIFIED`, `PENDING_VERIFICATION`, `ACCOUNT_DEACTIVATED`) so the frontend can route to the right explanation. An account created directly by an admin (`POST /admin/users`), or any account that already existed before this feature shipped, is exempt from the email-verification step; it's specifically about proving a *self-registered* stranger's email is real.

@@ -7,11 +7,11 @@ const FIELD_LABEL_SX = { fontWeight: 600, fontSize: '0.85rem', color: 'text.prim
 
 /**
  * "Personal Information" section: editable Full Name and Email, and a read-only
- * Employee ID (like the admin Edit User dialog: it is the login identifier, and
- * the backend's updateProfile doesn't accept renaming it).
+ * User ID (assigned by the system at sign up, and the backend's updateProfile
+ * doesn't accept changing it).
  *
  * @param {object} props
- * @param {{fullName: string, employeeId: string, email: string}} props.form
+ * @param {{fullName: string, userId: string, email: string}} props.form
  * @param {object} props.errors
  * @param {object} props.touched
  * @param {(field: string, value: string) => void} props.onFieldChange
@@ -34,13 +34,13 @@ function PersonalInformationSection({ form, errors, touched, onFieldChange, onFi
           />
         </Box>
         <Box sx={{ flex: 1 }}>
-          <Typography sx={FIELD_LABEL_SX}>Employee ID</Typography>
+          <Typography sx={FIELD_LABEL_SX}>User ID</Typography>
           <FormTextField
-            name="employeeId"
+            name="userId"
             autoComplete="off"
-            value={form.employeeId}
+            value={form.userId}
             disabled
-            helperText="Employee ID cannot be changed"
+            helperText="User ID cannot be changed"
           />
         </Box>
       </Stack>

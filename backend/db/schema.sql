@@ -12,7 +12,7 @@ CREATE TABLE users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
-  employee_id VARCHAR(50) NOT NULL UNIQUE,   -- login identifier (SignUpForm's employeeId)
+  user_id VARCHAR(20) NOT NULL UNIQUE,   -- login ID the system assigns, year + 4 digits (e.g. 20260001)
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   access_role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
@@ -40,6 +40,13 @@ CREATE TABLE users (
   -- heartbeat (migration 015). NULL means never logged in.
   last_seen_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Last User ID number given out per year (migration 024). Only goes up, so a
+-- deleted user's ID is never given to someone else.
+CREATE TABLE user_id_counters (
+  id_year SMALLINT UNSIGNED PRIMARY KEY,
+  last_seq INT UNSIGNED NOT NULL
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------

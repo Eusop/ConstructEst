@@ -15,9 +15,11 @@ USE constructest;
 -- email_verified_at is set here (not NULL). That column only tracks whether a
 -- self-registered user proved their email, so a seeded admin should not be
 -- blocked by the login check (same fix as migration 013 for existing databases).
-INSERT INTO users (first_name, last_name, employee_id, email, password_hash, access_role, email_verified_at)
-VALUES ('System', 'Admin', 'admin', 'admin@constructest.local',
+-- The admin takes User ID 20260001, so the 2026 counter starts at 1.
+INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role, email_verified_at)
+VALUES ('System', 'Admin', '20260001', 'admin@constructest.local',
         '$2a$10$tsAJhcupRMJt1XVsmBIiQe1M4qMcXQ6JaBs6JUcnEQRJjdpWZcUqq', 'admin', NOW());
+INSERT INTO user_id_counters (id_year, last_seq) VALUES (2026, 1);
 
 -- ---------------------------------------------------------------------------
 -- Material catalog: 14 brand-selectable materials x 3 brands, plus sand and

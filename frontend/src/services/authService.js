@@ -12,12 +12,13 @@ export async function loginRequest({ identifier, password, keepSignedIn }) {
 
 // Registration doesn't create a session: the account stays unverified and
 // inactive until an admin approves it (verifyUser), so no token is returned.
-// Only set one if a response ever includes it.
+// Only set one if a response ever includes it. The response has the User ID
+// the server assigned (`userId`).
 export async function signUpRequest(details) {
-  const { firstName, lastName, employeeId, email, password } = details;
+  const { firstName, lastName, email, password } = details;
   const response = await apiRequest('/auth/register', {
     method: 'POST',
-    body: { firstName, lastName, employeeId, email, password },
+    body: { firstName, lastName, email, password },
   });
   if (response.token) setAuthToken(response.token, true);
   return response;
@@ -47,9 +48,9 @@ export async function resetPasswordRequest({ email, code, newPassword }) {
   return apiRequest('/auth/reset-password', { method: 'POST', body: { email, code, newPassword } });
 }
 
-/** Live duplicate check for SignUpForm's debounced effects. It reveals nothing
- * register() doesn't already reveal on a duplicate; it just shows it earlier.
- * @param {'email'|'employeeId'} field
+/** Live duplicate check for SignUpForm's debounced email effect. It reveals
+ * nothing register() doesn't already reveal on a duplicate; it just shows it earlier.
+ * @param {'email'} field
  * @param {string} value
  */
 export async function checkAvailability(field, value) {
