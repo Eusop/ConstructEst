@@ -4,6 +4,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
+import NoPageScrollbarGutter from '../../components/NoPageScrollbarGutter';
 import { useToggle } from '../../hooks/useToggle';
 import { colors } from '../../theme/palette';
 import { ADMIN_ROUTES } from '../../routes/paths';
@@ -38,6 +39,7 @@ function AdminLayout() {
     // `flex: 1, minHeight: 0, overflow: 'auto'` panels (e.g. "Registered stores")
     // never get a bounded height, so the whole page scrolls instead.
     <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
+      <NoPageScrollbarGutter />
       <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

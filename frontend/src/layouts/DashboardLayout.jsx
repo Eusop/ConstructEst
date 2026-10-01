@@ -4,6 +4,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import Sidebar from './Sidebar';
 import DashboardHeader from './DashboardHeader';
+import NoPageScrollbarGutter from '../components/NoPageScrollbarGutter';
 import SelectedStoreBadge from '../features/brandSelection/components/SelectedStoreBadge';
 import { useToggle } from '../hooks/useToggle';
 import { useProjects } from '../context/ProjectsContext';
@@ -98,6 +99,7 @@ function DashboardLayout() {
     // 100dvh, not 100vh: on mobile browsers 100vh ignores the URL bar, so the
     // bottom edge would sit under the toolbar. Same as 100vh on desktop.
     <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden', bgcolor: colors.heroBackground }}>
+      <NoPageScrollbarGutter />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

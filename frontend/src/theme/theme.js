@@ -37,6 +37,22 @@ const theme = createTheme({
   shape: { borderRadius: 8 },
 
   components: {
+    // Windows draws a 15px white scrollbar track, which showed as a white strip
+    // down the right edge of the light-blue content area whenever a page
+    // scrolled. A thin thumb on a transparent track blends into any background.
+    // `scrollbar-width` isn't inherited, hence `*`. Browsers without support
+    // keep their default scrollbar.
+    MuiCssBaseline: {
+      styleOverrides: {
+        '*': {
+          scrollbarWidth: 'thin',
+          scrollbarColor: `${colors.scrollbarThumb} transparent`,
+        },
+        '*:hover': {
+          scrollbarColor: `${colors.scrollbarThumbHover} transparent`,
+        },
+      },
+    },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {

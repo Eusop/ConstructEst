@@ -19,6 +19,8 @@ export const colors = {
   inputBorderHover: '#1B4A9E',
   textPrimary: '#2A2A2A',
   textSecondary: '#6B7280',
+  scrollbarThumb: '#B9C4D6',
+  scrollbarThumbHover: '#8E9BB3',
 
   // Landing page sections
   heroBackground: '#E8F0FB',

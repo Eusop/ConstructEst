@@ -286,9 +286,16 @@ function StoreLocatorPage() {
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={2.5}
-        sx={{ flexGrow: { xs: 1, sm: 0, md: 1 }, minHeight: { xs: 'auto', sm: 0 }, minWidth: 0 }}
+        // Never shorter than the map and list Papers' own minHeight: on sm they're
+        // stacked (260 + 20 spacing + 260 = 540), on md+ side by side (420). With
+        // minHeight 0 a short window squeezed this row below them, so they spilled
+        // out under the Continue button. Now the page scrolls instead.
+        sx={{ flexGrow: { xs: 1, sm: 0, md: 1 }, minHeight: { xs: 'auto', sm: 540, md: 420 }, minWidth: 0 }}
       >
-        <Box sx={{ flex: { md: 3 }, flexShrink: { xs: 0, sm: 1 }, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+        {/* No shrinking while stacked (xs/sm): the map keeps its Paper's 260 and
+            the list below takes what's left and scrolls inside. Shrinking on sm
+            let the map spill over the list once the row hit its 540 floor. */}
+        <Box sx={{ flex: { md: 3 }, flexShrink: { xs: 0, md: 1 }, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
           <Paper
             elevation={0}
             sx={{
