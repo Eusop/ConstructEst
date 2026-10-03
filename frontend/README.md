@@ -25,9 +25,11 @@ The same seeded admin account (User ID `20260001` or `admin@constructest.local` 
 
 Self-registering a new account (`/signup`) doesn't log straight in; it goes to `/verify-email` for the 6-digit code emailed to the address given (see `backend/README.md`'s "Registration & verification"), then still needs an admin to approve it in the Admin module before it can sign in at all.
 
-**User module** (`/dashboard`, `/projects/...`): upload a DXF, review the parsed quantity take-off, tune calibration factors and structural design parameters, compare stores, pick brands, download the BOM.
+**User module** (`/dashboard`, `/projects/...`): upload a DXF (one per floor for 2 storeys), review the parsed quantity take-off, tune calibration factors and design parameters (Footings first, then Columns & Beams, Floor & Stairs, Formwork & Scaffolding), compare stores, pick brands, download the BOM.
 
-**Admin module** (`/admin/...`): user management, hardware stores (with a map view), materials & brands catalog (global brand definitions + per-store pricing/availability), and the global calibration/design-parameter defaults every new project falls back to.
+**Password pages**: `/reset-password` (Forgot password: emailed code) and `/set-new-password`, where a user who signed in with an admin's temporary password must choose their own before anything else (`RequireRole` sends them there).
+
+**Admin module** (`/admin/...`): user management (including Password help: send a reset code or set a temporary password), hardware stores (with a map view), materials & brands catalog (global brand definitions + per-store pricing/availability), and the global calibration/design-parameter defaults every new project falls back to.
 
 ## Project layout
 
@@ -53,5 +55,4 @@ src/
 
 ## Known limitations
 
-- **No route guard on the User module.** Reaching an authenticated page without a valid session surfaces as a generic failure on whatever action is attempted (e.g. a DXF upload fails with a raw "Missing or invalid Authorization header" message rather than redirecting to `/login`). The Admin module and the standalone learning-guide project both use a `RequireAuth`-style guard; this app doesn't yet.
 - **Store distances are by road when routing is available.** Measured from the user's real browser geolocation when granted (`hooks/useUserLocation.js`), falling back to a fixed Tarlac City reference point when it's denied/unavailable. Straight-line distance shows first; `StoreLocatorPage` then asks `POST /api/stores/road-distances` (OpenRouteService on the backend) and swaps in road distance and drive time. Without a backend `ORS_API_KEY`, or when the request fails, it stays straight-line. The list can be sorted Cheapest or Nearest.
