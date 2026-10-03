@@ -7,9 +7,10 @@ Also reads optional layers from Engr. Espiritu's notation (Reply 4): COL (same
 as COLUMN), BEAM, CANTBEAM and TRUSS. A file without them returns 0 for each.
 FTG and FTBEAM are not read. Keep LayerNamesGuide.jsx in sync with LAYER_ALIASES.
 
-Walls: every LINE/polyline on WALL is summed, so a wall drawn as two parallel
-faces is counted twice (docs/paper-limitations.md entry 6). An MLINE wall is
-measured once along its reference line (see mline_length).
+Walls: a wall drawn as two parallel faces (LINE or polyline) is counted once,
+by pairing the faces (see wall_run_length). A wall drawn as one line counts as
+drawn. An MLINE wall is measured once along its reference line (see
+mline_length). Limits are in docs/paper-limitations.md entry 6.
 """
 import math
 import re
@@ -170,6 +171,103 @@ def mline_length(entity):
     return polyline_length(points, entity.is_closed)
 
 
+# Two faces this far apart are one wall. Covers 100mm and 150mm CHB walls with
+# plaster. A wall thicker or thinner than this is not paired.
+WALL_MIN_THICKNESS_M = 0.08
+WALL_MAX_THICKNESS_M = 0.30
+# Faces within 1 degree count as parallel.
+PARALLEL_TOLERANCE = math.sin(math.radians(1.0))
+
+
+def _face_info(segment):
+    """Length, direction and bounding box of one wall face."""
+    (ax, ay), (bx, by) = segment
+    length = segment_length((ax, ay), (bx, by))
+    box = (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))
+    return length, (bx - ax) / length, (by - ay) / length, box
+
+
+# Grid cell size for finding nearby faces, so a big plan doesn't compare every
+# face with every other one.
+NEARBY_CELL_M = 2.0
+
+
+def _cells(box):
+    """Grid cells a face's box touches, grown by one wall thickness."""
+    x0 = math.floor((box[0] - WALL_MAX_THICKNESS_M) / NEARBY_CELL_M)
+    x1 = math.floor((box[2] + WALL_MAX_THICKNESS_M) / NEARBY_CELL_M)
+    y0 = math.floor((box[1] - WALL_MAX_THICKNESS_M) / NEARBY_CELL_M)
+    y1 = math.floor((box[3] + WALL_MAX_THICKNESS_M) / NEARBY_CELL_M)
+    return [(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)]
+
+
+def _paired_parts(index, segments, infos, nearby):
+    """Parts of one wall face (distances along it) that have a parallel face
+    at wall thickness across from them."""
+    (ax, ay), (bx, by) = segments[index]
+    length, ux, uy, box = infos[index]
+    parts = []
+    for j in nearby:
+        if j == index:
+            continue
+        (cx, cy), (dx, dy) = segments[j]
+        _, vx, vy, other_box = infos[j]
+        # Quick skip: faces whose boxes are more than a wall apart can't pair.
+        if (other_box[0] > box[2] + WALL_MAX_THICKNESS_M or other_box[2] < box[0] - WALL_MAX_THICKNESS_M
+                or other_box[1] > box[3] + WALL_MAX_THICKNESS_M or other_box[3] < box[1] - WALL_MAX_THICKNESS_M):
+            continue
+        if abs(ux * vy - uy * vx) > PARALLEL_TOLERANCE:
+            continue
+        # Both ends of the other face must sit at wall thickness from this one.
+        gap1 = abs((cx - ax) * uy - (cy - ay) * ux)
+        gap2 = abs((dx - ax) * uy - (dy - ay) * ux)
+        if not all(WALL_MIN_THICKNESS_M <= gap <= WALL_MAX_THICKNESS_M for gap in (gap1, gap2)):
+            continue
+        # Where the other face overlaps this one along its length.
+        s1 = (cx - ax) * ux + (cy - ay) * uy
+        s2 = (dx - ax) * ux + (dy - ay) * uy
+        start, end = max(0.0, min(s1, s2)), min(length, max(s1, s2))
+        if end > start:
+            parts.append([start, end])
+    return length, parts
+
+
+def wall_run_length(segments):
+    """Wall length from LINE/polyline faces, counting a two-face wall once.
+
+    The part of a face that has a partner face counts half, since the two
+    faces are one wall. Gaps up to one wall thickness are filled in, so the
+    outer face sticking out at a corner and the break at a T-junction also
+    count half. A face with no partner counts in full.
+    """
+    infos = [_face_info(s) for s in segments]
+    grid = {}
+    for i, info in enumerate(infos):
+        for cell in _cells(info[3]):
+            grid.setdefault(cell, []).append(i)
+    total = 0.0
+    for i in range(len(segments)):
+        nearby = {j for cell in _cells(infos[i][3]) for j in grid[cell]}
+        length, parts = _paired_parts(i, segments, infos, nearby)
+        if not parts:
+            total += length
+            continue
+        parts.sort()
+        merged = [parts[0]]
+        for start, end in parts[1:]:
+            if start - merged[-1][1] <= WALL_MAX_THICKNESS_M:
+                merged[-1][1] = max(merged[-1][1], end)
+            else:
+                merged.append([start, end])
+        if merged[0][0] <= WALL_MAX_THICKNESS_M:
+            merged[0][0] = 0.0
+        if length - merged[-1][1] <= WALL_MAX_THICKNESS_M:
+            merged[-1][1] = length
+        paired = sum(end - start for start, end in merged)
+        total += (length - paired) + paired / 2
+    return total
+
+
 def member_run_length(msp, layer):
     """Total length of the members (beams, trusses) drawn on a layer.
 
@@ -202,17 +300,25 @@ def extract_geometry(doc):
     msp = doc.modelspace()
 
     wall_length_m = 0.0
+    wall_segments = []
     for e in entities_on_layer(msp, "WALL"):
         if e.dxftype() == "LINE":
-            p1 = (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M)
-            p2 = (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)
-            wall_length_m += segment_length(p1, p2)
+            wall_segments.append((
+                (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M),
+                (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M),
+            ))
         elif e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
+            # Split into straight sides so each side can find its partner face.
             points = polyline_points(e)
-            wall_length_m += polyline_length(points, is_closed_polyline(e))
+            wall_segments.extend(zip(points, points[1:]))
+            if is_closed_polyline(e) and len(points) > 2:
+                wall_segments.append((points[-1], points[0]))
         elif e.dxftype() == "MLINE":
             # One multiline = one wall, however many faces its style draws.
             wall_length_m += mline_length(e)
+    # Zero-length sides (repeated points) have no direction, so they're skipped.
+    wall_segments = [s for s in wall_segments if segment_length(*s) > 1e-9]
+    wall_length_m += wall_run_length(wall_segments)
 
     floor_area_m2 = 0.0
     rooms_detected = 0
