@@ -32,7 +32,9 @@ const GROUPS = [
     fields: [
       { key: 'footingWidth', label: 'Footing width', unit: 'm', step: 0.01 },
       { key: 'footingLength', label: 'Footing length', unit: 'm', step: 0.01 },
-      { key: 'footingDepth', label: 'Footing depth', unit: 'm', step: 0.1 },
+      { key: 'footingThickness', label: 'Footing thickness', unit: 'm', step: 0.05 },
+      // Below ground: sets how far the column bars go down, not the concrete.
+      { key: 'footingDepth', label: 'Footing depth (below ground)', unit: 'm', step: 0.1 },
       { key: 'footingCount', label: 'Footing count', unit: 'pcs', step: 1, projectOnly: true },
       { key: 'footingRebarKgPerM3', label: 'Footing rebar (16mm)', unit: 'kg/m³', step: 5 },
     ],
@@ -93,6 +95,24 @@ const GROUPS = [
   },
 ];
 
+// Largest tie spacing the code allows (NSCP 425.7.2), worked out the same way
+// as formulas.py: the smallest of 16 x main bar, 48 x the 10mm tie, and the
+// column's smaller side. Uses the sizes in the fields right now, typed or default.
+function codeTieSpacing(storeys, effectiveDefaults, overrides) {
+  const forStoreys = (s) => {
+    const value = (key) => overrides[key] ?? Number(fieldPlaceholder(key, s, effectiveDefaults, overrides));
+    const barM = value('columnBarMm') / 1000;
+    const spacing = (w, d) => Number(Math.min(16 * barM, 48 * 0.010, w, d).toFixed(3));
+    const ground = spacing(value('columnWidth'), value('columnDepth'));
+    if (s < 2) return String(ground);
+    const second = spacing(overrides.columnWidthSecond ?? value('columnWidth'), overrides.columnDepthSecond ?? value('columnDepth'));
+    return second === ground ? String(ground) : `${ground} / ${second} (2nd floor)`;
+  };
+  if (storeys != null) return forStoreys(storeys);
+  // Admin global page: no project, so show the 1-storey and 2-storey values.
+  return `${forStoreys(1)} / ${forStoreys(2)}`;
+}
+
 // columnCount (detected from the DXF) and beamLength (from wall run) have no
 // fixed number to show. Every other placeholder is the value the engine will use,
 // computed for `storeys` when known (a project), or both the 1-storey and
@@ -113,7 +133,7 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
   // value, so "Auto" would be misleading.
   if (fieldKey === 'beamRebarLength') return 'None (from schedule)';
   if (fieldKey === 'beamStirrupSpacing') return 'None (from plan)';
-  if (fieldKey === 'columnTieSpacing') return 'Code max';
+  if (fieldKey === 'columnTieSpacing') return codeTieSpacing(storeys, effectiveDefaults, overrides);
   if (fieldKey === 'footingCount') return overrides.columnCount != null ? String(overrides.columnCount) : 'Same as columns';
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
