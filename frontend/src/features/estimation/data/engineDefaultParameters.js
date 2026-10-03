@@ -28,7 +28,8 @@ export function getEngineDefaults(storeys) {
     beamStirrupMm: 10,
     footingWidth: 0.60,
     footingLength: 0.60,
-    footingDepth: isTwoStorey ? 2.0 : 1.5,
+    footingDepth: isTwoStorey ? 2.0 : 1.5, // below ground, sets the column bar length
+    footingThickness: 0.30, // the pad itself: concrete, footing rebar and side forms
     footingCount: null, // one per ground floor column (Column count)
     footingRebarKgPerM3: 150, // the engineers, 2026-10-03 meeting
     floorToFloorHeight: 3.0,

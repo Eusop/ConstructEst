@@ -90,14 +90,15 @@ MORTAR_PER_M2 = {'4"': (0.522, 0.0435), '6"': (1.018, 0.0844)}
 WALL_REBAR_VERTICAL_M_PER_M2 = 2.13    # vertical @ 0.60 m
 WALL_REBAR_HORIZONTAL_M_PER_M2 = 2.15  # horizontal every 3 layers
 # No. 16 tie wire. Walls: kg per m2 at those spacings, 30 cm ties (Table 3-6).
-# Grids: one 30 cm tie per crossing (p. 109). Column ties: 40 cm per bar
+# Grids: one 30 cm tie per crossing (p. 110). Column ties: 40 cm per bar
 # (Illustration 3-9). One kg is about 53 m.
 WALL_TIE_WIRE_KG_PER_M2 = 0.032
 GRID_TIE_LENGTH_M = 0.30
 COLUMN_TIE_WIRE_LENGTH_M = 0.40
 TIE_WIRE_M_PER_KG = 53
-# Column ties (Sec. 3-9): 10mm for main bars up to 30mm. Cover is NSCP's 40mm
-# for columns; the hook length is ours, sized to match Fajardo's examples.
+# Column ties (Sec. 3-9): 10mm (No. 3) for main bars No. 10 (about 32mm) or
+# smaller. Cover is NSCP's 40mm for columns. The 0.06 m hook is ours, set so a
+# 0.50 m column gives Fajardo's 1.80 m tie (p. 116: 4 x 0.42 + 2 x 0.06).
 COLUMN_TIE_DIAMETER_MM = 10
 # Column main bar extras (Sec. 3-7, Illustration 3-7): 0.20 m bend at the
 # footing, and a 20 x bar size dowel into the next floor.
@@ -106,11 +107,14 @@ COLUMN_BAR_DOWEL_FACTOR = 20
 # Footing rebar by weight per m3 of footing concrete, 16mm bars (the engineers,
 # 2026-10-03 meeting). Rebar is bought in 6 m lengths (same meeting).
 FOOTING_REBAR_KG_PER_M3 = 150
+# Footing pad thickness. The paper's 1.5/2.0 m footing depth is kept as the
+# depth below ground (column bar length), not the concrete height.
+DEFAULT_FOOTING_THICKNESS_M = 0.30
 # Beam stirrup bar size when a spacing is entered but no size (Fajardo's examples).
 BEAM_STIRRUP_DEFAULT_MM = 10
 REBAR_BAR_LENGTH_M = 6.0
 COLUMN_COVER_M = 0.04
-TIE_HOOK_M = 0.10
+TIE_HOOK_M = 0.06
 # Corrugated G.I. sheet, 8 ft (Table 6-2): 0.70 m effective width at 1 1/2
 # corrugation side lap, 25-30 cm end lap (30 cm as in Illustration 6-1),
 # purlins at 0.70 m for this length.
@@ -248,7 +252,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         bar_length_by_diameter[diameter_mm] = bar_length_by_diameter.get(diameter_mm, 0.0) + length_m
 
     def add_grid_tie_wire(bars_a, bars_b, label, category):
-        # One tie at every crossing of a bar grid (Fajardo p. 109).
+        # One tie at every crossing of a bar grid (Fajardo p. 110).
         crossings = bars_a * bars_b
         kg = crossings * GRID_TIE_LENGTH_M / TIE_WIRE_M_PER_KG
         tie_wire_by_category[category] += kg
@@ -421,7 +425,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         f"{num(column_rebar_unit_weight, 3)} kg/m = {num(column_rebar_kg)} kg")
 
     # Column ties (Fajardo Sec. 3-9, same rule as NSCP 425.7.2): 10mm ties for
-    # main bars up to 30mm, spaced at the smallest of 16 x main bar, 48 x tie
+    # main bars up to 32mm, spaced at the smallest of 16 x main bar, 48 x tie
     # bar, or the column's least side. Ties per column = height / spacing + 1.
     # A spacing from the plan replaces the code maximum.
     tie_spacing_override = overrides.get("columnTieSpacing")
@@ -431,8 +435,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     for w, d, h, n in column_floors:
         spacing = tie_spacing_override or min(16 * column_rebar_diameter_mm / 1000, 48 * COLUMN_TIE_DIAMETER_MM / 1000, w, d)
         ties_per_column = ceil_int(h / spacing) + 1
-        # One tie wraps the bars inside the cover, plus two hooks. Matches
-        # Fajardo's 1.80 m tie for a 0.50 m column (Illustration 3-9).
+        # One tie wraps the bars inside the cover, plus two hooks. Gives
+        # Fajardo's 1.80 m tie for a 0.50 m column (p. 116).
         one_tie_m = 2 * (w + d) - 8 * COLUMN_COVER_M + 2 * TIE_HOOK_M
         tie_count += ties_per_column * n
         tie_length_m += ties_per_column * n * one_tie_m
@@ -571,9 +575,17 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     footing_l = overrides.get("footingLength", 0.60)
     # One footing per ground floor column unless the plan says otherwise.
     footing_count = overrides.get("footingCount", column_count)
-    footing_volume = footing_w * footing_l * footing_depth * footing_count
+    # Concrete uses the footing's own thickness. Footing depth is how far the
+    # footing sits below ground (it sets the column bar length above), not the
+    # concrete height. 0.30 m is our default; in the 2026-10-03 demo the
+    # engineer seemed to enter a 0.30 m footing depth, but the transcript is
+    # unclear, so confirm with the engineers.
+    footing_thickness = overrides.get("footingThickness", DEFAULT_FOOTING_THICKNESS_M)
+    footing_volume = footing_w * footing_l * footing_thickness * footing_count
     acc.add_concrete_mix(footing_volume, cement_factor, "Footing volume x count", "shared",
-                         f"Footings {footing_count} x {num(footing_w)} x {num(footing_l)} x {num(footing_depth)} m")
+                         f"Footings {footing_count} x {num(footing_w)} x {num(footing_l)} x {num(footing_thickness)} m thick")
+    # Footing forms: the four sides of each footing (engineers, 2026-10-03).
+    footing_formwork_area = 2 * (footing_w + footing_l) * footing_thickness * footing_count
     # Footing rebar: 150 kg of 16mm bars per m3 of footing concrete (the
     # engineers, 2026-10-03 meeting). No bar grid to count ties from, so tie
     # wire is 1 kg per 100 kg of bars (our assumption).
@@ -671,12 +683,13 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     column_formwork_area = sum((2 * (w + d) + COLUMN_FORM_LAP_M) * h * n for w, d, h, n in column_floors)
     beam_perimeter = 2 * beam_d + beam_w + BEAM_FORM_LAP_M
     beam_formwork_area = beam_perimeter * beam_length_total
-    formwork_area = total_floor_area_m2 + column_formwork_area + beam_formwork_area
+    formwork_area = total_floor_area_m2 + column_formwork_area + beam_formwork_area + footing_formwork_area
     # One 1.22m x 2.44m sheet covers 2.98 m2 (Reply 10). The 5-10% cutting
     # allowance is the wastage multiplier applied below, so it is not added here.
     formwork_text = (f"Formwork area: slabs {num(total_floor_area_m2)} m2 + columns {num(column_formwork_area)} m2 "
                      f"(perimeter + {COLUMN_FORM_LAP_M} m lap) + beams {num(beam_perimeter)} m (2 sides + bottom + "
-                     f"{BEAM_FORM_LAP_M} m lap) x {num(beam_length_total)} m = {num(formwork_area)} m2")
+                     f"{BEAM_FORM_LAP_M} m lap) x {num(beam_length_total)} m + footing sides {num(footing_formwork_area)} m2 "
+                     f"= {num(formwork_area)} m2")
     plywood = formwork_area / (1.22 * 2.44)
     acc.add("plywood", plywood, "Formwork area / sheet coverage (2.98 m2 per sheet)", "shared", formwork_text)
     acc.steps["plywood"].append(f"{num(formwork_area)} m2 / 2.98 m2 per sheet (1.22 m x 2.44 m) = {num(plywood)} sheets")
@@ -685,11 +698,15 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # the place of Fajardo's wood staging.
     column_lumber = column_formwork_area / FAJARDO_FORM_SHEET_M2 * COLUMN_FORM_BDFT_PER_SHEET
     beam_lumber = beam_formwork_area / FAJARDO_FORM_SHEET_M2 * BEAM_FORM_BDFT_PER_SHEET
-    lumber = column_lumber + beam_lumber
+    # Footing side forms are framed like column forms (no Fajardo rate of their own).
+    footing_lumber = footing_formwork_area / FAJARDO_FORM_SHEET_M2 * COLUMN_FORM_BDFT_PER_SHEET
+    lumber = column_lumber + beam_lumber + footing_lumber
     acc.add("lumber", lumber, "Form area / 2.88 m2 x frame bd.ft. per sheet", "shared",
             f"Columns {num(column_formwork_area)} m2 / {FAJARDO_FORM_SHEET_M2} m2 x {COLUMN_FORM_BDFT_PER_SHEET} bd.ft. = {num(column_lumber)} bd.ft.")
     acc.steps["lumber"].append(
         f"Beams {num(beam_formwork_area)} m2 / {FAJARDO_FORM_SHEET_M2} m2 x {BEAM_FORM_BDFT_PER_SHEET} bd.ft. = {num(beam_lumber)} bd.ft.")
+    acc.steps["lumber"].append(
+        f"Footings {num(footing_formwork_area)} m2 / {FAJARDO_FORM_SHEET_M2} m2 x {COLUMN_FORM_BDFT_PER_SHEET} bd.ft. = {num(footing_lumber)} bd.ft.")
     acc.steps["lumber"].append("Slab forms: no frame lumber, the steel props support them")
 
     # --- Reinforcement rollup (rebar and tie wire) ---

@@ -224,6 +224,7 @@ CREATE TABLE project_design_overrides (
   footing_width DECIMAL(6, 3) NULL,
   footing_length DECIMAL(6, 3) NULL,
   footing_depth DECIMAL(6, 3) NULL,
+  footing_thickness DECIMAL(6, 3) NULL,
   floor_to_floor_height DECIMAL(6, 3) NULL,
   stair_width DECIMAL(6, 3) NULL,
   building_height DECIMAL(6, 3) NULL,

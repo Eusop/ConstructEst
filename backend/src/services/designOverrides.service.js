@@ -14,6 +14,7 @@ const FIELDS = [
   ['footingWidth', 'footing_width'],
   ['footingLength', 'footing_length'],
   ['footingDepth', 'footing_depth'],
+  ['footingThickness', 'footing_thickness'],
   ['floorToFloorHeight', 'floor_to_floor_height'],
   ['stairWidth', 'stair_width'],
   ['buildingHeight', 'building_height'],
@@ -60,6 +61,9 @@ function validateOverrides(overrides) {
     if (given(key) && !(Number(overrides[key]) >= MIN_SPACING_M)) {
       throw new HttpError(400, 'Bar and tie spacing must be at least 0.05 m.');
     }
+  }
+  if (given('footingThickness') && !(Number(overrides.footingThickness) >= 0.1 && Number(overrides.footingThickness) <= 2)) {
+    throw new HttpError(400, 'Footing thickness must be between 0.10 m and 2.00 m.');
   }
   for (const key of ['footingCount', 'columnBarCount']) {
     if (given(key) && !(Number.isInteger(Number(overrides[key])) && Number(overrides[key]) >= 1)) {
