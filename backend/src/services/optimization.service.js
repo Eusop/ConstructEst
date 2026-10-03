@@ -8,15 +8,40 @@ import { HttpError } from '../middleware/errorHandler.js';
 // set per deployment with SCAFFOLDING_REUSE_COUNT. Quantities stay the same;
 // only the price goes through effectivePrice().
 const SCAFFOLDING_REUSE_COUNT = Number(process.env.SCAFFOLDING_REUSE_COUNT) || 10;
+// Formwork (plywood and lumber) can be reused about 3 times when sizes repeat
+// (engineers, 2026-10-03). Each project picks 1 to 3 uses (projects.formwork_uses).
+const FORMWORK_KEYS = new Set(['plywood', 'lumber']);
 
-function effectivePrice(materialKey, price) {
-  if (materialKey !== 'scaffolding') return price;
-  return Math.round((price / SCAFFOLDING_REUSE_COUNT) * 100) / 100;
+function usesFor(materialKey, formworkUses) {
+  if (materialKey === 'scaffolding') return SCAFFOLDING_REUSE_COUNT;
+  if (FORMWORK_KEYS.has(materialKey)) return formworkUses;
+  return 1;
 }
 
-function effectiveSpec(materialKey, spec) {
-  if (materialKey !== 'scaffolding') return spec;
-  return `${spec ?? ''}, price / ${SCAFFOLDING_REUSE_COUNT} uses`.replace(/^, /, '');
+function effectivePrice(materialKey, price, formworkUses = 1) {
+  const uses = usesFor(materialKey, formworkUses);
+  return uses > 1 ? Math.round((price / uses) * 100) / 100 : price;
+}
+
+// Adds the reuse note, and for rebar the 6 m bars per size from the engine
+// (estimation_line_items.bar_pieces), since stores sell rebar by the piece.
+function effectiveSpec(materialKey, spec, formworkUses = 1, barPieces = null) {
+  const notes = [];
+  const uses = usesFor(materialKey, formworkUses);
+  if (uses > 1) notes.push(`price / ${uses} uses`);
+  if (materialKey === 'steelRebar' && Array.isArray(barPieces) && barPieces.length > 0) {
+    notes.push(`6 m bars: ${barPieces.map((p) => `${p.diameterMm}mm ${p.pieces} pcs`).join(', ')}`);
+  }
+  return [spec, ...notes].filter(Boolean).join(', ') || spec;
+}
+
+async function getFormworkUses(projectId) {
+  const [row] = await query('SELECT formwork_uses FROM projects WHERE id = ?', [projectId]);
+  return Number(row?.formwork_uses) || 1;
+}
+
+function parseJson(value) {
+  return typeof value === 'string' ? JSON.parse(value) : value;
 }
 
 // The take-off keeps lumber in board feet (Table 19) and the catalog prices it
@@ -41,7 +66,7 @@ function lineCost(materialKey, quantity, unitPrice, spec) {
 
 async function getQuantityTakeoff(projectId) {
   const rows = await query(
-    `SELECT eli.material_key, eli.name, eli.quantity, eli.unit
+    `SELECT eli.material_key, eli.name, eli.quantity, eli.unit, eli.bar_pieces
      FROM estimation_line_items eli
      JOIN estimation_results er ON er.id = eli.estimation_id
      WHERE er.project_id = ? AND er.is_current = 1`,
@@ -60,6 +85,7 @@ async function getQuantityTakeoff(projectId) {
  */
 export async function getStoreOptimization(projectId) {
   const materials = await getQuantityTakeoff(projectId);
+  const formworkUses = await getFormworkUses(projectId);
   // Skip deactivated stores (they're closed, not just missing an item).
   const stores = await query('SELECT * FROM stores WHERE is_active = 1 ORDER BY name');
 
@@ -101,7 +127,7 @@ export async function getStoreOptimization(projectId) {
       optimizedTotal += lineCost(
         material.material_key,
         Number(material.quantity),
-        effectivePrice(material.material_key, Number(cheapest.price)),
+        effectivePrice(material.material_key, Number(cheapest.price), formworkUses),
         cheapest.spec,
       );
     }
@@ -133,6 +159,7 @@ export async function getStoreOptimization(projectId) {
  * Selection's dropdowns and tier cards. */
 export async function getBrandCatalog(projectId, storeId) {
   const materials = await getQuantityTakeoff(projectId);
+  const formworkUses = await getFormworkUses(projectId);
   const catalog = {};
 
   for (const material of materials) {
@@ -148,8 +175,8 @@ export async function getBrandCatalog(projectId, storeId) {
     if (options.length > 0) {
       catalog[material.material_key] = options.map((o) => ({
         ...o,
-        spec: effectiveSpec(material.material_key, o.spec),
-        price: effectivePrice(material.material_key, Number(o.price)),
+        spec: effectiveSpec(material.material_key, o.spec, formworkUses),
+        price: effectivePrice(material.material_key, Number(o.price), formworkUses),
       }));
     }
   }
@@ -164,6 +191,7 @@ export async function getBrandCatalog(projectId, storeId) {
  */
 export async function computeBom(projectId, storeId) {
   const materials = await getQuantityTakeoff(projectId);
+  const formworkUses = await getFormworkUses(projectId);
   const selections = await query(
     'SELECT material_key, material_brand_id FROM project_brand_selections WHERE project_id = ?',
     [projectId],
@@ -196,7 +224,7 @@ export async function computeBom(projectId, storeId) {
     // No row means the store carries no brand of this material. Flag it
     // instead of pricing it at 0 (see StoreLocatorPage and BomTable).
     const available = Boolean(row);
-    let unitPrice = available ? effectivePrice(material.material_key, Number(row.price)) : null;
+    let unitPrice = available ? effectivePrice(material.material_key, Number(row.price), formworkUses) : null;
     let quantity = Number(material.quantity);
     let unit = material.unit;
     let pieceConversion = null;
@@ -214,7 +242,7 @@ export async function computeBom(projectId, storeId) {
       material: material.name,
       category: row?.category ?? null,
       brand: row?.brand ?? null,
-      spec: available ? effectiveSpec(material.material_key, row.spec) : null,
+      spec: available ? effectiveSpec(material.material_key, row.spec, formworkUses, parseJson(material.bar_pieces)) : null,
       available,
       quantity,
       unit,

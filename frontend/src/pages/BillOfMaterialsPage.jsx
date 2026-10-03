@@ -7,6 +7,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import BudgetBadge from '../features/projects/components/BudgetBadge';
 import BomTable from '../features/billOfMaterials/components/BomTable';
 import BomCostSummaryCard from '../features/billOfMaterials/components/BomCostSummaryCard';
+import FormworkUsesSelect from '../features/billOfMaterials/components/FormworkUsesSelect';
 import IncompleteBomState from '../features/billOfMaterials/components/IncompleteBomState';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import { useProjects } from '../context/ProjectsContext';
@@ -47,10 +48,11 @@ function toDisplayLineItems(lineItems) {
  * reload (brandSelection is only in React state on the client).
  */
 function BillOfMaterialsPage() {
-  const { activeProject, refreshActiveProjectEstimation } = useProjects();
+  const { activeProject, refreshActiveProjectEstimation, updateActiveProject } = useProjects();
   const { logActivity } = useDashboardActivity();
   const [loadedForKey, setLoadedForKey] = useState(null);
   const [bom, setBom] = useState(null);
+  const [savingUses, setSavingUses] = useState(false);
 
   const storeId = activeProject?.selectedStoreId ?? null;
   const materialEstimationDone = activeProject?.status !== 'Parsing' && activeProject?.status !== 'Failed';
@@ -88,7 +90,8 @@ function BillOfMaterialsPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeProject?.id, storeId, refreshActiveProjectEstimation]);
+    // formworkUses: a new value changes plywood and lumber prices, so reload them.
+  }, [activeProject?.id, storeId, activeProject?.formworkUses, refreshActiveProjectEstimation]);
 
   if (!activeProject) {
     return <NoActiveProjectState />;
@@ -138,6 +141,17 @@ function BillOfMaterialsPage() {
     'materials only',
   ];
 
+  const formworkUses = activeProject.formworkUses ?? 1;
+  const handleFormworkUsesChange = async (uses) => {
+    setSavingUses(true);
+    try {
+      await apiRequest(`/projects/${activeProject.id}/formwork-uses`, { method: 'PUT', body: { formworkUses: uses } });
+      updateActiveProject({ formworkUses: uses });
+    } finally {
+      setSavingUses(false);
+    }
+  };
+
   const handleDownloadPdf = () => {
     generateBomPdf({
       projectName: activeProject.projectName,
@@ -146,6 +160,7 @@ function BillOfMaterialsPage() {
         { label: 'Storeys', value: `${activeProject.storeys} ${activeProject.storeys === 1 ? 'storey' : 'storeys'}` },
         { label: 'Roofing', value: activeProject.includeRoofing ? 'Included' : 'Not included' },
         { label: 'Store', value: selectedStore.name },
+        ...(formworkUses > 1 ? [{ label: 'Formwork uses', value: `${formworkUses} (plywood and lumber price / ${formworkUses})` }] : []),
       ],
       lineItems,
       grandTotal,
@@ -184,6 +199,8 @@ function BillOfMaterialsPage() {
       >
         <Stack spacing={{ xs: 2, md: 3 }}>
           <BomTable items={lineItems} />
+
+          <FormworkUsesSelect value={formworkUses} onChange={handleFormworkUsesChange} disabled={savingUses} />
 
           <BomCostSummaryCard
             subtotalLabel={formatPeso(premiumTotal)}

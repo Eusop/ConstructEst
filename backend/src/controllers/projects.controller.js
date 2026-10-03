@@ -209,12 +209,13 @@ async function persistEstimation(projectId, engineResult) {
 
   for (const material of engineResult.materials) {
     await query(
-      `INSERT INTO estimation_line_items (estimation_id, material_key, name, quantity, unit, basis, source_breakdown, calc_steps)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO estimation_line_items (estimation_id, material_key, name, quantity, unit, basis, source_breakdown, calc_steps, bar_pieces)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         estResult.insertId, material.key, material.name, material.quantity, material.unit, material.basis,
         material.sourceBreakdown ? JSON.stringify(material.sourceBreakdown) : null,
         material.steps ? JSON.stringify(material.steps) : null,
+        material.barPieces ? JSON.stringify(material.barPieces) : null,
       ],
     );
   }
@@ -240,6 +241,11 @@ export const getProjectDesignOverrides = asyncHandler(async (req, res) => {
 export const putProjectDesignOverrides = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
+  // 20mm and 25mm are rarely stocked in Tarlac stores (2026-10-03 meeting).
+  const barSize = Number(req.body?.beamRebarDiameterMm);
+  if (req.body?.beamRebarDiameterMm != null && req.body.beamRebarDiameterMm !== '' && barSize > 16) {
+    throw new HttpError(400, 'Beam rebar bar size can be at most 16mm, the largest size local stores usually carry.');
+  }
   const overrides = await saveDesignOverrides(project.id, req.body);
   res.json({ overrides });
 });
@@ -337,6 +343,17 @@ export const getProjectBom = asyncHandler(async (req, res) => {
   if (!storeId) throw new HttpError(400, 'No store selected yet, pass storeId or save a brand selection first.');
   const bom = await computeBom(project.id, storeId);
   res.json(bom);
+});
+
+// Formwork can be reused about 3 times when sizes repeat (engineers,
+// 2026-10-03), so the project picks 1 to 3 uses. Only the price changes.
+export const putProjectFormworkUses = asyncHandler(async (req, res) => {
+  const project = await loadProjectOr404(req.params.id);
+  assertAccess(project, req.user);
+  const uses = Number(req.body?.formworkUses);
+  if (![1, 2, 3].includes(uses)) throw new HttpError(400, 'Formwork uses must be 1, 2 or 3.');
+  await query('UPDATE projects SET formwork_uses = ? WHERE id = ?', [uses, project.id]);
+  res.json({ formworkUses: uses });
 });
 
 export const getProjectConstants = asyncHandler(async (req, res) => {

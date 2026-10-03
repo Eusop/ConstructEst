@@ -103,6 +103,10 @@ COLUMN_TIE_DIAMETER_MM = 10
 # footing, and a 20 x bar size dowel into the next floor.
 COLUMN_BAR_FOOTING_BEND_M = 0.20
 COLUMN_BAR_DOWEL_FACTOR = 20
+# Footing rebar by weight per m3 of footing concrete, 16mm bars (the engineers,
+# 2026-10-03 meeting). Rebar is bought in 6 m lengths (same meeting).
+FOOTING_REBAR_KG_PER_M3 = 150
+REBAR_BAR_LENGTH_M = 6.0
 COLUMN_COVER_M = 0.04
 TIE_HOOK_M = 0.10
 # Corrugated G.I. sheet, 8 ft (Table 6-2): 0.70 m effective width at 1 1/2
@@ -229,6 +233,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # Tie wire is counted from the bars (Fajardo Sec. 3-5), not as a share of rebar weight.
     tie_wire_by_category = {category: 0.0 for category in SOURCE_CATEGORIES}
     tie_wire_steps = []
+    # Bar length per size, so the BOM can list rebar as 6 m pieces.
+    bar_length_by_diameter = {}
+
+    def add_bar_length(diameter_mm, length_m):
+        bar_length_by_diameter[diameter_mm] = bar_length_by_diameter.get(diameter_mm, 0.0) + length_m
 
     def add_grid_tie_wire(bars_a, bars_b, label, category):
         # One tie at every crossing of a bar grid (Fajardo p. 109).
@@ -286,6 +295,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         wall_rebar_length_m = net_wall_area * (WALL_REBAR_VERTICAL_M_PER_M2 + WALL_REBAR_HORIZONTAL_M_PER_M2)
         wall_rebar_kg = wall_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
         rebar_weight_by_category[storey_category] += wall_rebar_kg
+        add_bar_length(10, wall_rebar_length_m)
         rebar_steps.append(
             f"{floor_label} walls, 10mm (Fajardo Table 3-5): {num(net_wall_area)} m2 x "
             f"({WALL_REBAR_VERTICAL_M_PER_M2} + {WALL_REBAR_HORIZONTAL_M_PER_M2}) m per m2 = "
@@ -308,6 +318,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         ground_slab_rebar_length_m = rebar_len_count * floor_wid + rebar_wid_count * floor_len
         ground_slab_rebar_kg = ground_slab_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
         rebar_weight_by_category["ground"] += ground_slab_rebar_kg
+        add_bar_length(10, ground_slab_rebar_length_m)
         rebar_steps.append(
             f"Ground slab, 10mm @ 0.30 m: {rebar_len_count} bars x {num(floor_wid)} m + {rebar_wid_count} bars x "
             f"{num(floor_len)} m = {num(ground_slab_rebar_length_m)} m x 0.617 kg/m = {num(ground_slab_rebar_kg)} kg")
@@ -332,6 +343,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             suspended_slab_rebar_length_m = rebar_len_count * suspended_wid + rebar_wid_count * suspended_len
             suspended_slab_rebar_kg = suspended_slab_rebar_length_m * REBAR_UNIT_WEIGHT_12MM_KG_PER_M
             rebar_weight_by_category[suspended_category] += suspended_slab_rebar_kg
+            add_bar_length(12, suspended_slab_rebar_length_m)
             rebar_steps.append(
                 f"Second floor slab, 12mm @ 0.15 m: {rebar_len_count} bars x {num(suspended_wid)} m + {rebar_wid_count} bars x "
                 f"{num(suspended_len)} m = {num(suspended_slab_rebar_length_m)} m x 0.889 kg/m = {num(suspended_slab_rebar_kg)} kg")
@@ -386,6 +398,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     column_rebar_length_m = column_bar_m + column_extra_m
     column_rebar_kg = column_rebar_length_m * column_rebar_unit_weight
     rebar_weight_by_category["shared"] += column_rebar_kg
+    add_bar_length(column_rebar_diameter_mm, column_rebar_length_m)
     column_bar_parts = ' + '.join(f"{n} columns x {COLUMN_REBAR_BAR_COUNT} bars x {num(h)} m" for _w, _d, h, n in column_floors)
     dowel_part = f" + {joints} x {num(dowel_m)} m dowel" if joints else ""
     rebar_steps.append(
@@ -411,6 +424,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         tie_parts.append(f"{n} columns x {ties_per_column} ties ({num(h)} m / {num(spacing)} m + 1) x {num(one_tie_m)} m")
     column_tie_kg = tie_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
     rebar_weight_by_category["shared"] += column_tie_kg
+    add_bar_length(COLUMN_TIE_DIAMETER_MM, tie_length_m)
     rebar_steps.append(
         f"Column ties, 10mm (Fajardo Sec. 3-9): {' + '.join(tie_parts)} = {num(tie_length_m)} m x 0.617 kg/m = {num(column_tie_kg)} kg")
     # Each tie is wired to every main bar (Fajardo Illustration 3-9, 0.40 m per tie).
@@ -463,6 +477,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         beam_rebar_diameter_mm = overrides.get("beamRebarDiameterMm") or 12
         beam_rebar_kg = beam_rebar_length_m * rebar_unit_weight_kg_per_m(beam_rebar_diameter_mm)
         rebar_weight_by_category["shared"] += beam_rebar_kg
+        add_bar_length(beam_rebar_diameter_mm, beam_rebar_length_m)
         rebar_steps.append(
             f"Beams, {beam_rebar_diameter_mm}mm (from your beam schedule): {num(beam_rebar_length_m)} m x "
             f"{num(rebar_unit_weight_kg_per_m(beam_rebar_diameter_mm), 3)} kg/m = {num(beam_rebar_kg)} kg")
@@ -519,6 +534,19 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     footing_volume = footing_w * footing_l * footing_depth * column_count
     acc.add_concrete_mix(footing_volume, cement_factor, "Footing volume x count", "shared",
                          f"Footings {column_count} x {num(footing_w)} x {num(footing_l)} x {num(footing_depth)} m")
+    # Footing rebar: 150 kg of 16mm bars per m3 of footing concrete (the
+    # engineers, 2026-10-03 meeting). No bar grid to count ties from, so tie
+    # wire is 1 kg per 100 kg of bars (our assumption).
+    footing_rebar_kg = footing_volume * FOOTING_REBAR_KG_PER_M3
+    footing_rebar_m = footing_rebar_kg / REBAR_UNIT_WEIGHT_16MM_KG_PER_M
+    rebar_weight_by_category["shared"] += footing_rebar_kg
+    add_bar_length(16, footing_rebar_m)
+    rebar_steps.append(
+        f"Footings, 16mm: {num(footing_volume, 3)} m3 x {FOOTING_REBAR_KG_PER_M3} kg per m3 = {num(footing_rebar_kg)} kg "
+        f"({num(footing_rebar_m)} m at 1.580 kg/m)")
+    footing_tie_wire_kg = footing_rebar_kg / 100
+    tie_wire_by_category["shared"] += footing_tie_wire_kg
+    tie_wire_steps.append(f"Footings: {num(footing_rebar_kg)} kg of bars x 1 kg per 100 kg = {num(footing_tie_wire_kg)} kg")
 
     # --- Table 18: Stair materials (2-storey only) --------------------------
     if storeys >= 2:
@@ -545,6 +573,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         stair_rebar_length_m = stair_across_bars * stair_width + stair_along_bars * slant
         stair_rebar_kg = stair_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
         rebar_weight_by_category["shared"] += stair_rebar_kg
+        add_bar_length(10, stair_rebar_length_m)
         rebar_steps.append(
             f"Stairs, 10mm @ {num(stair_rebar_spacing)} m: {stair_across_bars} bars x {num(stair_width)} m + "
             f"{stair_along_bars} bars x {num(slant)} m = {num(stair_rebar_length_m)} m x 0.617 kg/m = {num(stair_rebar_kg)} kg")
@@ -636,6 +665,17 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         adjusted_total_kg = total_rebar_kg * steel_factor
         acc.steps["steelRebar"] = rebar_steps + [
             f"Total {num(total_rebar_kg)} kg x {num(steel_factor)} steel factor = {num(adjusted_total_kg)} kg / 1,000 = {num(adjusted_total_kg / 1000, 3)} tons"]
+    # Rebar is bought as 6 m bars. Same steel factor as the weight, then each
+    # size is rounded up to whole bars (cutting waste is not optimized).
+    bar_pieces = [
+        {"diameterMm": diameter_mm,
+         "lengthM": round(length_m * steel_factor, 2),
+         "pieces": ceil_int(length_m * steel_factor / REBAR_BAR_LENGTH_M)}
+        for diameter_mm, length_m in sorted(bar_length_by_diameter.items()) if length_m > 0
+    ]
+    if bar_pieces:
+        acc.steps["steelRebar"].append("In 6 m bars: " + ", ".join(
+            f"{p['diameterMm']}mm {num(p['lengthM'])} m / 6 = {p['pieces']:,} pcs" for p in bar_pieces))
     total_tie_wire_kg = sum(tie_wire_by_category.values())
     if total_tie_wire_kg > 0:
         acc.steps["tieWire"] = tie_wire_steps + [
@@ -702,6 +742,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             "basis": acc.bases.get(key, ""),
             "sourceBreakdown": source_breakdown,
             "steps": steps,
+            **({"barPieces": bar_pieces} if key == "steelRebar" and bar_pieces else {}),
         })
 
     # Per-floor measurements follow the same rule as floorArea: sum both files

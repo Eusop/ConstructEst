@@ -37,7 +37,8 @@ const GROUPS = [
       // From the project's own beam schedule, so project page only (a global
       // default would give every project the same schedule).
       { key: 'beamRebarLength', label: 'Beam rebar total length', unit: 'm', step: 1, projectOnly: true },
-      { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', step: 1, projectOnly: true },
+      // Capped at 16mm, the largest size Tarlac stores usually carry (2026-10-03 meeting).
+      { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', step: 1, max: 16, projectOnly: true },
     ],
   },
   {
@@ -124,13 +125,15 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
 function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null, effectiveDefaults = null }) {
   const isMobile = useIsMobile();
   const showTwoStoreyNotice = storeys != null && storeys >= 2 && overrides.columnWidth == null && overrides.columnDepth == null;
-  const handleFieldChange = (key, rawValue) => {
+  const handleFieldChange = (key, rawValue, max) => {
     if (rawValue === '') {
       onOverrideChange(key, null);
       return;
     }
     const parsed = Number(rawValue);
-    onOverrideChange(key, Number.isFinite(parsed) ? parsed : null);
+    // Typing past `max` keeps the max, since the backend rejects larger values.
+    const value = Number.isFinite(parsed) && max != null ? Math.min(parsed, max) : parsed;
+    onOverrideChange(key, Number.isFinite(value) ? value : null);
   };
 
   return (
@@ -218,12 +221,13 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                     type="number"
                     size="small"
                     value={overrides[field.key] ?? ''}
-                    onChange={(event) => handleFieldChange(field.key, event.target.value)}
+                    onChange={(event) => handleFieldChange(field.key, event.target.value, field.max)}
+                    helperText={field.max ? `Up to ${field.max} ${field.unit}` : undefined}
                     placeholder={fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides)}
                     slotProps={{
                       inputLabel: { shrink: true },
                       input: { endAdornment: <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{field.unit}</Typography> },
-                      htmlInput: { step: field.step, min: 0 },
+                      htmlInput: { step: field.step, min: 0, max: field.max },
                     }}
                   />
                 ))}

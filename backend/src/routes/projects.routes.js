@@ -10,6 +10,7 @@ import {
   getProjectBrandCatalog,
   postBrandSelection,
   getProjectBom,
+  putProjectFormworkUses,
   getProjectConstants,
   putProjectConstants,
   resetProjectConstants,
@@ -31,6 +32,7 @@ router.get('/:id/stores', getProjectStores);
 router.get('/:id/brand-catalog', getProjectBrandCatalog);
 router.post('/:id/brand-selection', postBrandSelection);
 router.get('/:id/bom', getProjectBom);
+router.put('/:id/formwork-uses', putProjectFormworkUses);
 
 router.get('/:id/constants', getProjectConstants);
 router.put('/:id/constants', putProjectConstants);

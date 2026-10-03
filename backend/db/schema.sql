@@ -66,6 +66,7 @@ CREATE TABLE projects (
   second_floor_dxf_path VARCHAR(500) NULL,
   second_floor_dxf_original_name VARCHAR(255) NULL,
   selected_store_id INT UNSIGNED NULL,
+  formwork_uses TINYINT UNSIGNED NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -119,6 +120,7 @@ CREATE TABLE estimation_line_items (
   source_breakdown JSON NULL,
   -- Step-by-step computation lines from the engine ("Show computation").
   calc_steps JSON NULL,
+  bar_pieces JSON NULL,
   CONSTRAINT fk_line_item_estimation FOREIGN KEY (estimation_id) REFERENCES estimation_results(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

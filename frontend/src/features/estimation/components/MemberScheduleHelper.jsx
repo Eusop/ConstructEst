@@ -12,7 +12,9 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { colors } from '../../../theme/palette';
 
-const BAR_SIZES_MM = [10, 12, 16, 20, 25];
+// Up to 16mm: larger bars are rarely stocked in Tarlac hardware stores
+// (engineers, 2026-10-03 meeting).
+const BAR_SIZES_MM = [10, 12, 16];
 
 let nextRowId = 0;
 const emptyRow = () => ({ id: (nextRowId += 1), tag: '', members: '', lengthM: '', barsPerMember: '' });
