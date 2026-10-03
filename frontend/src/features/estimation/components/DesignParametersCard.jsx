@@ -19,6 +19,16 @@ import { colors } from '../../../theme/palette';
 // A blank field sends `null`, which the backend drops, so the engine uses its
 // built-in default. Nothing here is required.
 const GROUPS = [
+  // Footings first: the engineers start an estimate from the footing up (2026-10-03 meeting).
+  {
+    key: 'footings',
+    label: 'Footings',
+    fields: [
+      { key: 'footingWidth', label: 'Footing width', unit: 'm', step: 0.01 },
+      { key: 'footingLength', label: 'Footing length', unit: 'm', step: 0.01 },
+      { key: 'footingDepth', label: 'Footing depth', unit: 'm', step: 0.1 },
+    ],
+  },
   {
     key: 'columnsAndBeams',
     label: 'Columns & Beams',
@@ -39,15 +49,6 @@ const GROUPS = [
       { key: 'beamRebarLength', label: 'Beam rebar total length', unit: 'm', step: 1, projectOnly: true },
       // Capped at 16mm, the largest size Tarlac stores usually carry (2026-10-03 meeting).
       { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', step: 1, max: 16, projectOnly: true },
-    ],
-  },
-  {
-    key: 'footings',
-    label: 'Footings',
-    fields: [
-      { key: 'footingWidth', label: 'Footing width', unit: 'm', step: 0.01 },
-      { key: 'footingLength', label: 'Footing length', unit: 'm', step: 0.01 },
-      { key: 'footingDepth', label: 'Footing depth', unit: 'm', step: 0.1 },
     ],
   },
   {
