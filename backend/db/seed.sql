@@ -53,21 +53,21 @@ INSERT INTO material_brands (material_key, material_name, unit, brand, spec, bas
 ('purlins', 'Purlins', 'lengths', 'DN Steel', '2"x3" C-purlin, 6m', 850, 4, 'Roofing', 0),
 ('purlins', 'Purlins', 'lengths', 'Clark Steel', '2"x3" C-purlin, 6m', 980, 5, 'Roofing', 0),
 
-('ridge', 'Ridge', 'lengths', 'MetroTile', 'Ridge roll, 1.8m length', 117, 3, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 1.8m length', 135, 4, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 1.8m length', 156, 5, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'MetroTile', 'Ridge roll, 2.20m length', 143, 3, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 2.20m length', 165, 4, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 2.20m length', 190.67, 5, 'Roofing', 0),
 
-('flashing', 'Flashing', 'pcs', 'MetroTile', 'GI flashing, 1.8m length', 270, 3, 'Roofing', 0),
-('flashing', 'Flashing', 'pcs', 'DN Steel', 'GI flashing, 1.8m length', 324, 4, 'Roofing', 0),
-('flashing', 'Flashing', 'pcs', 'Clark Steel', 'GI flashing, 1.8m length', 378, 5, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'MetroTile', 'GI flashing, 2.30m length', 345, 3, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'DN Steel', 'GI flashing, 2.30m length', 414, 4, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'Clark Steel', 'GI flashing, 2.30m length', 483, 5, 'Roofing', 0),
 
 ('angleBar', 'Angle Bar', 'lengths', 'Capitol Steel', '1/4"x1.5"x1.5", 6m', 560, 3, 'Roofing', 0),
 ('angleBar', 'Angle Bar', 'lengths', 'SteelAsia', '1/4"x1.5"x1.5", 6m', 620, 4, 'Roofing', 0),
 ('angleBar', 'Angle Bar', 'lengths', 'Pag-asa Steel', '1/4"x1.5"x1.5", 6m', 680, 5, 'Roofing', 0),
 
-('gutter', 'Gutter', 'pcs', 'MetroTile', 'GI gutter, 1.8m length', 320, 3, 'Roofing', 0),
-('gutter', 'Gutter', 'pcs', 'DN Steel', 'GI gutter, 1.8m length', 380, 4, 'Roofing', 0),
-('gutter', 'Gutter', 'pcs', 'Clark Steel', 'GI gutter, 1.8m length', 440, 5, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'MetroTile', 'GI gutter, 2.35m length', 417.78, 3, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'DN Steel', 'GI gutter, 2.35m length', 496.11, 4, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'Clark Steel', 'GI gutter, 2.35m length', 574.44, 5, 'Roofing', 0),
 
 ('plywood', 'Plywood', 'pcs', 'Generic Marine', '1/2" 4x8ft', 680, 3, 'Formwork', 0),
 ('plywood', 'Plywood', 'pcs', 'Federation', '1/2" 4x8ft', 780, 4, 'Formwork', 0),

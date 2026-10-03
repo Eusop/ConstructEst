@@ -171,10 +171,24 @@ def mline_length(entity):
     return polyline_length(points, entity.is_closed)
 
 
+def mline_thickness(entity):
+    """Wall thickness of an MLINE: the spread of its style's line offsets x
+    its scale. 0 if the style can't be read."""
+    try:
+        offsets = [element.offset for element in entity.style.elements]
+        return (max(offsets) - min(offsets)) * abs(entity.dxf.scale_factor) * MM_TO_M
+    except (AttributeError, ValueError, TypeError):
+        return 0.0
+
+
 # Two faces this far apart are one wall. Covers 100mm and 150mm CHB walls with
 # plaster. A wall thicker or thinner than this is not paired.
 WALL_MIN_THICKNESS_M = 0.08
 WALL_MAX_THICKNESS_M = 0.30
+# A wall this thick or more is taken as 6" (150mm) CHB, thinner as 4" (100mm).
+# Mortar differs by CHB size (Fajardo Table 2-2). A one-line wall has no
+# thickness, so it counts as 4".
+SIX_INCH_WALL_MIN_M = 0.125
 # Faces within 1 degree count as parallel.
 PARALLEL_TOLERANCE = math.sin(math.radians(1.0))
 
@@ -203,7 +217,7 @@ def _cells(box):
 
 def _paired_parts(index, segments, infos, nearby):
     """Parts of one wall face (distances along it) that have a parallel face
-    at wall thickness across from them."""
+    at wall thickness across from them, each with the gap to that face."""
     (ax, ay), (bx, by) = segments[index]
     length, ux, uy, box = infos[index]
     parts = []
@@ -228,7 +242,7 @@ def _paired_parts(index, segments, infos, nearby):
         s2 = (dx - ax) * ux + (dy - ay) * uy
         start, end = max(0.0, min(s1, s2)), min(length, max(s1, s2))
         if end > start:
-            parts.append([start, end])
+            parts.append([start, end, (gap1 + gap2) / 2])
     return length, parts
 
 
@@ -239,6 +253,9 @@ def wall_run_length(segments):
     faces are one wall. Gaps up to one wall thickness are filled in, so the
     outer face sticking out at a corner and the break at a T-junction also
     count half. A face with no partner counts in full.
+
+    Returns (total length, length of 6" walls). A face takes its thickness
+    from the partner it overlaps most.
     """
     infos = [_face_info(s) for s in segments]
     grid = {}
@@ -246,13 +263,15 @@ def wall_run_length(segments):
         for cell in _cells(info[3]):
             grid.setdefault(cell, []).append(i)
     total = 0.0
+    six_inch = 0.0
     for i in range(len(segments)):
         nearby = {j for cell in _cells(infos[i][3]) for j in grid[cell]}
         length, parts = _paired_parts(i, segments, infos, nearby)
         if not parts:
             total += length
             continue
-        parts.sort()
+        thickness = max(parts, key=lambda part: part[1] - part[0])[2]
+        parts = sorted([start, end] for start, end, _gap in parts)
         merged = [parts[0]]
         for start, end in parts[1:]:
             if start - merged[-1][1] <= WALL_MAX_THICKNESS_M:
@@ -264,8 +283,11 @@ def wall_run_length(segments):
         if length - merged[-1][1] <= WALL_MAX_THICKNESS_M:
             merged[-1][1] = length
         paired = sum(end - start for start, end in merged)
-        total += (length - paired) + paired / 2
-    return total
+        counted = (length - paired) + paired / 2
+        total += counted
+        if thickness >= SIX_INCH_WALL_MIN_M:
+            six_inch += counted
+    return total, six_inch
 
 
 def member_run_length(msp, layer):
@@ -300,6 +322,7 @@ def extract_geometry(doc):
     msp = doc.modelspace()
 
     wall_length_m = 0.0
+    six_inch_wall_length_m = 0.0
     wall_segments = []
     for e in entities_on_layer(msp, "WALL"):
         if e.dxftype() == "LINE":
@@ -315,10 +338,15 @@ def extract_geometry(doc):
                 wall_segments.append((points[-1], points[0]))
         elif e.dxftype() == "MLINE":
             # One multiline = one wall, however many faces its style draws.
-            wall_length_m += mline_length(e)
+            run = mline_length(e)
+            wall_length_m += run
+            if mline_thickness(e) >= SIX_INCH_WALL_MIN_M:
+                six_inch_wall_length_m += run
     # Zero-length sides (repeated points) have no direction, so they're skipped.
     wall_segments = [s for s in wall_segments if segment_length(*s) > 1e-9]
-    wall_length_m += wall_run_length(wall_segments)
+    face_run, face_six_inch = wall_run_length(wall_segments)
+    wall_length_m += face_run
+    six_inch_wall_length_m += face_six_inch
 
     floor_area_m2 = 0.0
     rooms_detected = 0
@@ -436,6 +464,7 @@ def extract_geometry(doc):
 
     return {
         "wall_length_m": wall_length_m,
+        "six_inch_wall_length_m": six_inch_wall_length_m,
         "door_area_m2": door_area_m2,
         "window_area_m2": window_area_m2,
         "floor_area_m2": floor_area_m2,
