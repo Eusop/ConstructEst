@@ -10,7 +10,7 @@ import { ROUTES } from './paths';
  * an admin never sees User Module pages and vice versa.
  */
 function RequireRole({ role, redirectTo, children }) {
-  const { isAuthenticated, isLoading, accessRole } = useUser();
+  const { isAuthenticated, isLoading, accessRole, mustChangePassword } = useUser();
 
   if (isLoading) {
     return (
@@ -21,6 +21,8 @@ function RequireRole({ role, redirectTo, children }) {
   }
 
   if (!isAuthenticated) return <Navigate to={ROUTES.LOGIN} replace />;
+  // Signed in with an admin's temporary password: set a new one first.
+  if (mustChangePassword) return <Navigate to={ROUTES.SET_NEW_PASSWORD} replace />;
   if (accessRole !== role) return <Navigate to={redirectTo} replace />;
 
   return children;

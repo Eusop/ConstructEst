@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { signToken } from '../services/token.service.js';
@@ -7,7 +6,8 @@ import { toPublicUser } from '../utils/serializers.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { isValidPassword, PASSWORD_RULE_MESSAGE } from '../utils/passwordPolicy.js';
-import { sendVerificationCodeEmail, sendPasswordResetCodeEmail, sendPasswordChangedEmail } from '../services/mailer.service.js';
+import { sendVerificationCodeEmail, sendPasswordChangedEmail } from '../services/mailer.service.js';
+import { generateVerificationCode, cooldownSecondsLeft, issuePasswordResetCode } from '../services/passwordReset.service.js';
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value ?? '');
@@ -19,10 +19,6 @@ function isValidEmail(value) {
 const CODE_EXPIRY_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 45;
 const MAX_CODE_ATTEMPTS = 5;
-
-function generateVerificationCode() {
-  return String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-}
 
 function isValidCode(value) {
   return /^\d{6}$/.test(String(value ?? ''));
@@ -110,6 +106,11 @@ export const login = asyncHandler(async (req, res) => {
   }
   if (!user.is_active) {
     throw new HttpError(403, 'This account has been deactivated.', 'ACCOUNT_DEACTIVATED');
+  }
+  // A temporary password from an admin only works for 24 hours.
+  if (user.must_change_password && user.temp_password_expires_at
+      && new Date(user.temp_password_expires_at).getTime() < Date.now()) {
+    throw new HttpError(401, 'This temporary password has expired. Ask your administrator for a new one.', 'TEMP_PASSWORD_EXPIRED');
   }
 
   // Feeds the admin "online now" dot (migration 015). The heartbeat keeps it
@@ -213,28 +214,14 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   // Every early return below still sends the same 200.
   if (!user) return res.json({ message: FORGOT_PASSWORD_REPLY });
 
-  if (user.password_reset_last_sent_at) {
-    const elapsedSeconds = (Date.now() - new Date(user.password_reset_last_sent_at).getTime()) / 1000;
-    if (elapsedSeconds < RESEND_COOLDOWN_SECONDS) return res.json({ message: FORGOT_PASSWORD_REPLY });
-  }
+  if (cooldownSecondsLeft(user) > 0) return res.json({ message: FORGOT_PASSWORD_REPLY });
 
-  const code = generateVerificationCode();
   try {
-    // Send before saving, same as resendVerificationCode, so a failed send
-    // keeps the previous code usable.
-    await sendPasswordResetCodeEmail(email, code);
+    await issuePasswordResetCode(user);
   } catch (err) {
     // Ignored on purpose: reporting a send failure would confirm the address exists.
     console.error('Failed to send password reset email:', err);
-    return res.json({ message: FORGOT_PASSWORD_REPLY });
   }
-
-  await query(
-    `UPDATE users SET password_reset_code = ?, password_reset_expires_at = NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE,
-                       password_reset_last_sent_at = NOW(), password_reset_attempts = 0
-     WHERE id = ?`,
-    [code, user.id],
-  );
   return res.json({ message: FORGOT_PASSWORD_REPLY });
 });
 
@@ -287,6 +274,36 @@ export const resetPassword = asyncHandler(async (req, res) => {
     .catch((err) => console.error('Could not send password-change notification:', err.message));
 
   res.json({ message: 'Password updated. You can sign in with your new password.' });
+});
+
+/**
+ * POST /auth/set-new-password { newPassword }
+ *
+ * After signing in with a temporary password from an admin, the user must pick
+ * their own before using the app (requireAuth blocks everything else). Returns
+ * a fresh token without the must-change flag.
+ */
+export const setNewPassword = asyncHandler(async (req, res) => {
+  const { newPassword } = req.body;
+  if (!isValidPassword(newPassword)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
+
+  const [user] = await query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  if (!user) throw new HttpError(404, 'User not found.');
+  if (!user.must_change_password) throw new HttpError(400, 'Your password does not need to be changed. Use Profile to change it.');
+  if (bcrypt.compareSync(newPassword, user.password_hash)) {
+    throw new HttpError(400, 'Choose a password different from the temporary one.');
+  }
+
+  await query(
+    'UPDATE users SET password_hash = ?, must_change_password = 0, temp_password_expires_at = NULL WHERE id = ?',
+    [bcrypt.hashSync(newPassword, 10), user.id],
+  );
+  const updated = { ...user, must_change_password: 0, temp_password_expires_at: null };
+
+  sendPasswordChangedEmail(user.email, `${user.first_name} ${user.last_name}`.trim())
+    .catch((err) => console.error('Could not send password-change notification:', err.message));
+
+  res.json({ token: signToken(updated), user: toPublicUser(updated) });
 });
 
 export const me = asyncHandler(async (req, res) => {

@@ -4,6 +4,8 @@ export const ROUTES = {
   SIGNUP: '/signup',
   VERIFY_EMAIL: '/verify-email',
   RESET_PASSWORD: '/reset-password',
+  // After signing in with an admin's temporary password.
+  SET_NEW_PASSWORD: '/set-new-password',
   TERMS: '/terms',
   PRIVACY: '/privacy',
   DASHBOARD: '/dashboard',

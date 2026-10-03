@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { uploadQuotation } from '../middleware/upload.js';
 import {
   listUsers, createUser, updateUser, setUserActive, verifyUser, deleteUser,
+  sendUserResetCode, setTemporaryPassword,
   listMaterials, createMaterial, updateMaterial, deleteMaterial,
   createStore, updateStore, deleteStore, setStoreActive,
   getStoreCatalog, upsertStoreMaterialPrice, removeStoreMaterialPrice, downloadQuotation,
@@ -21,6 +22,8 @@ router.post('/users', createUser);
 router.put('/users/:id', updateUser);
 router.patch('/users/:id/status', setUserActive);
 router.patch('/users/:id/verify', verifyUser);
+router.post('/users/:id/send-reset-code', sendUserResetCode);
+router.post('/users/:id/temporary-password', setTemporaryPassword);
 router.delete('/users/:id', deleteUser);
 
 // Read-only, no create/update/delete route for this. Entries only get

@@ -27,12 +27,20 @@ import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlin
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
+import KeyRoundedIcon from '@mui/icons-material/KeyRounded';
+import MarkEmailReadRoundedIcon from '@mui/icons-material/MarkEmailReadRounded';
+import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded';
 import EmptyState from '../components/EmptyState';
 import UserFormDialog from '../components/UserFormDialog';
+import TemporaryPasswordDialog from '../components/TemporaryPasswordDialog';
+import { useUser } from '../../context/UserContext';
 import TypedConfirmDialog from '../../components/TypedConfirmDialog';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
-import { listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, verifyAdminUser, deleteAdminUser } from '../services/adminService';
+import {
+  listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, verifyAdminUser, deleteAdminUser,
+  sendUserResetCode, setUserTemporaryPassword,
+} from '../services/adminService';
 import { getInitials } from '../../utils/getInitials';
 import { colors } from '../../theme/palette';
 
@@ -230,6 +238,14 @@ function AdminUsersPage() {
   // accounts never reach this state: the button is disabled for them, and the
   // backend rejects it too (see deleteUser).
   const [pendingDeleteUser, setPendingDeleteUser] = useState(null);
+  // Password help: the admin never sees or picks the user's own password.
+  // "Send reset code" emails the Forgot password code. "Set temporary password"
+  // is for a user who can't open their email; it is shown once, then replaced.
+  const [passwordMenu, setPasswordMenu] = useState(null);
+  const [pendingResetCodeUser, setPendingResetCodeUser] = useState(null);
+  const [pendingTempPasswordUser, setPendingTempPasswordUser] = useState(null);
+  const [tempPasswordResult, setTempPasswordResult] = useState(null);
+  const { id: currentAdminId } = useUser();
   const { logActivity } = useAdminActivity();
   const { showToast } = useAdminToast();
 
@@ -331,6 +347,45 @@ function AdminUsersPage() {
       load();
     } catch (error) {
       showToast(error.message || 'Could not activate this user. Try again.', 'warning');
+      throw error;
+    }
+  };
+
+  const handleConfirmResetCode = async () => {
+    try {
+      const { email } = await sendUserResetCode(pendingResetCodeUser.id);
+      logActivity({
+        message: `Sent a password reset code to ${pendingResetCodeUser.userName}`,
+        icon: MarkEmailReadRoundedIcon,
+        iconBg: colors.iconBlueBg,
+        iconFg: colors.iconBlueFg,
+      });
+      showToast(`Reset code sent to ${email}`, 'success');
+      setPendingResetCodeUser(null);
+    } catch (error) {
+      showToast(error.message || 'Could not send the reset code. Try again.', 'warning');
+      throw error;
+    }
+  };
+
+  const handleConfirmTempPassword = async () => {
+    try {
+      const { temporaryPassword, expiresInHours } = await setUserTemporaryPassword(pendingTempPasswordUser.id);
+      logActivity({
+        message: `Set a temporary password for ${pendingTempPasswordUser.userName}`,
+        icon: LockResetRoundedIcon,
+        iconBg: colors.iconBlueBg,
+        iconFg: colors.iconBlueFg,
+      });
+      setTempPasswordResult({
+        userName: pendingTempPasswordUser.userName,
+        userId: pendingTempPasswordUser.userId,
+        password: temporaryPassword,
+        expiresInHours,
+      });
+      setPendingTempPasswordUser(null);
+    } catch (error) {
+      showToast(error.message || 'Could not set a temporary password. Try again.', 'warning');
       throw error;
     }
   };
@@ -522,6 +577,11 @@ function AdminUsersPage() {
                         )}
                         {/* Same admin protection as Deactivate. Delete is permanent, so it
                             also needs a typed-DELETE confirm below. */}
+                        <Tooltip title="Password help">
+                          <IconButton size="small" aria-label="Password help" onClick={(event) => setPasswordMenu({ anchorEl: event.currentTarget, user })}>
+                            <KeyRoundedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deleted' : 'Delete'}>
                           <span>
                             <IconButton size="small" disabled={isAdminAccount(user)} onClick={() => handleDelete(user)}>
@@ -590,6 +650,70 @@ function AdminUsersPage() {
         onConfirm={handleConfirmDelete}
       />
 
+      <TypedConfirmDialog
+        key={pendingResetCodeUser?.id ? `resetcode-${pendingResetCodeUser.id}` : 'resetcode-closed'}
+        open={Boolean(pendingResetCodeUser)}
+        title="Send password reset code"
+        confirmWord="SEND"
+        message={
+          <UserProfileReview
+            user={pendingResetCodeUser}
+            intro={`This emails a 6-digit code to ${pendingResetCodeUser?.email ?? 'this user'}. They enter it on the Reset password page to choose a new password. You won't see the code.`}
+          />
+        }
+        confirmLabel="Yes, Send code"
+        onCancel={() => setPendingResetCodeUser(null)}
+        onConfirm={handleConfirmResetCode}
+      />
+
+      <TypedConfirmDialog
+        key={pendingTempPasswordUser?.id ? `temppw-${pendingTempPasswordUser.id}` : 'temppw-closed'}
+        open={Boolean(pendingTempPasswordUser)}
+        title="Set temporary password"
+        confirmWord="RESET"
+        message={
+          <UserProfileReview
+            user={pendingTempPasswordUser}
+            intro="Use this only if the user can't open their email. Their current password stops working. You'll see a temporary password once to give them, and they must choose a new one when they sign in. Make sure you are talking to the account owner."
+          />
+        }
+        confirmLabel="Yes, Set password"
+        onCancel={() => setPendingTempPasswordUser(null)}
+        onConfirm={handleConfirmTempPassword}
+      />
+
+      <TemporaryPasswordDialog result={tempPasswordResult} onClose={() => setTempPasswordResult(null)} />
+
+      {/* Desktop "Password help" menu, opened from the key icon in each row. */}
+      <Menu anchorEl={passwordMenu?.anchorEl} open={Boolean(passwordMenu)} onClose={() => setPasswordMenu(null)} disableScrollLock>
+        <MenuItem
+          onClick={() => {
+            setPendingResetCodeUser(passwordMenu.user);
+            setPasswordMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <MarkEmailReadRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Send reset code" secondary="Emails a code to the user" />
+        </MenuItem>
+        <MenuItem
+          disabled={Boolean(passwordMenu && passwordMenu.user.id === currentAdminId)}
+          onClick={() => {
+            setPendingTempPasswordUser(passwordMenu.user);
+            setPasswordMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <LockResetRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Set temporary password"
+            secondary={passwordMenu && passwordMenu.user.id === currentAdminId ? 'Use Profile for your own password' : "If they can't open their email"}
+          />
+        </MenuItem>
+      </Menu>
+
       {/* Mobile only: opened from UserMobileCard's kebab button. */}
       <Menu anchorEl={rowMenu?.anchorEl} open={Boolean(rowMenu)} onClose={closeRowMenu} disableScrollLock>
         <MenuItem
@@ -650,6 +774,29 @@ function AdminUsersPage() {
             <DeleteOutlineRoundedIcon fontSize="small" color={rowMenu && isAdminAccount(rowMenu.user) ? 'disabled' : 'error'} />
           </ListItemIcon>
           <ListItemText>{rowMenu && isAdminAccount(rowMenu.user) ? 'Admins cannot be deleted' : 'Delete'}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setPendingResetCodeUser(rowMenu.user);
+            closeRowMenu();
+          }}
+        >
+          <ListItemIcon>
+            <MarkEmailReadRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Send reset code</ListItemText>
+        </MenuItem>
+        <MenuItem
+          disabled={Boolean(rowMenu && rowMenu.user.id === currentAdminId)}
+          onClick={() => {
+            setPendingTempPasswordUser(rowMenu.user);
+            closeRowMenu();
+          }}
+        >
+          <ListItemIcon>
+            <LockResetRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Set temporary password</ListItemText>
         </MenuItem>
       </Menu>
     </Stack>

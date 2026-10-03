@@ -44,13 +44,28 @@ async function send({ to, subject, text, html }) {
 }
 
 /** Sends the 6-digit code for resetting a password. Worded for a reset so it
- * is never confused with the signup code. */
-export async function sendPasswordResetCodeEmail(toEmail, code) {
+ * is never confused with the signup code. `byAdmin` adds a line saying an
+ * administrator sent it (admin "Send reset code"). */
+export async function sendPasswordResetCodeEmail(toEmail, code, { byAdmin = false } = {}) {
+  const adminText = byAdmin ? ' An administrator sent you this code. Enter it on the Reset password page.' : '';
+  const adminHtml = byAdmin ? '<p>An administrator sent you this code. Enter it on the <strong>Reset password</strong> page.</p>' : '';
   await send({
     to: toEmail,
     subject: 'Reset your ConstructEst password',
-    text: `Your ConstructEst password reset code is ${code}. It expires in 10 minutes. If you did not request this, you can ignore this email — your password has not changed.`,
-    html: `<p>Your ConstructEst password reset code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p><p>This code expires in 10 minutes.</p><p style="color:#555">If you did not request this, you can ignore this email — your password has not been changed.</p>`,
+    text: `Your ConstructEst password reset code is ${code}. It expires in 10 minutes.${adminText} If you did not request this, you can ignore this email — your password has not changed.`,
+    html: `<p>Your ConstructEst password reset code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p><p>This code expires in 10 minutes.</p>${adminHtml}<p style="color:#555">If you did not request this, you can ignore this email — your password has not been changed.</p>`,
+  });
+}
+
+/** Notice that an administrator set a temporary password. Never includes the
+ * password itself. The caller ignores a failure, since the user may not be able
+ * to open this inbox at all (that is why the admin set one). */
+export async function sendTemporaryPasswordNoticeEmail(toEmail, name) {
+  await send({
+    to: toEmail,
+    subject: 'An administrator reset your ConstructEst password',
+    text: `Hi ${name || 'there'}, an administrator set a temporary password for your ConstructEst account. You will be asked to choose a new password when you sign in. If you did not ask for this, contact your administrator right away.`,
+    html: `<p>Hi ${name || 'there'},</p><p>An administrator set a temporary password for your ConstructEst account. You will be asked to choose a new password when you sign in.</p><p style="color:#b3261e"><strong>If you did not ask for this, contact your administrator right away.</strong></p>`,
   });
 }
 

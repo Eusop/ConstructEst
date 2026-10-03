@@ -3,6 +3,7 @@ import LoginPage from '../pages/LoginPage';
 import SignUpPage from '../pages/SignUpPage';
 import VerifyEmailPage from '../pages/VerifyEmailPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
+import SetNewPasswordPage from '../pages/SetNewPasswordPage';
 import TermsPage from '../pages/TermsPage';
 import PrivacyPage from '../pages/PrivacyPage';
 import DashboardPage from '../pages/DashboardPage';
@@ -42,6 +43,7 @@ function AppRoutes() {
       <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
       {/* Public: someone who forgot their password can't sign in first. */}
       <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
+      <Route path={ROUTES.SET_NEW_PASSWORD} element={<SetNewPasswordPage />} />
       <Route path={ROUTES.TERMS} element={<TermsPage />} />
       <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
 

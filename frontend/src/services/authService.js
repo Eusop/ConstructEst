@@ -1,4 +1,4 @@
-import { apiRequest, setAuthToken, clearAuthToken, getAuthToken } from './apiClient';
+import { apiRequest, setAuthToken, clearAuthToken, getAuthToken, isAuthTokenPersisted } from './apiClient';
 
 /** Real backend calls, used by LoginForm and SignUpForm. */
 export async function loginRequest({ identifier, password, keepSignedIn }) {
@@ -56,6 +56,14 @@ export async function resetPasswordRequest({ email, code, newPassword }) {
 export async function checkAvailability(field, value) {
   const query = new URLSearchParams({ field, value }).toString();
   return apiRequest(`/auth/check-availability?${query}`);
+}
+
+/** Replaces an admin's temporary password. The response has a fresh token
+ * without the must-change flag, kept in the same storage as the old one. */
+export async function setNewPasswordRequest({ newPassword }) {
+  const { token, user } = await apiRequest('/auth/set-new-password', { method: 'POST', body: { newPassword } });
+  setAuthToken(token, isAuthTokenPersisted());
+  return user;
 }
 
 export function logout() {

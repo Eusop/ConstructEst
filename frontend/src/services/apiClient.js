@@ -32,6 +32,11 @@ export function setAuthToken(token, persist = true) {
   (persist ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
 }
 
+/** True when the token was saved with Keep me signed in (localStorage). */
+export function isAuthTokenPersisted() {
+  return Boolean(localStorage.getItem(TOKEN_KEY));
+}
+
 export function clearAuthToken() {
   localStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(TOKEN_KEY);

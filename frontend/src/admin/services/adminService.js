@@ -18,6 +18,12 @@ export const setAdminUserActive = (id, isActive) =>
 /** Approves a pending self-registered account: sets it verified and active in one step. */
 export const verifyAdminUser = (id) => apiRequest(`/admin/users/${id}/verify`, { method: 'PATCH' });
 
+/** Emails the user a password reset code (same as Forgot password). */
+export const sendUserResetCode = (id) => apiRequest(`/admin/users/${id}/send-reset-code`, { method: 'POST' });
+
+/** Sets a generated temporary password and returns it once ({ temporaryPassword, expiresInHours }). */
+export const setUserTemporaryPassword = (id) => apiRequest(`/admin/users/${id}/temporary-password`, { method: 'POST' });
+
 /**
  * Permanently deletes a user and everything they own (projects, estimates,
  * notifications; see deleteUser in admin.controller.js). Admin accounts get a

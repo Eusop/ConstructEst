@@ -85,8 +85,16 @@ function LoginForm() {
     try {
       const user = await loginRequest({ ...form, keepSignedIn });
       setCurrentUser(user.userName, user.accessRole);
-      updateProfile({ id: user.id, userId: user.userId, email: user.email, avatarUrl: user.avatarUrl });
-      navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
+      updateProfile({
+        id: user.id, userId: user.userId, email: user.email, avatarUrl: user.avatarUrl,
+        mustChangePassword: Boolean(user.mustChangePassword),
+      });
+      // A temporary password from an admin must be replaced before using the app.
+      if (user.mustChangePassword) {
+        navigate(ROUTES.SET_NEW_PASSWORD);
+      } else {
+        navigate(user.accessRole === 'admin' ? ADMIN_ROUTES.DASHBOARD : ROUTES.DASHBOARD);
+      }
     } catch (error) {
       // Email confirmation is the earlier gate (auth.controller.js login checks
       // email_verified_at before is_verified), so it is checked first. It goes

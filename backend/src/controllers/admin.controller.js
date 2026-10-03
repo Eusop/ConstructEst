@@ -10,6 +10,8 @@ import { getEffectiveConstants } from '../services/constants.service.js';
 import { generateUserId } from '../services/userId.service.js';
 import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
 import { UPLOAD_DIR } from '../middleware/upload.js';
+import { cooldownSecondsLeft, issuePasswordResetCode, generateTemporaryPassword, TEMP_PASSWORD_HOURS } from '../services/passwordReset.service.js';
+import { sendTemporaryPasswordNoticeEmail } from '../services/mailer.service.js';
 
 // --- Admin activity log ---
 // Permanent log of admin actions ('user_management' and 'store_management'),
@@ -148,6 +150,59 @@ export const setUserActive = asyncHandler(async (req, res) => {
     `${isActive ? 'Reactivated' : 'Deactivated'} user: ${name}`,
   );
   res.json({ message: isActive ? 'User reactivated.' : 'User deactivated.' });
+});
+
+// --- Password help for a user ---
+// The admin never sees or picks the user's own password. "Send reset code"
+// emails the normal Forgot password code. "Set temporary password" is for a
+// user who can't open their email: the system makes a random one, shows it to
+// the admin once, and the user must replace it at the next sign in.
+async function loadPasswordTarget(req) {
+  const [target] = await query('SELECT * FROM users WHERE id = ?', [req.params.id]);
+  if (!target) throw new HttpError(404, 'User not found.');
+  if (!target.email_verified_at) {
+    throw new HttpError(400, "This user hasn't verified their email yet, so they can't sign in. Verify the account first.");
+  }
+  if (!target.is_active) throw new HttpError(400, 'This account is deactivated. Reactivate it first.');
+  return target;
+}
+
+export const sendUserResetCode = asyncHandler(async (req, res) => {
+  const target = await loadPasswordTarget(req);
+  const wait = cooldownSecondsLeft(target);
+  if (wait > 0) throw new HttpError(429, `A code was just sent. Try again in ${wait} seconds.`);
+  try {
+    await issuePasswordResetCode(target, { byAdmin: true });
+  } catch (err) {
+    console.error('Failed to send admin reset code:', err);
+    throw new HttpError(502, 'The email could not be sent. Check the address, or set a temporary password instead.');
+  }
+  await logAdminActivity(req.user.id, 'user_management', 'password_reset_code_sent',
+    `Sent a password reset code to ${target.first_name} ${target.last_name} (${target.user_id})`);
+  res.json({ message: `Reset code sent to ${target.email}.`, email: target.email });
+});
+
+export const setTemporaryPassword = asyncHandler(async (req, res) => {
+  if (Number(req.params.id) === Number(req.user.id)) {
+    throw new HttpError(400, 'Change your own password from Profile.');
+  }
+  const target = await loadPasswordTarget(req);
+  const temporaryPassword = generateTemporaryPassword();
+  // Clears any pending reset code, so only the temporary password works.
+  await query(
+    `UPDATE users SET password_hash = ?, must_change_password = 1,
+                       temp_password_expires_at = NOW() + INTERVAL ${TEMP_PASSWORD_HOURS} HOUR,
+                       password_reset_code = NULL, password_reset_expires_at = NULL, password_reset_attempts = 0
+     WHERE id = ?`,
+    [bcrypt.hashSync(temporaryPassword, 10), target.id],
+  );
+  await logAdminActivity(req.user.id, 'user_management', 'temporary_password_set',
+    `Set a temporary password for ${target.first_name} ${target.last_name} (${target.user_id})`);
+  // Not awaited: the user may not be able to open this inbox (that is why).
+  sendTemporaryPasswordNoticeEmail(target.email, `${target.first_name} ${target.last_name}`.trim())
+    .catch((err) => console.error('Could not send temporary password notice:', err.message));
+  // Shown to the admin once; it is never stored in plain text or logged.
+  res.json({ temporaryPassword, expiresInHours: TEMP_PASSWORD_HOURS });
 });
 
 export const verifyUser = asyncHandler(async (req, res) => {

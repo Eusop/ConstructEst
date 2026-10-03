@@ -11,6 +11,8 @@ export function toPublicUser(row) {
     accessRole: row.access_role,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
+    // True after signing in with an admin's temporary password, until a new one is set.
+    mustChangePassword: Boolean(row.must_change_password),
   };
 }
 

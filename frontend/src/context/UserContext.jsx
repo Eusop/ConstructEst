@@ -4,7 +4,7 @@ import { resolveAssetUrl } from '../services/apiClient';
 import { sendHeartbeat } from '../services/usersService';
 
 const UserContext = createContext(null);
-const INITIAL_PROFILE = { id: null, userName: null, userId: null, email: null, avatarUrl: null, accessRole: null };
+const INITIAL_PROFILE = { id: null, userName: null, userId: null, email: null, avatarUrl: null, accessRole: null, mustChangePassword: false };
 
 // Feeds the admin "online now" dot (AdminUsersPage.jsx counts last_seen_at
 // within ~90s, double this, as online).
@@ -36,6 +36,7 @@ export function UserProvider({ children }) {
           email: user.email,
           avatarUrl: resolveAssetUrl(user.avatarUrl),
           accessRole: user.accessRole,
+          mustChangePassword: Boolean(user.mustChangePassword),
         });
         setIsAuthenticated(true);
       })

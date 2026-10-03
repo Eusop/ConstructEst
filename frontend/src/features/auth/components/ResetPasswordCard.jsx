@@ -8,8 +8,9 @@ import ResetPasswordForm from './ResetPasswordForm';
 /**
  * Reset Password card: same two-panel shell as LoginCard and SignUpCard.
  * Reuses LoginBrandPanel for the left panel, since its copy fits any auth screen.
+ * `children` replaces the form (Set new password uses the same shell).
  */
-function ResetPasswordCard() {
+function ResetPasswordCard({ children }) {
   return (
     <Paper
       elevation={0}
@@ -49,7 +50,7 @@ function ResetPasswordCard() {
             borderBottomRightRadius: { md: 4 },
           }}
         >
-          <ResetPasswordForm />
+          {children ?? <ResetPasswordForm />}
         </Box>
       </Stack>
     </Paper>

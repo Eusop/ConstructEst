@@ -35,6 +35,9 @@ CREATE TABLE users (
   password_reset_code CHAR(6) NULL,
   password_reset_expires_at TIMESTAMP NULL,
   password_reset_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  -- Admin temporary password (migration 030): must set a new one at sign in.
+  must_change_password TINYINT(1) NOT NULL DEFAULT 0,
+  temp_password_expires_at DATETIME NULL,
   password_reset_last_sent_at TIMESTAMP NULL,
   -- "Online now" for the admin module. Set on login and refreshed by the
   -- heartbeat (migration 015). NULL means never logged in.
