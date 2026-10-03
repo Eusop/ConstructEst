@@ -25,8 +25,6 @@ export function toPublicProject(row) {
     hasSecondFloorFile: Boolean(row.second_floor_dxf_path),
     status: row.status,
     selectedStoreId: row.selected_store_id,
-    // Plywood and lumber price is divided by this (migration 026).
-    formworkUses: row.formwork_uses ?? 1,
     createdAt: row.created_at,
     // Only the project list query selects this column.
     ...(row.has_brand_selection !== undefined && { hasBrandSelection: Boolean(row.has_brand_selection) }),

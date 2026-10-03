@@ -24,6 +24,9 @@ import { colors } from '../../../theme/palette';
 // size fields are dropdowns so an unstocked size can't be typed in.
 const BAR_SIZES_MM = [10, 12, 16];
 
+// "1 use", "2 uses", "12 mm".
+const optionLabel = (value, unit) => `${value} ${unit === 'uses' && Number(value) === 1 ? 'use' : unit}`;
+
 const GROUPS = [
   // Footings first: the engineers start an estimate from the footing up (2026-10-03 meeting).
   {
@@ -85,8 +88,12 @@ const GROUPS = [
   },
   {
     key: 'scaffolding',
-    label: 'Scaffolding',
+    // Reuse divides the price only (engineers, 2026-10-03: formwork about 3
+    // uses, scaffolding about 4).
+    label: 'Formwork & Scaffolding',
     fields: [
+      { key: 'formworkUses', label: 'Formwork uses (plywood, lumber)', unit: 'uses', options: [1, 2, 3] },
+      { key: 'scaffoldingUses', label: 'Scaffolding uses', unit: 'uses', step: 1 },
       { key: 'buildingHeight', label: 'Building height', unit: 'm', step: 0.1 },
       { key: 'scaffoldingSetWidth', label: 'Scaffold set width', unit: 'm', step: 0.01 },
       { key: 'scaffoldingSetHeight', label: 'Scaffold set height', unit: 'm', step: 0.01 },
@@ -264,15 +271,24 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                     size="small"
                     value={overrides[field.key] ?? ''}
                     onChange={(event) => handleFieldChange(field.key, event.target.value)}
-                    slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                      select: {
+                        displayEmpty: true,
+                        // Blank shows the value used in gray, like the other
+                        // fields' placeholders.
+                        renderValue: (value) => (value === ''
+                          ? (
+                            <Typography component="span" sx={{ color: 'text.disabled' }}>
+                              {optionLabel(fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides), field.unit)}
+                            </Typography>
+                          )
+                          : optionLabel(value, field.unit)),
+                      },
+                    }}
                   >
-                    <MenuItem value="">
-                      <Typography component="span" sx={{ color: 'text.secondary' }}>
-                        Default ({fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides)} {field.unit})
-                      </Typography>
-                    </MenuItem>
                     {field.options.map((size) => (
-                      <MenuItem key={size} value={size}>{size} {field.unit}</MenuItem>
+                      <MenuItem key={size} value={size}>{optionLabel(size, field.unit)}</MenuItem>
                     ))}
                   </TextField>
                 ) : (

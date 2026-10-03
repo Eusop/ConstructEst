@@ -41,6 +41,9 @@ const FIELDS = [
   ['columnTieSpacing', 'column_tie_spacing'],
   ['beamStirrupSpacing', 'beam_stirrup_spacing'],
   ['beamStirrupMm', 'beam_stirrup_mm'],
+  // Price only, read by optimization.service.js (migration 029).
+  ['formworkUses', 'formwork_uses'],
+  ['scaffoldingUses', 'scaffolding_uses'],
 ];
 
 // Bar sizes stop at 16mm, the largest Tarlac stores usually carry, and a
@@ -64,6 +67,12 @@ function validateOverrides(overrides) {
   }
   if (given('footingThickness') && !(Number(overrides.footingThickness) >= 0.1 && Number(overrides.footingThickness) <= 2)) {
     throw new HttpError(400, 'Footing thickness must be between 0.10 m and 2.00 m.');
+  }
+  if (given('formworkUses') && ![1, 2, 3].includes(Number(overrides.formworkUses))) {
+    throw new HttpError(400, 'Formwork uses must be 1, 2 or 3.');
+  }
+  if (given('scaffoldingUses') && !(Number.isInteger(Number(overrides.scaffoldingUses)) && Number(overrides.scaffoldingUses) >= 1 && Number(overrides.scaffoldingUses) <= 50)) {
+    throw new HttpError(400, 'Scaffolding uses must be a whole number from 1 to 50.');
   }
   for (const key of ['footingCount', 'columnBarCount']) {
     if (given(key) && !(Number.isInteger(Number(overrides[key])) && Number(overrides[key]) >= 1)) {

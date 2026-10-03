@@ -48,11 +48,13 @@ function toDisplayLineItems(lineItems) {
  * reload (brandSelection is only in React state on the client).
  */
 function BillOfMaterialsPage() {
-  const { activeProject, refreshActiveProjectEstimation, updateActiveProject } = useProjects();
+  const { activeProject, refreshActiveProjectEstimation } = useProjects();
   const { logActivity } = useDashboardActivity();
   const [loadedForKey, setLoadedForKey] = useState(null);
   const [bom, setBom] = useState(null);
   const [savingUses, setSavingUses] = useState(false);
+  // Bumped after the formwork uses change, to reload the prices.
+  const [reloadCount, setReloadCount] = useState(0);
 
   const storeId = activeProject?.selectedStoreId ?? null;
   const materialEstimationDone = activeProject?.status !== 'Parsing' && activeProject?.status !== 'Failed';
@@ -90,8 +92,8 @@ function BillOfMaterialsPage() {
     return () => {
       cancelled = true;
     };
-    // formworkUses: a new value changes plywood and lumber prices, so reload them.
-  }, [activeProject?.id, storeId, activeProject?.formworkUses, refreshActiveProjectEstimation]);
+    // reloadCount: a new formwork uses value changes plywood and lumber prices.
+  }, [activeProject?.id, storeId, reloadCount, refreshActiveProjectEstimation]);
 
   if (!activeProject) {
     return <NoActiveProjectState />;
@@ -141,12 +143,12 @@ function BillOfMaterialsPage() {
     'materials only',
   ];
 
-  const formworkUses = activeProject.formworkUses ?? 1;
+  const formworkUses = bom.formworkUses ?? 1;
   const handleFormworkUsesChange = async (uses) => {
     setSavingUses(true);
     try {
       await apiRequest(`/projects/${activeProject.id}/formwork-uses`, { method: 'PUT', body: { formworkUses: uses } });
-      updateActiveProject({ formworkUses: uses });
+      setReloadCount((count) => count + 1);
     } finally {
       setSavingUses(false);
     }

@@ -341,13 +341,18 @@ export const getProjectBom = asyncHandler(async (req, res) => {
 });
 
 // Formwork can be reused about 3 times when sizes repeat (engineers,
-// 2026-10-03), so the project picks 1 to 3 uses. Only the price changes.
+// 2026-10-03). The Bill of Materials picker saves the same design parameter
+// as the Design parameters field (migration 029). Only the price changes.
 export const putProjectFormworkUses = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
   const uses = Number(req.body?.formworkUses);
   if (![1, 2, 3].includes(uses)) throw new HttpError(400, 'Formwork uses must be 1, 2 or 3.');
-  await query('UPDATE projects SET formwork_uses = ? WHERE id = ?', [uses, project.id]);
+  await query(
+    `INSERT INTO project_design_overrides (project_id, formwork_uses) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE formwork_uses = VALUES(formwork_uses)`,
+    [project.id, uses],
+  );
   res.json({ formworkUses: uses });
 });
 

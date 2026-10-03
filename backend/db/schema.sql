@@ -66,7 +66,6 @@ CREATE TABLE projects (
   second_floor_dxf_path VARCHAR(500) NULL,
   second_floor_dxf_original_name VARCHAR(255) NULL,
   selected_store_id INT UNSIGNED NULL,
-  formwork_uses TINYINT UNSIGNED NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -250,6 +249,8 @@ CREATE TABLE project_design_overrides (
   column_tie_spacing DECIMAL(5,3) NULL,
   beam_stirrup_spacing DECIMAL(5,3) NULL,
   beam_stirrup_mm SMALLINT UNSIGNED NULL,
+  formwork_uses TINYINT UNSIGNED NULL,
+  scaffolding_uses SMALLINT UNSIGNED NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_design_overrides_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE KEY uq_design_overrides_project (project_id)

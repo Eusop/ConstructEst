@@ -61,7 +61,6 @@ function toContextProject(serverProject, extra = {}) {
         ? (serverProject.hasBrandSelection ? 'Optimized' : 'Estimated')
         : serverProject.status === 'failed' ? 'Failed' : 'Parsing',
     selectedStoreId: serverProject.selectedStoreId,
-    formworkUses: serverProject.formworkUses ?? 1,
     brandSelection: null,
     createdAt: new Date(serverProject.createdAt).getTime(),
     estimation: null,

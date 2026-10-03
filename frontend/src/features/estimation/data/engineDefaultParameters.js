@@ -37,6 +37,8 @@ export function getEngineDefaults(storeys) {
     buildingHeight: storeys != null ? storeys * 3.0 : null,
     scaffoldingSetWidth: 1.8,
     scaffoldingSetHeight: 1.2,
+    formworkUses: 1, // price only: plywood and lumber price / uses
+    scaffoldingUses: 4, // price only, engineers' figure (2026-10-03)
     scaffoldingSetCount: null, // derived from perimeter x height / coverage, not a fixed default
     riserHeight: 0.18,
     treadDepth: 0.25,
