@@ -2,7 +2,7 @@
 -- 2026-10-03 meeting: formwork about 3 uses, scaffolding about 4). Both only
 -- divide the price; quantities stay the same.
 --   formwork_uses: 1 to 3. Blank = 1.
---   scaffolding_uses: blank = 4 (optimization.service.js). Replaces the
+--   scaffolding_uses: 1 to 10, blank = 4 (optimization.service.js). Replaces the
 --   SCAFFOLDING_REUSE_COUNT server setting, and the admin global row can set it.
 -- Project values saved by migration 026 (projects.formwork_uses) are copied
 -- over, then that column is dropped.

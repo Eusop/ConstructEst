@@ -71,8 +71,8 @@ function validateOverrides(overrides) {
   if (given('formworkUses') && ![1, 2, 3].includes(Number(overrides.formworkUses))) {
     throw new HttpError(400, 'Formwork uses must be 1, 2 or 3.');
   }
-  if (given('scaffoldingUses') && !(Number.isInteger(Number(overrides.scaffoldingUses)) && Number(overrides.scaffoldingUses) >= 1 && Number(overrides.scaffoldingUses) <= 50)) {
-    throw new HttpError(400, 'Scaffolding uses must be a whole number from 1 to 50.');
+  if (given('scaffoldingUses') && !(Number.isInteger(Number(overrides.scaffoldingUses)) && Number(overrides.scaffoldingUses) >= 1 && Number(overrides.scaffoldingUses) <= 10)) {
+    throw new HttpError(400, 'Scaffolding uses must be a whole number from 1 to 10.');
   }
   for (const key of ['footingCount', 'columnBarCount']) {
     if (given(key) && !(Number.isInteger(Number(overrides[key])) && Number(overrides[key]) >= 1)) {
