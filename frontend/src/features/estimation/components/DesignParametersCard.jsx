@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
 import Link from '@mui/material/Link';
 import Alert from '@mui/material/Alert';
 import Accordion from '@mui/material/Accordion';
@@ -18,6 +20,10 @@ import { colors } from '../../../theme/palette';
 // Every field mirrors an `overrides.get("<key>", default)` call in engine/formulas.py.
 // A blank field sends `null`, which the backend drops, so the engine uses its
 // built-in default. Nothing here is required.
+// Bar sizes local stores usually carry (engineers, 2026-10-03 meeting). Bar
+// size fields are dropdowns so an unstocked size can't be typed in.
+const BAR_SIZES_MM = [10, 12, 16];
+
 const GROUPS = [
   // Footings first: the engineers start an estimate from the footing up (2026-10-03 meeting).
   {
@@ -27,6 +33,8 @@ const GROUPS = [
       { key: 'footingWidth', label: 'Footing width', unit: 'm', step: 0.01 },
       { key: 'footingLength', label: 'Footing length', unit: 'm', step: 0.01 },
       { key: 'footingDepth', label: 'Footing depth', unit: 'm', step: 0.1 },
+      { key: 'footingCount', label: 'Footing count', unit: 'pcs', step: 1, projectOnly: true },
+      { key: 'footingRebarKgPerM3', label: 'Footing rebar (16mm)', unit: 'kg/m³', step: 5 },
     ],
   },
   {
@@ -37,6 +45,9 @@ const GROUPS = [
       { key: 'columnDepth', label: 'Column depth', unit: 'm', step: 0.01 },
       { key: 'columnHeight', label: 'Column height', unit: 'm', step: 0.1 },
       { key: 'columnCount', label: 'Column count', unit: 'pcs', step: 1 },
+      { key: 'columnBarCount', label: 'Main bars per column', unit: 'pcs', step: 1 },
+      { key: 'columnBarMm', label: 'Column bar size', unit: 'mm', options: BAR_SIZES_MM },
+      { key: 'columnTieSpacing', label: 'Column tie spacing', unit: 'm', step: 0.01 },
       // Only meaningful with a separate second floor DXF. Hidden on a 1-storey
       // project, shown on the admin page (storeys unknown).
       { key: 'columnWidthSecond', label: '2nd floor column width', unit: 'm', step: 0.01, twoStoreyOnly: true },
@@ -48,7 +59,10 @@ const GROUPS = [
       // default would give every project the same schedule).
       { key: 'beamRebarLength', label: 'Beam rebar total length', unit: 'm', step: 1, projectOnly: true },
       // Capped at 16mm, the largest size Tarlac stores usually carry (2026-10-03 meeting).
-      { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', step: 1, max: 16, projectOnly: true },
+      { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', options: BAR_SIZES_MM, projectOnly: true },
+      // Stirrups are only computed when a spacing is entered, like beam rebar.
+      { key: 'beamStirrupSpacing', label: 'Beam stirrup spacing', unit: 'm', step: 0.01 },
+      { key: 'beamStirrupMm', label: 'Beam stirrup bar size', unit: 'mm', options: BAR_SIZES_MM },
     ],
   },
   {
@@ -61,6 +75,10 @@ const GROUPS = [
       { key: 'treadDepth', label: 'Tread depth', unit: 'm', step: 0.01 },
       { key: 'waistThickness', label: 'Waist thickness', unit: 'm', step: 0.01 },
       { key: 'stairRebarSpacing', label: 'Stair rebar spacing', unit: 'm', step: 0.01 },
+      { key: 'groundSlabBarMm', label: 'Ground slab bar size', unit: 'mm', options: BAR_SIZES_MM },
+      { key: 'groundSlabBarSpacing', label: 'Ground slab bar spacing', unit: 'm', step: 0.01 },
+      { key: 'secondSlabBarMm', label: '2nd floor slab bar size', unit: 'mm', options: BAR_SIZES_MM, twoStoreyOnly: true },
+      { key: 'secondSlabBarSpacing', label: '2nd floor slab bar spacing', unit: 'm', step: 0.01, twoStoreyOnly: true },
     ],
   },
   {
@@ -94,6 +112,9 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
   // Blank means no beam rebar at all (no computed default), not an automatic
   // value, so "Auto" would be misleading.
   if (fieldKey === 'beamRebarLength') return 'None (from schedule)';
+  if (fieldKey === 'beamStirrupSpacing') return 'None (from plan)';
+  if (fieldKey === 'columnTieSpacing') return 'Code max';
+  if (fieldKey === 'footingCount') return overrides.columnCount != null ? String(overrides.columnCount) : 'Same as columns';
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
     if (value != null) return String(value);
@@ -125,16 +146,16 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
  */
 function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null, effectiveDefaults = null }) {
   const isMobile = useIsMobile();
+  // Decided once: Accordion warns if defaultExpanded changes later (e.g. rotating a tablet).
+  const [openFirstGroup] = useState(!isMobile);
   const showTwoStoreyNotice = storeys != null && storeys >= 2 && overrides.columnWidth == null && overrides.columnDepth == null;
-  const handleFieldChange = (key, rawValue, max) => {
+  const handleFieldChange = (key, rawValue) => {
     if (rawValue === '') {
       onOverrideChange(key, null);
       return;
     }
     const parsed = Number(rawValue);
-    // Typing past `max` keeps the max, since the backend rejects larger values.
-    const value = Number.isFinite(parsed) && max != null ? Math.min(parsed, max) : parsed;
-    onOverrideChange(key, Number.isFinite(value) ? value : null);
+    onOverrideChange(key, Number.isFinite(parsed) ? parsed : null);
   };
 
   return (
@@ -184,7 +205,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
           <Accordion
             key={group.key}
             // Mobile: every group starts closed. Desktop opens the first group.
-            defaultExpanded={!isMobile && index === 0}
+            defaultExpanded={openFirstGroup && index === 0}
             disableGutters
             elevation={0}
             sx={{
@@ -215,23 +236,41 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                 {group.fields
                   .filter((field) => !field.twoStoreyOnly || storeys == null || storeys >= 2)
                   .filter((field) => !field.projectOnly || storeys != null)
-                  .map((field) => (
+                  .map((field) => (field.options ? (
+                  <TextField
+                    key={field.key}
+                    select
+                    label={field.label}
+                    size="small"
+                    value={overrides[field.key] ?? ''}
+                    onChange={(event) => handleFieldChange(field.key, event.target.value)}
+                    slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
+                  >
+                    <MenuItem value="">
+                      <Typography component="span" sx={{ color: 'text.secondary' }}>
+                        Default ({fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides)} {field.unit})
+                      </Typography>
+                    </MenuItem>
+                    {field.options.map((size) => (
+                      <MenuItem key={size} value={size}>{size} {field.unit}</MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
                   <TextField
                     key={field.key}
                     label={field.label}
                     type="number"
                     size="small"
                     value={overrides[field.key] ?? ''}
-                    onChange={(event) => handleFieldChange(field.key, event.target.value, field.max)}
-                    helperText={field.max ? `Up to ${field.max} ${field.unit}` : undefined}
+                    onChange={(event) => handleFieldChange(field.key, event.target.value)}
                     placeholder={fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides)}
                     slotProps={{
                       inputLabel: { shrink: true },
                       input: { endAdornment: <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{field.unit}</Typography> },
-                      htmlInput: { step: field.step, min: 0, max: field.max },
+                      htmlInput: { step: field.step, min: 0 },
                     }}
                   />
-                ))}
+                )))}
               </Box>
               {group.key === 'columnsAndBeams' && storeys != null && (
                 <MemberScheduleHelper

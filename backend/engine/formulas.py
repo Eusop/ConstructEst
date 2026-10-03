@@ -106,6 +106,8 @@ COLUMN_BAR_DOWEL_FACTOR = 20
 # Footing rebar by weight per m3 of footing concrete, 16mm bars (the engineers,
 # 2026-10-03 meeting). Rebar is bought in 6 m lengths (same meeting).
 FOOTING_REBAR_KG_PER_M3 = 150
+# Beam stirrup bar size when a spacing is entered but no size (Fajardo's examples).
+BEAM_STIRRUP_DEFAULT_MM = 10
 REBAR_BAR_LENGTH_M = 6.0
 COLUMN_COVER_M = 0.04
 TIE_HOOK_M = 0.10
@@ -143,6 +145,12 @@ def default_column_size(storeys):
 
 def default_footing_depth(storeys):
     return 2.0 if storeys >= 2 else 1.5
+
+
+def bar_unit_weight(diameter_mm):
+    """kg/m for a bar size: the table values for 10/12/16mm, else d^2/162."""
+    return {10: REBAR_UNIT_WEIGHT_10MM_KG_PER_M, 12: REBAR_UNIT_WEIGHT_12MM_KG_PER_M,
+            16: REBAR_UNIT_WEIGHT_16MM_KG_PER_M}.get(diameter_mm, (diameter_mm ** 2) / 162)
 
 
 def rebar_unit_weight_kg_per_m(diameter_mm):
@@ -284,10 +292,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             bags_per_m2, sand_per_m2 = MORTAR_PER_M2[chb_size]
             mortar_cement = area * bags_per_m2 * cement_factor
             mortar_sand = area * sand_per_m2
-            acc.add("cement", mortar_cement, "Wall area x mortar rate (Fajardo Table 2-2)", storey_category,
+            acc.add("cement", mortar_cement, "Wall area x mortar rate", storey_category,
                     f"{floor_label} {chb_size} CHB mortar: {num(area)} m2 x {bags_per_m2} bags per m2 x "
                     f"{num(cement_factor)} cement factor = {num(mortar_cement)} bags")
-            acc.add("sand", mortar_sand, "Wall area x mortar rate (Fajardo Table 2-2)", storey_category,
+            acc.add("sand", mortar_sand, "Wall area x mortar rate", storey_category,
                     f"{floor_label} {chb_size} CHB mortar: {num(area)} m2 x {sand_per_m2} m3 per m2 = {num(mortar_sand, 3)} m3")
 
         # Fajardo Table 3-5: 10mm vertical @ 0.60 m and horizontal every 3
@@ -297,13 +305,13 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         rebar_weight_by_category[storey_category] += wall_rebar_kg
         add_bar_length(10, wall_rebar_length_m)
         rebar_steps.append(
-            f"{floor_label} walls, 10mm (Fajardo Table 3-5): {num(net_wall_area)} m2 x "
+            f"{floor_label} walls, 10mm: {num(net_wall_area)} m2 x "
             f"({WALL_REBAR_VERTICAL_M_PER_M2} + {WALL_REBAR_HORIZONTAL_M_PER_M2}) m per m2 = "
             f"{num(wall_rebar_length_m)} m x 0.617 kg/m = {num(wall_rebar_kg)} kg")
         wall_tie_wire_kg = net_wall_area * WALL_TIE_WIRE_KG_PER_M2
         tie_wire_by_category[storey_category] += wall_tie_wire_kg
         tie_wire_steps.append(
-            f"{floor_label} walls (Fajardo Table 3-6): {num(net_wall_area)} m2 x {WALL_TIE_WIRE_KG_PER_M2} kg per m2 = {num(wall_tie_wire_kg)} kg")
+            f"{floor_label} walls: {num(net_wall_area)} m2 x {WALL_TIE_WIRE_KG_PER_M2} kg per m2 = {num(wall_tie_wire_kg)} kg")
 
     # --- Table 13: Slab materials ------------------------------------------
     ground_slab_volume = floor_area_m2 * 0.15
@@ -313,15 +321,18 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     if bounds:
         floor_len = max(bounds[2] - bounds[0], 0.01)
         floor_wid = max(bounds[3] - bounds[1], 0.01)
-        rebar_len_count = ceil_int(floor_len / 0.30) + 1
-        rebar_wid_count = ceil_int(floor_wid / 0.30) + 1
+        # Bar size and spacing can come from the plan (engineers, 2026-10-03).
+        ground_bar_mm = overrides.get("groundSlabBarMm", 10)
+        ground_spacing = overrides.get("groundSlabBarSpacing", 0.30)
+        rebar_len_count = ceil_int(floor_len / ground_spacing) + 1
+        rebar_wid_count = ceil_int(floor_wid / ground_spacing) + 1
         ground_slab_rebar_length_m = rebar_len_count * floor_wid + rebar_wid_count * floor_len
-        ground_slab_rebar_kg = ground_slab_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        ground_slab_rebar_kg = ground_slab_rebar_length_m * bar_unit_weight(ground_bar_mm)
         rebar_weight_by_category["ground"] += ground_slab_rebar_kg
-        add_bar_length(10, ground_slab_rebar_length_m)
+        add_bar_length(ground_bar_mm, ground_slab_rebar_length_m)
         rebar_steps.append(
-            f"Ground slab, 10mm @ 0.30 m: {rebar_len_count} bars x {num(floor_wid)} m + {rebar_wid_count} bars x "
-            f"{num(floor_len)} m = {num(ground_slab_rebar_length_m)} m x 0.617 kg/m = {num(ground_slab_rebar_kg)} kg")
+            f"Ground slab, {ground_bar_mm}mm @ {num(ground_spacing)} m: {rebar_len_count} bars x {num(floor_wid)} m + {rebar_wid_count} bars x "
+            f"{num(floor_len)} m = {num(ground_slab_rebar_length_m)} m x {num(bar_unit_weight(ground_bar_mm), 3)} kg/m = {num(ground_slab_rebar_kg)} kg")
         add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Ground slab", "ground")
 
     if storeys >= 2:
@@ -338,15 +349,17 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         if suspended_bounds:
             suspended_len = max(suspended_bounds[2] - suspended_bounds[0], 0.01)
             suspended_wid = max(suspended_bounds[3] - suspended_bounds[1], 0.01)
-            rebar_len_count = ceil_int(suspended_len / 0.15) + 1
-            rebar_wid_count = ceil_int(suspended_wid / 0.15) + 1
+            second_bar_mm = overrides.get("secondSlabBarMm", 12)
+            second_spacing = overrides.get("secondSlabBarSpacing", 0.15)
+            rebar_len_count = ceil_int(suspended_len / second_spacing) + 1
+            rebar_wid_count = ceil_int(suspended_wid / second_spacing) + 1
             suspended_slab_rebar_length_m = rebar_len_count * suspended_wid + rebar_wid_count * suspended_len
-            suspended_slab_rebar_kg = suspended_slab_rebar_length_m * REBAR_UNIT_WEIGHT_12MM_KG_PER_M
+            suspended_slab_rebar_kg = suspended_slab_rebar_length_m * bar_unit_weight(second_bar_mm)
             rebar_weight_by_category[suspended_category] += suspended_slab_rebar_kg
-            add_bar_length(12, suspended_slab_rebar_length_m)
+            add_bar_length(second_bar_mm, suspended_slab_rebar_length_m)
             rebar_steps.append(
-                f"Second floor slab, 12mm @ 0.15 m: {rebar_len_count} bars x {num(suspended_wid)} m + {rebar_wid_count} bars x "
-                f"{num(suspended_len)} m = {num(suspended_slab_rebar_length_m)} m x 0.889 kg/m = {num(suspended_slab_rebar_kg)} kg")
+                f"Second floor slab, {second_bar_mm}mm @ {num(second_spacing)} m: {rebar_len_count} bars x {num(suspended_wid)} m + {rebar_wid_count} bars x "
+                f"{num(suspended_len)} m = {num(suspended_slab_rebar_length_m)} m x {num(bar_unit_weight(second_bar_mm), 3)} kg/m = {num(suspended_slab_rebar_kg)} kg")
             add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Second floor slab", suspended_category)
 
     # --- Table 14: Column materials -----------------------------------------
@@ -380,10 +393,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # Column rebar. Diameter is validated (12mm 1-storey, 16mm 2-storey). Bar
     # count is validated only for a bungalow (Reply 3); for 2-storey it depends
     # on the structural design (see the module docstring, docs/nscp-citations.md).
-    column_rebar_diameter_mm = COLUMN_REBAR_DIAMETER_MM[2 if storeys >= 2 else 1]
-    column_rebar_unit_weight = (
-        REBAR_UNIT_WEIGHT_16MM_KG_PER_M if column_rebar_diameter_mm == 16 else REBAR_UNIT_WEIGHT_12MM_KG_PER_M
-    )
+    # Bar count and size can come from the column schedule (engineers, 2026-10-03).
+    column_bar_count = overrides.get("columnBarCount", COLUMN_REBAR_BAR_COUNT)
+    column_rebar_diameter_mm = overrides.get("columnBarMm", COLUMN_REBAR_DIAMETER_MM[2 if storeys >= 2 else 1])
+    column_rebar_unit_weight = bar_unit_weight(column_rebar_diameter_mm)
     # Main bars run past the floor height (Fajardo Sec. 3-7, Illustration 3-7):
     # a bend at the footing and the footing depth below the ground floor, plus
     # a 20 x bar size dowel into the floor above. Beam and slab depth are
@@ -393,28 +406,30 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     dowel_m = COLUMN_BAR_DOWEL_FACTOR * column_rebar_diameter_mm / 1000
     ground_n = column_floors[0][3]
     joints = storeys - 1
-    column_bar_m = sum(n * COLUMN_REBAR_BAR_COUNT * h for _w, _d, h, n in column_floors)
-    column_extra_m = ground_n * COLUMN_REBAR_BAR_COUNT * (bottom_extra_m + joints * dowel_m)
+    column_bar_m = sum(n * column_bar_count * h for _w, _d, h, n in column_floors)
+    column_extra_m = ground_n * column_bar_count * (bottom_extra_m + joints * dowel_m)
     column_rebar_length_m = column_bar_m + column_extra_m
     column_rebar_kg = column_rebar_length_m * column_rebar_unit_weight
     rebar_weight_by_category["shared"] += column_rebar_kg
     add_bar_length(column_rebar_diameter_mm, column_rebar_length_m)
-    column_bar_parts = ' + '.join(f"{n} columns x {COLUMN_REBAR_BAR_COUNT} bars x {num(h)} m" for _w, _d, h, n in column_floors)
+    column_bar_parts = ' + '.join(f"{n} columns x {column_bar_count} bars x {num(h)} m" for _w, _d, h, n in column_floors)
     dowel_part = f" + {joints} x {num(dowel_m)} m dowel" if joints else ""
     rebar_steps.append(
         f"Columns, {column_rebar_diameter_mm}mm: {column_bar_parts} = {num(column_bar_m)} m, + {ground_n} columns x "
-        f"{COLUMN_REBAR_BAR_COUNT} bars x ({num(COLUMN_BAR_FOOTING_BEND_M)} m bend + {num(footing_depth)} m footing depth{dowel_part}) "
-        f"= {num(column_extra_m)} m (Fajardo Sec. 3-7), total {num(column_rebar_length_m)} m x "
+        f"{column_bar_count} bars x ({num(COLUMN_BAR_FOOTING_BEND_M)} m bend + {num(footing_depth)} m footing depth{dowel_part}) "
+        f"= {num(column_extra_m)} m, total {num(column_rebar_length_m)} m x "
         f"{num(column_rebar_unit_weight, 3)} kg/m = {num(column_rebar_kg)} kg")
 
     # Column ties (Fajardo Sec. 3-9, same rule as NSCP 425.7.2): 10mm ties for
     # main bars up to 30mm, spaced at the smallest of 16 x main bar, 48 x tie
     # bar, or the column's least side. Ties per column = height / spacing + 1.
+    # A spacing from the plan replaces the code maximum.
+    tie_spacing_override = overrides.get("columnTieSpacing")
     tie_count = 0
     tie_length_m = 0.0
     tie_parts = []
     for w, d, h, n in column_floors:
-        spacing = min(16 * column_rebar_diameter_mm / 1000, 48 * COLUMN_TIE_DIAMETER_MM / 1000, w, d)
+        spacing = tie_spacing_override or min(16 * column_rebar_diameter_mm / 1000, 48 * COLUMN_TIE_DIAMETER_MM / 1000, w, d)
         ties_per_column = ceil_int(h / spacing) + 1
         # One tie wraps the bars inside the cover, plus two hooks. Matches
         # Fajardo's 1.80 m tie for a 0.50 m column (Illustration 3-9).
@@ -426,12 +441,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     rebar_weight_by_category["shared"] += column_tie_kg
     add_bar_length(COLUMN_TIE_DIAMETER_MM, tie_length_m)
     rebar_steps.append(
-        f"Column ties, 10mm (Fajardo Sec. 3-9): {' + '.join(tie_parts)} = {num(tie_length_m)} m x 0.617 kg/m = {num(column_tie_kg)} kg")
+        f"Column ties, 10mm: {' + '.join(tie_parts)} = {num(tie_length_m)} m x 0.617 kg/m = {num(column_tie_kg)} kg")
     # Each tie is wired to every main bar (Fajardo Illustration 3-9, 0.40 m per tie).
-    column_tie_wire_kg = tie_count * COLUMN_REBAR_BAR_COUNT * COLUMN_TIE_WIRE_LENGTH_M / TIE_WIRE_M_PER_KG
+    column_tie_wire_kg = tie_count * column_bar_count * COLUMN_TIE_WIRE_LENGTH_M / TIE_WIRE_M_PER_KG
     tie_wire_by_category["shared"] += column_tie_wire_kg
     tie_wire_steps.append(
-        f"Column ties: {tie_count:,} ties x {COLUMN_REBAR_BAR_COUNT} bars x {COLUMN_TIE_WIRE_LENGTH_M} m / "
+        f"Column ties: {tie_count:,} ties x {column_bar_count} bars x {COLUMN_TIE_WIRE_LENGTH_M} m / "
         f"{TIE_WIRE_M_PER_KG} m per kg = {num(column_tie_wire_kg)} kg")
 
     # --- Table 15: Beam materials ------------------------------------------
@@ -487,6 +502,29 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         tie_wire_by_category["shared"] += beam_tie_wire_kg
         tie_wire_steps.append(f"Beams: {num(beam_rebar_kg)} kg of bars x 1 kg per 100 kg = {num(beam_tie_wire_kg)} kg")
 
+    # Beam stirrups, only when a spacing is entered from the plan (engineers,
+    # 2026-10-03), like beam rebar. Count runs over the total beam length, so
+    # the + 1 per beam end is not added for every member. Length uses the same
+    # cover and hooks as column ties. Tie wire: 4 corner bars per stirrup.
+    stirrup_spacing = overrides.get("beamStirrupSpacing")
+    if stirrup_spacing:
+        stirrup_mm = overrides.get("beamStirrupMm", BEAM_STIRRUP_DEFAULT_MM)
+        stirrups = ceil_int(beam_length_total / stirrup_spacing) + 1
+        one_stirrup_m = 2 * (beam_w + beam_d) - 8 * COLUMN_COVER_M + 2 * TIE_HOOK_M
+        stirrup_length_m = stirrups * one_stirrup_m
+        stirrup_kg = stirrup_length_m * bar_unit_weight(stirrup_mm)
+        rebar_weight_by_category["shared"] += stirrup_kg
+        add_bar_length(stirrup_mm, stirrup_length_m)
+        rebar_steps.append(
+            f"Beam stirrups, {stirrup_mm}mm @ {num(stirrup_spacing)} m: {num(beam_length_total)} m / {num(stirrup_spacing)} m + 1 = "
+            f"{stirrups:,} stirrups x {num(one_stirrup_m)} m = {num(stirrup_length_m)} m x "
+            f"{num(bar_unit_weight(stirrup_mm), 3)} kg/m = {num(stirrup_kg)} kg")
+        stirrup_tie_wire_kg = stirrups * 4 * COLUMN_TIE_WIRE_LENGTH_M / TIE_WIRE_M_PER_KG
+        tie_wire_by_category["shared"] += stirrup_tie_wire_kg
+        tie_wire_steps.append(
+            f"Beam stirrups: {stirrups:,} stirrups x 4 corner bars x {COLUMN_TIE_WIRE_LENGTH_M} m / "
+            f"{TIE_WIRE_M_PER_KG} m per kg = {num(stirrup_tie_wire_kg)} kg")
+
     # --- Table 16: Roofing materials ----------------------------------------
     # The roof sits on the top floor, so read ROOF from the second floor file if given.
     roof_source = geometry2 if geometry2 is not None else geometry
@@ -501,21 +539,21 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         # (1 1/2 corrugation side lap) and loses the end lap along the slope.
         sheet_cover_m2 = ROOF_SHEET_EFFECTIVE_WIDTH_M * (ROOF_SHEET_LENGTH_M - ROOF_SHEET_END_LAP_M)
         sheets = roof_area_m2 / sheet_cover_m2
-        acc.add("roofingSheets", sheets, "Roof area / sheet coverage (Fajardo Table 6-2)", "roofing",
+        acc.add("roofingSheets", sheets, "Roof area / sheet coverage", "roofing",
                 f"Roof area: {num(roof_floor_area_m2)} m2 top floor x {num(PITCH_MULTIPLIER, 3)} pitch (1:3) x "
                 f"{num(roofing_factor)} roofing factor = {num(roof_area_m2)} m2 / ({ROOF_SHEET_EFFECTIVE_WIDTH_M} m effective width x "
                 f"({ROOF_SHEET_LENGTH_M} m - {ROOF_SHEET_END_LAP_M} m end lap) = {num(sheet_cover_m2, 3)} m2 per sheet) = {num(sheets)} sheets")
         purlin_run_m = roof_perimeter_m / 2
         purlins = ceil_int(purlin_run_m / PURLIN_SPACING_M) + 1
-        acc.add("purlins", purlins, "Roof run / purlin spacing (Fajardo Table 6-2)", "roofing",
+        acc.add("purlins", purlins, "Roof run / purlin spacing", "roofing",
                 f"Roof run: {num(roof_perimeter_m)} m roof perimeter / 2 = {num(purlin_run_m)} m / {PURLIN_SPACING_M} m spacing, rounded up, + 1 = {purlins} rows")
         ridge_piece_m = ROOF_ACCESSORY_LENGTH_M["ridge"]
         ridge = ceil_int(roof_ridge_length_m / ridge_piece_m)
-        acc.add("ridge", ridge, "Ridge length / ridge roll length (Fajardo Table 6-6)", "roofing",
+        acc.add("ridge", ridge, "Ridge length / ridge roll length", "roofing",
                 f"Ridge length {num(roof_ridge_length_m)} m / {ridge_piece_m} m per ridge roll, rounded up = {ridge} pieces")
         flashing_piece_m = ROOF_ACCESSORY_LENGTH_M["flashing"]
         flashing = ceil_int(roof_perimeter_m / flashing_piece_m)
-        acc.add("flashing", flashing, "Roof perimeter / flashing length (Fajardo Table 6-6)", "roofing",
+        acc.add("flashing", flashing, "Roof perimeter / flashing length", "roofing",
                 f"Roof perimeter {num(roof_perimeter_m)} m / {flashing_piece_m} m per flashing, rounded up = {flashing} pieces")
         # Doubled per Engr. Espiritu (Reply 1). The larger size is a catalog
         # matter. Stays a roof-perimeter estimate even with a TRUSS layer,
@@ -525,24 +563,27 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                 f"Roof perimeter {num(roof_perimeter_m)} m / 6 m per piece, rounded up = {angle_pieces} pieces x 2 (double angle) = {angle_pieces * 2} pieces")
         gutter_piece_m = ROOF_ACCESSORY_LENGTH_M["gutter"]
         gutter = ceil_int(roof_perimeter_m / gutter_piece_m)
-        acc.add("gutter", gutter, "Roof eave length / gutter length (Fajardo Table 6-6, eave from roof perimeter)", "roofing",
+        acc.add("gutter", gutter, "Roof eave length / gutter length (eave from roof perimeter)", "roofing",
                 f"Eave length taken as the roof perimeter {num(roof_perimeter_m)} m / {gutter_piece_m} m per gutter, rounded up = {gutter} pieces")
 
     # --- Table 17: Footing materials ----------------------------------------
     footing_w = overrides.get("footingWidth", 0.60)
     footing_l = overrides.get("footingLength", 0.60)
-    footing_volume = footing_w * footing_l * footing_depth * column_count
+    # One footing per ground floor column unless the plan says otherwise.
+    footing_count = overrides.get("footingCount", column_count)
+    footing_volume = footing_w * footing_l * footing_depth * footing_count
     acc.add_concrete_mix(footing_volume, cement_factor, "Footing volume x count", "shared",
-                         f"Footings {column_count} x {num(footing_w)} x {num(footing_l)} x {num(footing_depth)} m")
+                         f"Footings {footing_count} x {num(footing_w)} x {num(footing_l)} x {num(footing_depth)} m")
     # Footing rebar: 150 kg of 16mm bars per m3 of footing concrete (the
     # engineers, 2026-10-03 meeting). No bar grid to count ties from, so tie
     # wire is 1 kg per 100 kg of bars (our assumption).
-    footing_rebar_kg = footing_volume * FOOTING_REBAR_KG_PER_M3
+    footing_rebar_rate = overrides.get("footingRebarKgPerM3", FOOTING_REBAR_KG_PER_M3)
+    footing_rebar_kg = footing_volume * footing_rebar_rate
     footing_rebar_m = footing_rebar_kg / REBAR_UNIT_WEIGHT_16MM_KG_PER_M
     rebar_weight_by_category["shared"] += footing_rebar_kg
     add_bar_length(16, footing_rebar_m)
     rebar_steps.append(
-        f"Footings, 16mm: {num(footing_volume, 3)} m3 x {FOOTING_REBAR_KG_PER_M3} kg per m3 = {num(footing_rebar_kg)} kg "
+        f"Footings, 16mm: {num(footing_volume, 3)} m3 x {num(footing_rebar_rate)} kg per m3 = {num(footing_rebar_kg)} kg "
         f"({num(footing_rebar_m)} m at 1.580 kg/m)")
     footing_tie_wire_kg = footing_rebar_kg / 100
     tie_wire_by_category["shared"] += footing_tie_wire_kg
@@ -645,7 +686,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     column_lumber = column_formwork_area / FAJARDO_FORM_SHEET_M2 * COLUMN_FORM_BDFT_PER_SHEET
     beam_lumber = beam_formwork_area / FAJARDO_FORM_SHEET_M2 * BEAM_FORM_BDFT_PER_SHEET
     lumber = column_lumber + beam_lumber
-    acc.add("lumber", lumber, "Form area / 2.88 m2 x frame bd.ft. per sheet (Fajardo Table 5-1)", "shared",
+    acc.add("lumber", lumber, "Form area / 2.88 m2 x frame bd.ft. per sheet", "shared",
             f"Columns {num(column_formwork_area)} m2 / {FAJARDO_FORM_SHEET_M2} m2 x {COLUMN_FORM_BDFT_PER_SHEET} bd.ft. = {num(column_lumber)} bd.ft.")
     acc.steps["lumber"].append(
         f"Beams {num(beam_formwork_area)} m2 / {FAJARDO_FORM_SHEET_M2} m2 x {BEAM_FORM_BDFT_PER_SHEET} bd.ft. = {num(beam_lumber)} bd.ft.")
@@ -659,7 +700,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             acc.add("steelRebar", weight_kg * steel_factor / 1000, "Reinforcement length x unit weight", category)
     for category, tie_kg in tie_wire_by_category.items():
         if tie_kg > 0:
-            acc.add("tieWire", tie_kg * steel_factor, "Ties counted from the bars (Fajardo Sec. 3-5)", category)
+            acc.add("tieWire", tie_kg * steel_factor, "Ties counted from the bars", category)
     total_rebar_kg = sum(rebar_weight_by_category.values())
     if total_rebar_kg > 0:
         adjusted_total_kg = total_rebar_kg * steel_factor

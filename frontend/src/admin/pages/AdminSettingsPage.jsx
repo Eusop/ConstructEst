@@ -23,6 +23,9 @@ const EMPTY_OVERRIDES = {
   riserHeight: null, treadDepth: null, waistThickness: null, stairRebarSpacing: null,
   columnWidthSecond: null, columnDepthSecond: null,
   beamRebarLength: null, beamRebarDiameterMm: null,
+  footingCount: null, footingRebarKgPerM3: null,
+  groundSlabBarMm: null, groundSlabBarSpacing: null, secondSlabBarMm: null, secondSlabBarSpacing: null,
+  columnBarCount: null, columnBarMm: null, columnTieSpacing: null, beamStirrupSpacing: null, beamStirrupMm: null,
 };
 
 function toApiShape(factors) {

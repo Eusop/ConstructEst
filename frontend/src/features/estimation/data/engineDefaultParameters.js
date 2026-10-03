@@ -21,9 +21,16 @@ export function getEngineDefaults(storeys) {
   beamLength: null, // from the BEAM layer, else wall run length (not fixed)
     beamRebarLength: null, // no default: zero unless entered from the beam schedule
     beamRebarDiameterMm: 12, // bar size used when a beam rebar length is entered
+    columnBarCount: 4, // NSCP minimum (docs/nscp-citations.md)
+    columnBarMm: isTwoStorey ? 16 : 12,
+    columnTieSpacing: null, // code maximum spacing, worked out per column (Fajardo Sec. 3-9)
+    beamStirrupSpacing: null, // no default: no stirrups unless a spacing is entered
+    beamStirrupMm: 10,
     footingWidth: 0.60,
     footingLength: 0.60,
     footingDepth: isTwoStorey ? 2.0 : 1.5,
+    footingCount: null, // one per ground floor column (Column count)
+    footingRebarKgPerM3: 150, // the engineers, 2026-10-03 meeting
     floorToFloorHeight: 3.0,
     stairWidth: 0.90,
     buildingHeight: storeys != null ? storeys * 3.0 : null,
@@ -34,6 +41,10 @@ export function getEngineDefaults(storeys) {
     treadDepth: 0.25,
     waistThickness: 0.15,
     stairRebarSpacing: 0.15,
+    groundSlabBarMm: 10,
+    groundSlabBarSpacing: 0.30,
+    secondSlabBarMm: 12,
+    secondSlabBarSpacing: 0.15,
   };
 }
 

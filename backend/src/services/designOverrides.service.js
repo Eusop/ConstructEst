@@ -1,4 +1,5 @@
 import { query } from '../config/db.js';
+import { HttpError } from '../middleware/errorHandler.js';
 
 // [apiKey, dbColumn] pairs. apiKey is the camelCase name used by the
 // frontend/engine, dbColumn is the actual column name in the table.
@@ -27,7 +28,45 @@ const FIELDS = [
   ['columnDepthSecond', 'column_depth_second'],
   ['beamRebarLength', 'beam_rebar_length'],
   ['beamRebarDiameterMm', 'beam_rebar_diameter_mm'],
+  // From the plan, per the engineers (2026-10-03 meeting, migration 027).
+  ['footingCount', 'footing_count'],
+  ['footingRebarKgPerM3', 'footing_rebar_kg_per_m3'],
+  ['groundSlabBarMm', 'ground_slab_bar_mm'],
+  ['groundSlabBarSpacing', 'ground_slab_bar_spacing'],
+  ['secondSlabBarMm', 'second_slab_bar_mm'],
+  ['secondSlabBarSpacing', 'second_slab_bar_spacing'],
+  ['columnBarCount', 'column_bar_count'],
+  ['columnBarMm', 'column_bar_mm'],
+  ['columnTieSpacing', 'column_tie_spacing'],
+  ['beamStirrupSpacing', 'beam_stirrup_spacing'],
+  ['beamStirrupMm', 'beam_stirrup_mm'],
 ];
+
+// Bar sizes stop at 16mm, the largest Tarlac stores usually carry, and a
+// spacing under 5 cm is a typo (engineers, 2026-10-03 meeting).
+const BAR_SIZE_KEYS = ['beamRebarDiameterMm', 'groundSlabBarMm', 'secondSlabBarMm', 'columnBarMm', 'beamStirrupMm'];
+const SPACING_KEYS = ['groundSlabBarSpacing', 'secondSlabBarSpacing', 'columnTieSpacing', 'beamStirrupSpacing'];
+const ALLOWED_BAR_SIZES_MM = [10, 12, 16];
+const MIN_SPACING_M = 0.05;
+
+function validateOverrides(overrides) {
+  const given = (key) => overrides[key] !== undefined && overrides[key] !== null && overrides[key] !== '';
+  for (const key of BAR_SIZE_KEYS) {
+    if (given(key) && !ALLOWED_BAR_SIZES_MM.includes(Number(overrides[key]))) {
+      throw new HttpError(400, 'Bar sizes can be 10, 12 or 16mm, the sizes local stores usually carry.');
+    }
+  }
+  for (const key of SPACING_KEYS) {
+    if (given(key) && !(Number(overrides[key]) >= MIN_SPACING_M)) {
+      throw new HttpError(400, 'Bar and tie spacing must be at least 0.05 m.');
+    }
+  }
+  for (const key of ['footingCount', 'columnBarCount']) {
+    if (given(key) && !(Number.isInteger(Number(overrides[key])) && Number(overrides[key]) >= 1)) {
+      throw new HttpError(400, 'Footing count and bars per column must be whole numbers of at least 1.');
+    }
+  }
+}
 
 function toApiShape(row) {
   const shape = {};
@@ -70,6 +109,7 @@ export async function getEffectiveDesignOverrides(projectId) {
  * projectId is null. The global row is upserted by hand because MySQL treats
  * every NULL as unique. */
 export async function saveDesignOverrides(projectId, overrides) {
+  validateOverrides(overrides);
   const columns = FIELDS.map(([, dbColumn]) => dbColumn);
   const values = FIELDS.map(([apiKey]) => {
     const value = overrides[apiKey];

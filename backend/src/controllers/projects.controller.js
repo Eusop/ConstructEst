@@ -241,11 +241,6 @@ export const getProjectDesignOverrides = asyncHandler(async (req, res) => {
 export const putProjectDesignOverrides = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
-  // 20mm and 25mm are rarely stocked in Tarlac stores (2026-10-03 meeting).
-  const barSize = Number(req.body?.beamRebarDiameterMm);
-  if (req.body?.beamRebarDiameterMm != null && req.body.beamRebarDiameterMm !== '' && barSize > 16) {
-    throw new HttpError(400, 'Beam rebar bar size can be at most 16mm, the largest size local stores usually carry.');
-  }
   const overrides = await saveDesignOverrides(project.id, req.body);
   res.json({ overrides });
 });
