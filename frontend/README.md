@@ -25,7 +25,9 @@ The same seeded admin account (User ID `20260001` or `admin@constructest.local` 
 
 Self-registering a new account (`/signup`) doesn't log straight in; it goes to `/verify-email` for the 6-digit code emailed to the address given (see `backend/README.md`'s "Registration & verification"), then still needs an admin to approve it in the Admin module before it can sign in at all.
 
-**User module** (`/dashboard`, `/projects/...`): upload a DXF (one per floor for 2 storeys), review the parsed quantity take-off, tune calibration factors and design parameters (Footings, Columns, Beams, Floor & Stairs, Roofing, Formwork & Scaffolding), compare stores, pick brands, download the BOM.
+**User module** (`/dashboard`, `/projects/...`): upload a DXF (one per floor for 2 storeys), review the parsed quantity take-off, tune calibration factors and design parameters (Footings, Columns, Beams, Floor & Stairs, Roofing, Formwork & Scaffolding), compare stores against the budget ceiling (each store says within or over budget, with a notice naming the closest store when none fits, and a pop-up listing what a partly stocked store lacks), pick brands, download the BOM (a pop-up names the cheapest option when the total is over the ceiling).
+
+**Idle sign-out**: users and admins are signed out after 30 minutes with no mouse, key, touch or scroll activity (last activity is shared by all open tabs through localStorage; see `context/UserContext.jsx`).
 
 **Password pages**: `/reset-password` (Forgot password: emailed code) and `/set-new-password`, where a user who signed in with an admin's temporary password must choose their own before anything else (`RequireRole` sends them there).
 

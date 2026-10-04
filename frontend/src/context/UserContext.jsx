@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { fetchCurrentUser, isLoggedIn, logout as logoutRequest } from '../services/authService';
 import { resolveAssetUrl } from '../services/apiClient';
 import { sendHeartbeat } from '../services/usersService';
+import { useToast } from './ToastContext';
 
 const UserContext = createContext(null);
 const INITIAL_PROFILE = { id: null, userName: null, userId: null, email: null, avatarUrl: null, accessRole: null, mustChangePassword: false };
@@ -9,6 +10,35 @@ const INITIAL_PROFILE = { id: null, userName: null, userId: null, email: null, a
 // Feeds the admin "online now" dot (AdminUsersPage.jsx counts last_seen_at
 // within ~90s, double this, as online).
 const HEARTBEAT_INTERVAL_MS = 45_000;
+
+// Idle sign-out (SS-03): no mouse, key, touch or scroll for 30 minutes ends the
+// session. The last activity time is in localStorage so every open tab shares it.
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const IDLE_CHECK_MS = 30_000;
+const LAST_ACTIVITY_KEY = 'constructest.lastActivity';
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+const IDLE_MESSAGE = 'You were signed out after 30 minutes of inactivity. Please sign in again.';
+
+function readLastActivity() {
+  try {
+    return Number(localStorage.getItem(LAST_ACTIVITY_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+function markActivity() {
+  try {
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+  } catch {
+    // Storage blocked: the timer below still runs from this tab's own clock.
+  }
+}
+
+function isIdleTooLong() {
+  const last = readLastActivity();
+  return last != null && Date.now() - last > IDLE_TIMEOUT_MS;
+}
 
 /**
  * The signed-in user's identity. `userName` is set on sign-up or sign-in and
@@ -24,9 +54,18 @@ export function UserProvider({ children }) {
   const [profile, setProfile] = useState(INITIAL_PROFILE);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(() => isLoggedIn());
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!isLoggedIn()) return;
+    // A kept session that sat idle too long (e.g. the browser was closed
+    // overnight) is ended instead of restored.
+    if (isIdleTooLong()) {
+      logoutRequest();
+      queueMicrotask(() => setIsLoading(false));
+      showToast(IDLE_MESSAGE, 'info', 8000);
+      return;
+    }
     fetchCurrentUser()
       .then((user) => {
         setProfile({
@@ -49,6 +88,8 @@ export function UserProvider({ children }) {
         setIsAuthenticated(false);
       })
       .finally(() => setIsLoading(false));
+    // Mount only: the toast function is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Runs right after login, then every 45s. Errors are ignored: a missed
@@ -63,6 +104,7 @@ export function UserProvider({ children }) {
   }, [isAuthenticated]);
 
   const setCurrentUser = useCallback((name, accessRole = 'user') => {
+    markActivity();
     setProfile((prev) => ({ ...prev, userName: name, accessRole }));
     setIsAuthenticated(true);
   }, []);
@@ -88,6 +130,28 @@ export function UserProvider({ children }) {
     setProfile(INITIAL_PROFILE);
     setIsAuthenticated(false);
   }, []);
+
+  // Records activity (at most every 15s) and checks for 30 minutes idle.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    markActivity();
+    let lastWrite = Date.now();
+    const onActivity = () => {
+      if (Date.now() - lastWrite < 15_000) return;
+      lastWrite = Date.now();
+      markActivity();
+    };
+    ACTIVITY_EVENTS.forEach((name) => window.addEventListener(name, onActivity, { passive: true }));
+    const intervalId = setInterval(() => {
+      if (!isIdleTooLong()) return;
+      logout();
+      showToast(IDLE_MESSAGE, 'info', 8000);
+    }, IDLE_CHECK_MS);
+    return () => {
+      ACTIVITY_EVENTS.forEach((name) => window.removeEventListener(name, onActivity));
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated, logout, showToast]);
 
   const isAdmin = profile.accessRole === 'admin';
 

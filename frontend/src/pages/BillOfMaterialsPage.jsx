@@ -15,6 +15,7 @@ import { useToast } from '../context/ToastContext';
 import { computeTierTotal } from '../features/brandSelection/utils/computeBom';
 import { loadBrandCatalog } from '../features/brandSelection/data/brandOptionsCache';
 import { STORES, loadStores } from '../features/storeLocator/data/storesCache';
+import { cheapestFullStore } from '../features/storeLocator/utils/budgetCheck';
 import { loadParsedProject, formatQuantityLabel } from '../features/projects/data/parsedProjectCache';
 import { apiRequest } from '../services/apiClient';
 import { generateBomPdf } from '../services/bomPdfService';
@@ -103,10 +104,19 @@ function BillOfMaterialsPage() {
     const key = `${loadKey}-${totalForWarning}`;
     if (budgetWarnedFor.current === key) return;
     budgetWarnedFor.current = key;
+    // FR-4: also name the closest option (cheapest brands at the cheapest
+    // fully stocked store), or say that none fits.
+    const closest = cheapestFullStore(STORES);
+    let suggestion = ' No store fits the ceiling, even with the cheapest brands.';
+    if (closest && closest.totalCost <= ceilingForWarning) {
+      suggestion = ` Within budget: the cheapest brands at ${closest.name}, ${formatPeso(closest.totalCost)}.`;
+    } else if (closest && closest.totalCost < totalForWarning) {
+      suggestion = ` No store fits the ceiling. The closest is the cheapest brands at ${closest.name}, ${formatPeso(closest.totalCost)}.`;
+    }
     showToast(
-      `Budget ceiling is not enough: the total ${formatPeso(totalForWarning)} is ${formatPeso(totalForWarning - ceilingForWarning)} over your ${formatPeso(ceilingForWarning)} ceiling.`,
+      `Budget ceiling is not enough: the total ${formatPeso(totalForWarning)} is ${formatPeso(totalForWarning - ceilingForWarning)} over your ${formatPeso(ceilingForWarning)} ceiling.${suggestion}`,
       'warning',
-      8000,
+      10000,
     );
   }, [ready, loadKey, totalForWarning, ceilingForWarning, showToast]);
 

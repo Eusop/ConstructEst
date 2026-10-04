@@ -46,8 +46,9 @@ function BadgeNumber({ rank, color }) {
  * @param {string} props.badgeColor
  * @param {boolean} props.selected
  * @param {() => void} props.onSelect
+ * @param {number|null} [props.ceiling] Budget ceiling. Shows within or over budget for fully stocked stores.
  */
-function StoreListCard({ store, badgeColor, selected, onSelect }) {
+function StoreListCard({ store, badgeColor, selected, onSelect, ceiling = null }) {
   const availableAtStores = [...new Set(store.missingMaterials.flatMap((material) => material.availableAtStores ?? []))].sort();
 
   return (
@@ -86,6 +87,13 @@ function StoreListCard({ store, badgeColor, selected, onSelect }) {
       <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.15rem' }, color: 'text.primary', mt: { xs: 0.75, sm: 1 } }}>
         {formatPeso(store.totalCost)}
       </Typography>
+      {/* Only for stores with every material: a partial total would look
+          within budget when it is not. */}
+      {ceiling != null && store.inStock && (
+        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: store.totalCost <= ceiling ? colors.iconGreenFg : colors.iconRedFg }}>
+          {store.totalCost <= ceiling ? 'Within budget' : `${formatPeso(store.totalCost - ceiling)} over budget`}
+        </Typography>
+      )}
 
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: { xs: 0.25, sm: 0.5 } }}>
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>

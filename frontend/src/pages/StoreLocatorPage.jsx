@@ -9,6 +9,7 @@ import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Link from '@mui/material/Link';
+import Alert from '@mui/material/Alert';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -23,6 +24,9 @@ import {
 } from '../features/storeLocator/data/storesCache';
 import { buildStoreInfoWindowContent } from '../features/storeLocator/utils/buildStoreInfoWindowContent';
 import { useProjects } from '../context/ProjectsContext';
+import { useToast } from '../context/ToastContext';
+import { parseCeiling, cheapestFullStore } from '../features/storeLocator/utils/budgetCheck';
+import { formatPeso } from '../utils/formatNumbers';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { apiRequest } from '../services/apiClient';
 import { ROUTES } from '../routes/paths';
@@ -69,6 +73,7 @@ const MOBILE_PREVIEW_COUNT = 3;
 
 function StoreLocatorPage() {
   const { activeProject, updateActiveProject } = useProjects();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -168,6 +173,17 @@ function StoreLocatorPage() {
   const setSelectedStoreId = (id) => {
     if (id === USER_LOCATION_MARKER_ID) return;
     setFocusOnUser(false);
+    // Pop-up when the picked store lacks some materials (FR-11).
+    const picked = STORES.find((store) => store.id === id);
+    if (picked && id !== selectedStoreId && picked.missingMaterials.length > 0) {
+      const names = picked.missingMaterials.map((material) => material.name).join(', ');
+      const elsewhere = [...new Set(picked.missingMaterials.flatMap((material) => material.availableAtStores ?? []))].sort();
+      showToast(
+        `${picked.name} does not carry: ${names}.${elsewhere.length ? ` Available at: ${elsewhere.join(', ')}.` : ''}`,
+        'warning',
+        8000,
+      );
+    }
     updateActiveProject({ selectedStoreId: id });
   };
 
@@ -212,6 +228,8 @@ function StoreLocatorPage() {
   }
 
   const selectedStore = STORES.find((store) => store.id === selectedStoreId) ?? null;
+  const ceiling = parseCeiling(activeProject?.budgetCeiling);
+  const closestStore = cheapestFullStore(STORES);
   const focusedOnUser = focusOnUser && userLocation;
   const mapCenter = focusedOnUser ? userLocation : selectedStore?.position ?? userLocation ?? CITY_LOCATION;
   // Wider zoom by default, closer once something specific is selected.
@@ -278,8 +296,20 @@ function StoreLocatorPage() {
             </>
           ) : originNote}
         </Typography>
+        {ceiling != null && (
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25 }}>
+            Your budget ceiling: <strong>{formatPeso(ceiling)}</strong>.
+          </Typography>
+        )}
         {loadError && (
           <Typography sx={{ color: colors.iconRedFg, fontSize: '0.85rem', mt: 0.5 }}>{loadError}</Typography>
+        )}
+        {/* FR-7: no store fits the ceiling, so name the closest one. */}
+        {ceiling != null && closestStore && closestStore.totalCost > ceiling && (
+          <Alert severity="warning" sx={{ mt: 1, fontSize: '0.82rem' }}>
+            No store fits your {formatPeso(ceiling)} budget ceiling. The closest is {closestStore.name} at{' '}
+            {formatPeso(closestStore.totalCost)} ({formatPeso(closestStore.totalCost - ceiling)} over), using the cheapest brands.
+          </Alert>
         )}
       </Box>
 
@@ -362,6 +392,7 @@ function StoreLocatorPage() {
                   badgeColor={badgeColorFor(store)}
                   selected={store.id === selectedStoreId}
                   onSelect={() => setSelectedStoreId(store.id)}
+                  ceiling={ceiling}
                 />
               ))}
 
@@ -376,6 +407,7 @@ function StoreLocatorPage() {
                           badgeColor={badgeColorFor(store)}
                           selected={store.id === selectedStoreId}
                           onSelect={() => setSelectedStoreId(store.id)}
+                          ceiling={ceiling}
                         />
                       ))}
                     </Stack>
