@@ -84,7 +84,8 @@ const GROUPS = [
     key: 'floorAndStairs',
     label: 'Floor & Stairs',
     fields: [
-      { key: 'floorToFloorHeight', label: 'Floor-to-floor height', unit: 'm', step: 0.1 },
+      { key: 'floorToFloorHeight', label: 'Ground floor height', unit: 'm', step: 0.1 },
+      { key: 'secondFloorHeight', label: '2nd floor height', unit: 'm', step: 0.1, twoStoreyOnly: true },
       { key: 'stairWidth', label: 'Stair width', unit: 'm', step: 0.05 },
       { key: 'riserHeight', label: 'Riser height', unit: 'm', step: 0.01 },
       { key: 'treadDepth', label: 'Tread depth', unit: 'm', step: 0.01 },
@@ -280,6 +281,11 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                   <Alert severity="info" sx={{ gridColumn: '1 / -1', fontSize: '0.8rem' }}>
                     No valid default exists for 2-storey column sizes: the grayed-out numbers are only
                     an assumption. Enter the sizes from the structural plan (per floor, if they differ).
+                  </Alert>
+                )}
+                {group.key === 'scaffolding' && (
+                  <Alert severity="info" sx={{ gridColumn: '1 / -1', fontSize: '0.8rem' }}>
+                    1 scaffolding set = 2 H-frames, 2 cross braces and 4 joint pins. Planks and ladders are not included.
                   </Alert>
                 )}
                 {group.fields

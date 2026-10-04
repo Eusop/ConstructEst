@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Paper from '@mui/material/Paper';
@@ -11,6 +11,7 @@ import IncompleteBomState from '../features/billOfMaterials/components/Incomplet
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
+import { useToast } from '../context/ToastContext';
 import { computeTierTotal } from '../features/brandSelection/utils/computeBom';
 import { loadBrandCatalog } from '../features/brandSelection/data/brandOptionsCache';
 import { STORES, loadStores } from '../features/storeLocator/data/storesCache';
@@ -18,7 +19,7 @@ import { loadParsedProject, formatQuantityLabel } from '../features/projects/dat
 import { apiRequest } from '../services/apiClient';
 import { generateBomPdf } from '../services/bomPdfService';
 import { ROUTES } from '../routes/paths';
-import { formatPeso } from '../utils/formatNumbers';
+import { formatPeso, formatAmount } from '../utils/formatNumbers';
 
 /**
  * Adapts GET /projects/:id/bom to what BomTable and bomPdfService read. The
@@ -49,6 +50,9 @@ function toDisplayLineItems(lineItems) {
 function BillOfMaterialsPage() {
   const { activeProject, refreshActiveProjectEstimation } = useProjects();
   const { logActivity } = useDashboardActivity();
+  const { showToast } = useToast();
+  // Which load already showed the over budget popup, so it shows once per load.
+  const budgetWarnedFor = useRef(null);
   const [loadedForKey, setLoadedForKey] = useState(null);
   const [bom, setBom] = useState(null);
 
@@ -90,6 +94,22 @@ function BillOfMaterialsPage() {
     };
   }, [activeProject?.id, storeId, refreshActiveProjectEstimation]);
 
+  // Popup when the grand total is more than the budget ceiling the user entered.
+  const ceilingForWarning = Number(String(activeProject?.budgetCeiling ?? '').replace(/,/g, ''));
+  const totalForWarning = bom?.grandTotal;
+  useEffect(() => {
+    if (!ready || totalForWarning == null) return;
+    if (!Number.isFinite(ceilingForWarning) || ceilingForWarning <= 0 || totalForWarning <= ceilingForWarning) return;
+    const key = `${loadKey}-${totalForWarning}`;
+    if (budgetWarnedFor.current === key) return;
+    budgetWarnedFor.current = key;
+    showToast(
+      `Budget ceiling is not enough: the total ${formatPeso(totalForWarning)} is ${formatPeso(totalForWarning - ceilingForWarning)} over your ${formatPeso(ceilingForWarning)} ceiling.`,
+      'warning',
+      8000,
+    );
+  }, [ready, loadKey, totalForWarning, ceilingForWarning, showToast]);
+
   if (!activeProject) {
     return <NoActiveProjectState />;
   }
@@ -129,6 +149,8 @@ function BillOfMaterialsPage() {
   const withinBudget = !Number.isFinite(ceilingValue) || ceilingValue === 0 || grandTotal <= ceilingValue;
   const ceilingDelta = Math.abs(ceilingValue - grandTotal);
   const ceilingDeltaLabel = `${formatPeso(ceilingDelta)} ${withinBudget ? 'under' : 'over'} ceiling`;
+  // The ceiling the user entered on New Project. Not shown if none was set.
+  const ceilingLabel = Number.isFinite(ceilingValue) && ceilingValue > 0 ? formatPeso(ceilingValue) : null;
 
   const selectedStore = STORES.find((store) => store.id === storeId) ?? STORES[0] ?? { name: 'Selected store' };
   const summaryTags = [
@@ -149,6 +171,8 @@ function BillOfMaterialsPage() {
         { label: 'Storeys', value: `${activeProject.storeys} ${activeProject.storeys === 1 ? 'storey' : 'storeys'}` },
         { label: 'Roofing', value: activeProject.includeRoofing ? 'Included' : 'Not included' },
         { label: 'Store', value: selectedStore.name },
+        // "Php", since the PDF fonts have no peso sign (see bomPdfService.js).
+        ...(ceilingLabel ? [{ label: 'Budget ceiling', value: `Php ${formatAmount(ceilingValue)}` }] : []),
         ...(formworkUses > 1 ? [{ label: 'Formwork uses', value: `${formworkUses} (plywood and lumber price / ${formworkUses})` }] : []),
       ],
       lineItems,
@@ -190,6 +214,7 @@ function BillOfMaterialsPage() {
           <BomTable items={lineItems} />
 
           <BomCostSummaryCard
+            ceilingLabel={ceilingLabel}
             subtotalLabel={formatPeso(premiumTotal)}
             savingLabel={`–${formatPeso(saving)}`}
             grandTotalLabel={formatPeso(grandTotal)}

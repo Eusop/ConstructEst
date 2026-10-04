@@ -23,6 +23,7 @@ function SummaryRow({ label, value, valueColor = 'common.white' }) {
  * the same row as the grand total.
  *
  * @param {object} props
+ * @param {string} [props.ceilingLabel] The budget ceiling the user entered, e.g. "₱1,111,111.00".
  * @param {string} props.subtotalLabel Formatted, e.g. "₱1,725,820".
  * @param {string} props.savingLabel Formatted with a minus sign, e.g. "-₱252,920".
  * @param {string} props.grandTotalLabel Formatted, e.g. "₱1,472,900".
@@ -32,12 +33,13 @@ function SummaryRow({ label, value, valueColor = 'common.white' }) {
  *   When > 0, grandTotal and the budget check only cover what it sells, so this is disclosed.
  * @param {() => void} props.onDownloadPdf
  */
-function BomCostSummaryCard({ subtotalLabel, savingLabel, grandTotalLabel, ceilingDeltaLabel, withinBudget, missingCount = 0, onDownloadPdf }) {
+function BomCostSummaryCard({ ceilingLabel, subtotalLabel, savingLabel, grandTotalLabel, ceilingDeltaLabel, withinBudget, missingCount = 0, onDownloadPdf }) {
   const deltaColor = withinBudget ? colors.iconGreenFg : colors.iconRedFg;
 
   return (
     <Box sx={{ borderRadius: 3, bgcolor: colors.ctaBackground, p: { xs: 2, sm: 1.75, md: 3 } }}>
       <Stack spacing={{ xs: 1.25, sm: 1, md: 1.25 }}>
+        {ceilingLabel && <SummaryRow label="Budget ceiling" value={ceilingLabel} />}
         <SummaryRow label="Subtotal" value={subtotalLabel} />
         <SummaryRow label="Optimization saving" value={savingLabel} valueColor={colors.iconGreenFg} />
       </Stack>

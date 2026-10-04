@@ -36,7 +36,8 @@ export function getEngineDefaults(storeys) {
     beamRebarKgPerM3: 160, // half 16mm main bars, half 10mm stirrups
     trussFramingKgPerM2: 17.5, // truss angle bar by weight (the engineer)
     angleBarKgPerM: 3.4, // 1/4" x 1.5" x 1.5" angle bar
-    floorToFloorHeight: 3.0,
+    floorToFloorHeight: 3.0, // ground floor
+    secondFloorHeight: 3.0, // same as the ground floor unless entered
     stairWidth: 0.90,
     buildingHeight: storeys != null ? storeys * 3.0 : null,
     scaffoldingSetWidth: 1.8,

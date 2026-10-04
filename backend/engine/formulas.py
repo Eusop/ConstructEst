@@ -55,8 +55,12 @@ Assumptions (ours unless a source is named):
 import math
 
 WALL_HEIGHT_PER_STOREY_M = 3.0
-# Fallback only. The height used everywhere (walls, stairs, scaffolding) is
-# floor_to_floor_h, so a floorToFloorHeight override reaches every material.
+# Fallback only. floorToFloorHeight is the ground floor height and
+# secondFloorHeight the second floor's (same as the ground floor if blank).
+# They set the walls, column heights, stairs and scaffolding height.
+# What one scaffolding set holds, from the engineer's example (2026-10-04
+# meeting). Shown in the steps only; the count is still in sets.
+SCAFFOLD_SET_PARTS = "2 H-frames, 2 cross braces and 4 joint pins"
 # Used only when the DXF has no COLUMN layer. It is not an override key.
 DEFAULT_COLUMN_COUNT = 4
 # Bar weight in kg/m = d^2/162 (d in mm), from the PNS/DPWH table. 10mm for
@@ -263,9 +267,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             f"{TIE_WIRE_M_PER_KG} m per kg = {num(kg)} kg")
 
     # --- Table 12: Wall materials -----------------------------------------
-    # floor_to_floor_h drives every per-storey height (walls, stairs, and the
-    # scaffolding height default), so an override reaches all of them.
+    # Height of each floor (the engineer: e.g. 5 m ground floor, 4 m second
+    # floor). floor_to_floor_h is the ground floor; the stair runs up it.
     floor_to_floor_h = overrides.get("floorToFloorHeight", WALL_HEIGHT_PER_STOREY_M)
+    second_floor_h = overrides.get("secondFloorHeight", floor_to_floor_h)
+    floor_heights = [floor_to_floor_h] + [second_floor_h] * (storeys - 1)
 
     # With a second floor file, storey 2 uses its own walls and openings.
     # Otherwise the ground floor geometry is reused for every storey.
@@ -277,10 +283,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         storey_door_area_m2 = storey_geometry["door_area_m2"]
         storey_window_area_m2 = storey_geometry["window_area_m2"]
 
-        gross_wall_area = storey_wall_length_m * floor_to_floor_h
+        storey_h = floor_heights[storey]
+        gross_wall_area = storey_wall_length_m * storey_h
         net_wall_area = max(gross_wall_area - storey_door_area_m2 - storey_window_area_m2, 0.0)
         floor_label = 'Ground floor' if storey == 0 else ('Second floor' if storey_geometry is geometry2 else 'Second floor (ground plan reused)')
-        wall_text = (f"{floor_label} walls: {num(storey_wall_length_m)} m x {num(floor_to_floor_h)} m - "
+        wall_text = (f"{floor_label} walls: {num(storey_wall_length_m)} m x {num(storey_h)} m - "
                      f"{num(storey_door_area_m2)} m2 doors - {num(storey_window_area_m2)} m2 windows = {num(net_wall_area)} m2")
 
         chb = net_wall_area * 12.5 * 1.05
@@ -372,21 +379,22 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     col_w, col_d, _ = default_column_size(storeys)
     col_w = overrides.get("columnWidth", col_w)
     col_d = overrides.get("columnDepth", col_d)
-    # Total column height over all floors. Follows floor-to-floor height by default.
-    total_col_h = overrides.get("columnHeight", storeys * floor_to_floor_h)
+    # Total column height over all floors. Follows the floor heights by default.
+    total_col_h = overrides.get("columnHeight", sum(floor_heights))
 
     # (width, depth, height, count) per floor. With a second floor file: one
     # segment per floor, each with its own COLUMN count (ground count if the
-    # second file has none), optional 2nd floor size, height split evenly.
+    # second file has none), optional 2nd floor size, each floor's own height
+    # (a Column height override is split in the same proportion).
     # Single file: one member of total height x ground count.
     if geometry2 is not None:
-        segment_h = total_col_h / storeys
+        segment_hs = [total_col_h * h / sum(floor_heights) for h in floor_heights]
         second_count = geometry2["column_count"] or column_count
         col_w2 = overrides.get("columnWidthSecond")
         col_d2 = overrides.get("columnDepthSecond")
         column_floors = [
-            (col_w, col_d, segment_h, column_count),
-            (col_w if col_w2 is None else col_w2, col_d if col_d2 is None else col_d2, segment_h, second_count),
+            (col_w, col_d, segment_hs[0], column_count),
+            (col_w if col_w2 is None else col_w2, col_d if col_d2 is None else col_d2, segment_hs[1], second_count),
         ]
     else:
         column_floors = [(col_w, col_d, total_col_h, column_count)]
@@ -652,7 +660,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # --- Table 18: Stair materials (2-storey only) --------------------------
     if storeys >= 2:
         # Table 18: all stair values are tunable (riser, tread, waist thickness,
-        # rebar spacing). floor_to_floor_h is reused from Table 12.
+        # rebar spacing). The stair rises the ground floor height.
         stair_width = overrides.get("stairWidth", 0.90)
         riser_height = overrides.get("riserHeight", 0.18)
         tread_depth = overrides.get("treadDepth", 0.25)
@@ -687,7 +695,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # Coverage per scaffolding set, 1.8m x 1.2m (Table 19, OK'd in Reply 2). Overridable.
     scaffolding_set_width = overrides.get("scaffoldingSetWidth", 1.8)
     scaffolding_set_height = overrides.get("scaffoldingSetHeight", 1.2)
-    building_height = overrides.get("buildingHeight", storeys * floor_to_floor_h)
+    building_height = overrides.get("buildingHeight", sum(floor_heights))
     # Roofing needs taller scaffolds (Reply 1) but no figure was given, so we add
     # one layer (our assumption), only if roofing is on and height is not overridden.
     if include_roofing and "buildingHeight" not in overrides:
@@ -698,7 +706,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # the top storey plus the roofing allowance (4.2m at the defaults). Outside
     # scaffolding uses the full building height.
     truss_run_m = roof_source["truss_length_m"] if include_roofing else 0.0
-    interior_scaffold_height = max(building_height - (storeys - 1) * floor_to_floor_h, scaffolding_set_height)
+    interior_scaffold_height = max(building_height - sum(floor_heights[:-1]), scaffolding_set_height)
     computed_scaffolding_sets = (
         floor_perimeter_m * building_height + truss_run_m * interior_scaffold_height
     ) / (scaffolding_set_width * scaffolding_set_height)
@@ -708,11 +716,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         scaffold_step = f"Your set count: {num(scaffolding_set_count_override)} sets"
     else:
         height_note = ("your building height" if "buildingHeight" in overrides
-                       else f"{storeys} x {num(floor_to_floor_h)} m" + (f" + {num(scaffolding_set_height)} m roofing allowance" if include_roofing else ""))
+                       else " + ".join(f"{num(h)} m" for h in floor_heights) + (f" + {num(scaffolding_set_height)} m roofing allowance" if include_roofing else ""))
         truss_part = (f" + truss length {num(truss_run_m)} m x {num(interior_scaffold_height)} m interior height" if truss_run_m > 0 else "")
         scaffold_step = (f"Ground floor perimeter {num(floor_perimeter_m)} m x height {num(building_height)} m ({height_note}){truss_part} "
                          f"= {num(floor_perimeter_m * building_height + truss_run_m * interior_scaffold_height)} m2 / "
-                         f"({num(scaffolding_set_width)} m x {num(scaffolding_set_height)} m per set) = {num(computed_scaffolding_sets)} sets")
+                         f"({num(scaffolding_set_width)} m x {num(scaffolding_set_height)} m per set) = {num(computed_scaffolding_sets)} sets"
+                         f" (1 set = {SCAFFOLD_SET_PARTS}; planks and ladders not included)")
     acc.add(
         "scaffolding",
         scaffolding_set_count_override if scaffolding_set_count_override is not None else computed_scaffolding_sets,

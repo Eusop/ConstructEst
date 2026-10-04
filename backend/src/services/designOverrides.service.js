@@ -16,6 +16,7 @@ const FIELDS = [
   ['footingDepth', 'footing_depth'],
   ['footingThickness', 'footing_thickness'],
   ['floorToFloorHeight', 'floor_to_floor_height'],
+  ['secondFloorHeight', 'second_floor_height'],
   ['stairWidth', 'stair_width'],
   ['buildingHeight', 'building_height'],
   ['scaffoldingSetWidth', 'scaffolding_set_width'],
@@ -86,6 +87,8 @@ function validateOverrides(overrides) {
     ['beamRebarKgPerM3', 20, 400, 'Beam rebar must be 20 to 400 kg per m3.'],
     ['trussFramingKgPerM2', 1, 60, 'Truss framing weight must be 1 to 60 kg per m2.'],
     ['angleBarKgPerM', 0.5, 15, 'Angle bar weight must be 0.5 to 15 kg per m.'],
+    ['floorToFloorHeight', 2, 8, 'Floor heights must be 2 to 8 m.'],
+    ['secondFloorHeight', 2, 8, 'Floor heights must be 2 to 8 m.'],
   ];
   for (const [key, min, max, message] of ranges) {
     if (given(key) && !(Number(overrides[key]) >= min && Number(overrides[key]) <= max)) throw new HttpError(400, message);

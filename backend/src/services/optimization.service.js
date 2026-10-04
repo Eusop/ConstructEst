@@ -10,6 +10,8 @@ import { getEffectiveDesignOverrides } from './designOverrides.service.js';
 const FORMWORK_KEYS = new Set(['plywood', 'lumber']);
 const DEFAULT_FORMWORK_USES = 1;
 const DEFAULT_SCAFFOLDING_USES = 4;
+// What one set holds, from the engineer's example (same as formulas.py).
+const SCAFFOLD_SET_PARTS = '1 set = 2 H-frames, 2 cross braces, 4 joint pins';
 
 function usesFor(materialKey, reuse) {
   if (materialKey === 'scaffolding') return reuse.scaffoldingUses;
@@ -27,6 +29,7 @@ function effectivePrice(materialKey, price, reuse) {
 function effectiveSpec(materialKey, spec, reuse, barPieces = null) {
   const notes = [];
   const uses = usesFor(materialKey, reuse);
+  if (materialKey === 'scaffolding') notes.push(SCAFFOLD_SET_PARTS);
   if (uses > 1) notes.push(`price / ${uses} uses`);
   if (materialKey === 'steelRebar' && Array.isArray(barPieces) && barPieces.length > 0) {
     notes.push(`6 m bars: ${barPieces.map((p) => `${p.diameterMm}mm ${p.pieces} pcs`).join(', ')}`);

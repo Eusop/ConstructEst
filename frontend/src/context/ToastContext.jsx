@@ -14,10 +14,11 @@ const ToastContext = createContext(null);
  * kept once dismissed.
  */
 export function ToastProvider({ children }) {
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'error' });
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'error', duration: 4000 });
 
-  const showToast = useCallback((message, severity = 'error') => {
-    setToast({ open: true, message, severity });
+  // duration: longer for messages that need reading (e.g. the over budget warning).
+  const showToast = useCallback((message, severity = 'error', duration = 4000) => {
+    setToast({ open: true, message, severity, duration });
   }, []);
 
   const handleClose = () => setToast((prev) => ({ ...prev, open: false }));
@@ -29,7 +30,7 @@ export function ToastProvider({ children }) {
       {children}
       <Snackbar
         open={toast.open}
-        autoHideDuration={4000}
+        autoHideDuration={toast.duration}
         onClose={handleClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
