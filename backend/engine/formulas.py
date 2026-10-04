@@ -401,7 +401,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
 
     column_volume = sum(w * d * h * n for w, d, h, n in column_floors)
     column_parts = ' + '.join(f"{n} x {num(w)} x {num(d)} x {num(h)} m" for w, d, h, n in column_floors)
-    acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count (per floor)", "shared",
+    acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count", "shared",
                          f"Columns ({column_parts})")
 
     # Column rebar, two ways:
@@ -623,7 +623,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                 f"{num(angle_m)} m / {num(ANGLE_BAR_LENGTH_M)} m per bar = {num(angle_bars)} bars")
         gutter_piece_m = ROOF_ACCESSORY_LENGTH_M["gutter"]
         gutter = ceil_int(roof_perimeter_m / gutter_piece_m)
-        acc.add("gutter", gutter, "Roof eave length / gutter length (eave from roof perimeter)", "roofing",
+        acc.add("gutter", gutter, "Roof eave length / gutter length", "roofing",
                 f"Eave length taken as the roof perimeter {num(roof_perimeter_m)} m / {gutter_piece_m} m per gutter, rounded up = {gutter} pieces")
 
     # --- Table 17: Footing materials ----------------------------------------
@@ -747,7 +747,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                      f"+ beams {num(beam_perimeter)} m (2 sides + bottom) x {num(beam_length_total)} m "
                      f"+ footing sides {num(footing_formwork_area)} m2 = {num(formwork_area)} m2")
     plywood = formwork_area / (1.22 * 2.44)
-    acc.add("plywood", plywood, "Formwork area / sheet coverage (2.98 m2 per sheet)", "shared", formwork_text)
+    acc.add("plywood", plywood, "Formwork area / sheet coverage", "shared", formwork_text)
     acc.steps["plywood"].append(f"{num(formwork_area)} m2 / 2.98 m2 per sheet (1.22 m x 2.44 m) = {num(plywood)} sheets")
     # 2" x 2" frame lumber per 2.88 m2 plywood form (Fajardo Table 5-1).
     # Slab forms get no frame: they rest on the steel props above, which take
