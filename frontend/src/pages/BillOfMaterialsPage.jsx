@@ -106,11 +106,16 @@ function BillOfMaterialsPage() {
     budgetWarnedFor.current = key;
     // FR-4: also name the closest option (cheapest brands at the cheapest
     // fully stocked store), or say that none fits.
+    // A partly stocked store's total leaves items out, so it is not compared
+    // with the closest store's total; only "already the closest" skips naming it.
     const closest = cheapestFullStore(STORES);
-    let suggestion = ' No store fits the ceiling, even with the cheapest brands.';
+    const alreadyClosest = closest && closest.id === storeId && Math.abs(closest.totalCost - totalForWarning) < 1;
+    let suggestion = ' No store fits the ceiling.';
     if (closest && closest.totalCost <= ceilingForWarning) {
       suggestion = ` Within budget: the cheapest brands at ${closest.name}, ${formatPeso(closest.totalCost)}.`;
-    } else if (closest && closest.totalCost < totalForWarning) {
+    } else if (alreadyClosest) {
+      suggestion = ' No store fits the ceiling, even with the cheapest brands.';
+    } else if (closest) {
       suggestion = ` No store fits the ceiling. The closest is the cheapest brands at ${closest.name}, ${formatPeso(closest.totalCost)}.`;
     }
     showToast(
@@ -118,7 +123,7 @@ function BillOfMaterialsPage() {
       'warning',
       10000,
     );
-  }, [ready, loadKey, totalForWarning, ceilingForWarning, showToast]);
+  }, [ready, loadKey, storeId, totalForWarning, ceilingForWarning, showToast]);
 
   if (!activeProject) {
     return <NoActiveProjectState />;
