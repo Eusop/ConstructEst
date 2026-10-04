@@ -20,7 +20,7 @@ export function getEngineDefaults(storeys) {
     beamDepth: 0.30,
   beamLength: null, // from the BEAM layer, else wall run length (not fixed)
     beamRebarLength: null, // no default: zero unless entered from the beam schedule
-    beamRebarDiameterMm: 12, // bar size used when a beam rebar length is entered
+    beamRebarDiameterMm: 16, // main bar size when a schedule length is entered (the engineer's 16mm)
     columnBarCount: 4, // NSCP minimum (docs/nscp-citations.md)
     columnBarMm: isTwoStorey ? 16 : 12,
     columnTieSpacing: null, // code maximum spacing, worked out per column (Fajardo Sec. 3-9)
@@ -31,7 +31,11 @@ export function getEngineDefaults(storeys) {
     footingDepth: isTwoStorey ? 2.0 : 1.5, // below ground, sets the column bar length
     footingThickness: 0.30, // the pad itself: concrete, footing rebar and side forms
     footingCount: null, // one per ground floor column (Column count)
-    footingRebarKgPerM3: 150, // the engineers, 2026-10-03 meeting
+    footingRebarKgPerM3: 100, // the engineer's handwritten sheet, 2026-10-04
+    columnRebarKgPerM3: 180, // half 16mm main bars, half 10mm ties
+    beamRebarKgPerM3: 160, // half 16mm main bars, half 10mm stirrups
+    trussFramingKgPerM2: 17.5, // truss angle bar by weight (the engineer)
+    angleBarKgPerM: 3.4, // 1/4" x 1.5" x 1.5" angle bar
     floorToFloorHeight: 3.0,
     stairWidth: 0.90,
     buildingHeight: storeys != null ? storeys * 3.0 : null,

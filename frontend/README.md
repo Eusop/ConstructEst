@@ -25,11 +25,11 @@ The same seeded admin account (User ID `20260001` or `admin@constructest.local` 
 
 Self-registering a new account (`/signup`) doesn't log straight in; it goes to `/verify-email` for the 6-digit code emailed to the address given (see `backend/README.md`'s "Registration & verification"), then still needs an admin to approve it in the Admin module before it can sign in at all.
 
-**User module** (`/dashboard`, `/projects/...`): upload a DXF (one per floor for 2 storeys), review the parsed quantity take-off, tune calibration factors and design parameters (Footings first, then Columns & Beams, Floor & Stairs, Formwork & Scaffolding), compare stores, pick brands, download the BOM.
+**User module** (`/dashboard`, `/projects/...`): upload a DXF (one per floor for 2 storeys), review the parsed quantity take-off, tune calibration factors and design parameters (Footings, Columns, Beams, Floor & Stairs, Roofing, Formwork & Scaffolding), compare stores, pick brands, download the BOM.
 
 **Password pages**: `/reset-password` (Forgot password: emailed code) and `/set-new-password`, where a user who signed in with an admin's temporary password must choose their own before anything else (`RequireRole` sends them there).
 
-**Admin module** (`/admin/...`): user management (including Password help: send a reset code or set a temporary password), hardware stores (with a map view), materials & brands catalog (global brand definitions + per-store pricing/availability), and the global calibration/design-parameter defaults every new project falls back to.
+**Admin module** (`/admin/...`): user management (including Password help: send a reset code or set a temporary password), hardware stores (with a map view), materials & brands catalog (global brand definitions with a 1-5 quality shown as Low to Excellent, + per-store pricing, availability and stock on hand, which the Bill of Materials shows under each quantity), and the global calibration/design-parameter defaults every new project falls back to.
 
 ## Project layout
 

@@ -108,6 +108,31 @@ JOIN (
 ) s ON 1 = 1
 WHERE NOT (s.id = 4 AND mb.material_key = 'steelRebar');
 
+-- Assumed stock on hand, about 30 times the accuracy test house, not
+-- canvassed (see migrations/033_seed_stock_qty.sql).
+UPDATE store_material_prices smp
+JOIN material_brands mb ON mb.id = smp.material_brand_id
+JOIN (
+  SELECT 'hollowBlocks' AS material_key, 80000 AS qty UNION ALL
+  SELECT 'cement', 14000 UNION ALL
+  SELECT 'sand', 900 UNION ALL
+  SELECT 'gravel', 800 UNION ALL
+  SELECT 'steelRebar', 105 UNION ALL
+  SELECT 'tieWire', 2500 UNION ALL
+  SELECT 'roofingSheets', 1200 UNION ALL
+  SELECT 'purlins', 850 UNION ALL
+  SELECT 'ridge', 150 UNION ALL
+  SELECT 'flashing', 520 UNION ALL
+  SELECT 'angleBar', 1550 UNION ALL
+  SELECT 'gutter', 500 UNION ALL
+  SELECT 'plywood', 2600 UNION ALL
+  SELECT 'lumber', 44000 UNION ALL
+  SELECT 'steelProps', 3200 UNION ALL
+  SELECT 'scaffolding', 3200
+) seed ON seed.material_key = mb.material_key
+SET smp.stock_qty = seed.qty
+WHERE smp.stock_qty IS NULL;
+
 -- ---------------------------------------------------------------------------
 -- Global default calibration constants (calibrationDefaults.js). project_id NULL
 -- is the default row used when a project has no override.

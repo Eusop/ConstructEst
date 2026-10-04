@@ -337,13 +337,13 @@ export const setStoreActive = asyncHandler(async (req, res) => {
 });
 
 /** All global brands, left-joined with this store's own prices. `storePrice` and
- * `inStock` are null if the store has not priced that brand, which is how the
+ * `inStock` (and `stockQty`) are null if the store has not priced that brand, which is how the
  * frontend tells "not stocked" from "already stocked". Grouped by material key. */
 export const getStoreCatalog = asyncHandler(async (req, res) => {
   const rows = await query(
     `SELECT mb.id AS material_brand_id, mb.material_key, mb.material_name, mb.unit, mb.brand, mb.spec,
             mb.base_price, mb.quality, mb.category, mb.is_commodity,
-            smp.price AS store_price, smp.in_stock AS store_in_stock
+            smp.price AS store_price, smp.in_stock AS store_in_stock, smp.stock_qty AS store_stock_qty
      FROM material_brands mb
      LEFT JOIN store_material_prices smp ON smp.material_brand_id = mb.id AND smp.store_id = ?
      ORDER BY mb.material_key, mb.brand`,
@@ -370,6 +370,7 @@ export const getStoreCatalog = asyncHandler(async (req, res) => {
       category: row.category,
       storePrice: row.store_price == null ? null : Number(row.store_price),
       inStock: row.store_in_stock == null ? null : Boolean(row.store_in_stock),
+      stockQty: row.store_stock_qty == null ? null : Number(row.store_stock_qty),
     });
   }
 
@@ -381,45 +382,59 @@ function truthy(value, fallback) {
   return value === true || value === 'true';
 }
 
+// Stock count from the form. Blank clears it (unknown), not sent keeps the
+// saved one.
+function parseStockQty(value, saved) {
+  if (value === undefined) return saved ?? null;
+  if (value === null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Stock count must be 0 or more.');
+  return n;
+}
+
 // Setting or changing a price needs a quotation file as proof (PDF/Word/Excel,
-// see uploadQuotation in upload.js). The exception is `usesCatalogPrice`, used
-// when "Add materials to store" just copies a catalog price.
+// see uploadQuotation in upload.js). The exceptions are `usesCatalogPrice`, used
+// when "Add materials to store" just copies a catalog price, and saving the
+// same price again (e.g. only the stock count changed).
 export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { storeId, materialBrandId } = req.params;
   const { price, inStock } = req.body;
   if (price == null) throw new HttpError(400, 'price is required.');
-  const usesCatalogPrice = truthy(req.body.usesCatalogPrice, false);
-  if (!usesCatalogPrice && !req.file) {
-    throw new HttpError(400, 'A quotation file (PDF, Word, or Excel) is required to set or change a price.');
-  }
-
   const numericPrice = Number(price);
   const stockFlag = truthy(inStock, true);
 
   const [[store], [brand], [existing]] = await Promise.all([
     query('SELECT name FROM stores WHERE id = ?', [storeId]),
     query('SELECT brand, material_name FROM material_brands WHERE id = ?', [materialBrandId]),
-    query('SELECT price FROM store_material_prices WHERE store_id = ? AND material_brand_id = ?', [storeId, materialBrandId]),
+    query('SELECT price, stock_qty FROM store_material_prices WHERE store_id = ? AND material_brand_id = ?', [storeId, materialBrandId]),
   ]);
 
+  const usesCatalogPrice = truthy(req.body.usesCatalogPrice, false);
+  const priceUnchanged = existing && Number(existing.price) === numericPrice;
+  if (!usesCatalogPrice && !priceUnchanged && !req.file) {
+    throw new HttpError(400, 'A quotation file (PDF, Word, or Excel) is required to set or change a price.');
+  }
+  const stockQty = parseStockQty(req.body.stockQty, existing?.stock_qty == null ? null : Number(existing.stock_qty));
+
   await query(
-    `INSERT INTO store_material_prices (store_id, material_brand_id, price, in_stock)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE price = VALUES(price), in_stock = VALUES(in_stock)`,
-    [storeId, materialBrandId, numericPrice, stockFlag ? 1 : 0],
+    `INSERT INTO store_material_prices (store_id, material_brand_id, price, in_stock, stock_qty)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE price = VALUES(price), in_stock = VALUES(in_stock), stock_qty = VALUES(stock_qty)`,
+    [storeId, materialBrandId, numericPrice, stockFlag ? 1 : 0, stockQty],
   );
 
   const brandLabel = brand ? `${brand.brand} (${brand.material_name})` : `brand #${materialBrandId}`;
   const storeLabel = store?.name ?? `store #${storeId}`;
-  const message = existing
-    ? `Changed price of ${brandLabel} at ${storeLabel} from ₱${Number(existing.price).toFixed(2)} to ₱${numericPrice.toFixed(2)}`
-    : `Set price of ${brandLabel} at ${storeLabel} to ₱${numericPrice.toFixed(2)}`;
+  let message = `Set price of ${brandLabel} at ${storeLabel} to ₱${numericPrice.toFixed(2)}`;
+  if (priceUnchanged) message = `Updated ${brandLabel} at ${storeLabel}, price unchanged at ₱${numericPrice.toFixed(2)}`;
+  else if (existing) message = `Changed price of ${brandLabel} at ${storeLabel} from ₱${Number(existing.price).toFixed(2)} to ₱${numericPrice.toFixed(2)}`;
   await logAdminActivity(req.user.id, 'store_management', 'store_price_changed', message, {
     storeId: Number(storeId),
     materialBrandId: Number(materialBrandId),
     previousPrice: existing ? Number(existing.price) : null,
     newPrice: numericPrice,
     inStock: stockFlag,
+    stockQty,
     ...(req.file ? { quotationStoredName: req.file.filename, quotationFileName: req.file.originalname } : {}),
   });
 

@@ -10,7 +10,7 @@ FTG and FTBEAM are not read. Keep LayerNamesGuide.jsx in sync with LAYER_ALIASES
 Walls: a wall drawn as two parallel faces (LINE or polyline) is counted once,
 by pairing the faces (see wall_run_length). A wall drawn as one line counts as
 drawn. An MLINE wall is measured once along its reference line (see
-mline_length). Limits are in docs/paper-limitations.md entry 6.
+mline_length). Limits are in docs/paper-limitations.md entry 10.
 """
 import math
 import re

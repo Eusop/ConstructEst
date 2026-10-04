@@ -10,24 +10,32 @@ import Button from '@mui/material/Button';
 import InputAdornment from '@mui/material/InputAdornment';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
-import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
+import MenuItem from '@mui/material/MenuItem';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import FormTextField from '../../components/FormTextField';
 import QuotationFilePicker from './QuotationFilePicker';
 import { isRequired } from '../../utils/validators';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
+import { QUALITY_LEVELS } from '../data/qualityLevels';
 
 function buildForm(brand, unit) {
-  if (!brand) return { name: '', unit, price: '', available: true, stars: 4 };
-  return { name: brand.name, unit: brand.unit ?? unit, price: String(brand.price ?? ''), available: brand.available, stars: brand.stars ?? 4 };
+  if (!brand) return { name: '', unit, price: '', available: true, quality: 3, stockQty: '' };
+  return {
+    name: brand.name,
+    unit: brand.unit ?? unit,
+    price: String(brand.price ?? ''),
+    available: brand.available,
+    quality: brand.quality ?? 3,
+    stockQty: brand.stockQty == null ? '' : String(brand.stockQty),
+  };
 }
 
 function validate(form) {
   const errors = {};
   if (!isRequired(form.name)) errors.name = 'Brand name is required';
   if (!form.price || Number.isNaN(Number(form.price)) || Number(form.price) < 0) errors.price = 'Enter a valid price';
+  if (form.stockQty !== '' && (Number.isNaN(Number(form.stockQty)) || Number(form.stockQty) < 0)) errors.stockQty = 'Enter 0 or more, or leave blank';
   return errors;
 }
 
@@ -59,14 +67,23 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
 
   const handleSubmit = () => {
     const validationErrors = validate(form);
-    if (!quotationFile) {
+    // A quotation is only needed when the price is new or changed.
+    const priceChanged = !isEdit || Number(form.price) !== Number(brand.price);
+    if (priceChanged && !quotationFile) {
       validationErrors.quotationFile = 'A quotation is required to set or change this price';
     }
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
     onSubmit(
-      { name: form.name.trim(), unit: form.unit, price: Number(form.price), available: form.available, stars: form.stars },
+      {
+        name: form.name.trim(),
+        unit: form.unit,
+        price: Number(form.price),
+        available: form.available,
+        quality: Number(form.quality),
+        stockQty: form.stockQty === '' ? null : Number(form.stockQty),
+      },
       quotationFile,
     );
   };
@@ -124,25 +141,36 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
             </Box>
           </Stack>
 
-          <Box>
-            <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Quality rating</Typography>
-            <Stack direction="row" spacing={0.5}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Box
-                  key={n}
-                  role="button"
-                  onClick={() => setForm((prev) => ({ ...prev, stars: n }))}
-                  sx={{ cursor: 'pointer', display: 'flex', color: n <= form.stars ? '#f5a623' : 'grey.300' }}
-                >
-                  {n <= form.stars ? (
-                    <StarRoundedIcon sx={{ fontSize: { xs: 28, sm: 35 } }} />
-                  ) : (
-                    <StarBorderRoundedIcon sx={{ fontSize: { xs: 28, sm: 35 } }} />
-                  )}
-                </Box>
-              ))}
-            </Stack>
-          </Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Quality</Typography>
+              <FormTextField
+                select
+                name="quality"
+                value={form.quality}
+                onChange={handleChange}
+                helperText="Premium picks the highest quality"
+              >
+                {QUALITY_LEVELS.map((level) => (
+                  <MenuItem key={level.value} value={level.value}>
+                    {level.value} – {level.label}
+                  </MenuItem>
+                ))}
+              </FormTextField>
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Stock on hand</Typography>
+              <FormTextField
+                name="stockQty"
+                placeholder="Leave blank if not known"
+                value={form.stockQty}
+                onChange={handleChange}
+                error={Boolean(errors.stockQty)}
+                helperText={errors.stockQty || ' '}
+                slotProps={{ input: { endAdornment: <InputAdornment position="end">{form.unit}</InputAdornment> } }}
+              />
+            </Box>
+          </Stack>
 
           <QuotationFilePicker
             file={quotationFile}
@@ -152,6 +180,11 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
             }}
             error={errors.quotationFile}
           />
+          {isEdit && !errors.quotationFile && (
+            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: -1.5 }}>
+              Only needed when you change the price.
+            </Typography>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>

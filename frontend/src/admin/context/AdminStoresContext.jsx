@@ -24,7 +24,7 @@ function projectCatalog(catalogGroups) {
     materialKeys.push(group.materialKey);
     if (group.isCommodity) {
       const [brand] = stockedBrands;
-      materialData[group.materialKey] = { price: brand.storePrice, available: brand.inStock, materialBrandId: brand.materialBrandId };
+      materialData[group.materialKey] = { price: brand.storePrice, available: brand.inStock, stockQty: brand.stockQty, materialBrandId: brand.materialBrandId };
       stockedCount += 1;
     } else {
       materialData[group.materialKey] = {
@@ -34,7 +34,8 @@ function projectCatalog(catalogGroups) {
           unit: group.unit,
           price: brand.storePrice,
           available: brand.inStock,
-          stars: brand.quality ?? 4,
+          quality: brand.quality,
+          stockQty: brand.stockQty,
         })),
       };
       stockedCount += stockedBrands.length;
@@ -160,7 +161,7 @@ export function AdminStoresProvider({ children }) {
     const store = stores.find((s) => s.id === storeId);
     const materialBrandId = store?.materialData[materialKey]?.materialBrandId;
     if (!materialBrandId) return;
-    await setStoreMaterialPrice(storeId, materialBrandId, { price: updates.price, inStock: updates.available }, quotationFile);
+    await setStoreMaterialPrice(storeId, materialBrandId, { price: updates.price, inStock: updates.available, stockQty: updates.stockQty }, quotationFile);
     await loadStoreCatalog(storeId);
   }, [stores, loadStoreCatalog]);
 
@@ -172,17 +173,17 @@ export function AdminStoresProvider({ children }) {
       unit: brand.unit ?? definition?.unit ?? '',
       brand: brand.name,
       basePrice: brand.price,
-      quality: brand.stars,
+      quality: brand.quality,
       isCommodity: false,
     });
-    await setStoreMaterialPrice(storeId, material.id, { price: brand.price, inStock: brand.available }, quotationFile);
+    await setStoreMaterialPrice(storeId, material.id, { price: brand.price, inStock: brand.available, stockQty: brand.stockQty }, quotationFile);
     await loadStoreCatalog(storeId);
     return { id: material.id, ...brand };
   }, [loadStoreCatalog]);
 
   const updateBrand = useCallback(async (storeId, materialKey, brandId, updates, quotationFile) => {
-    await updateAdminMaterial(brandId, { brand: updates.name, unit: updates.unit, quality: updates.stars });
-    await setStoreMaterialPrice(storeId, brandId, { price: updates.price, inStock: updates.available }, quotationFile);
+    await updateAdminMaterial(brandId, { brand: updates.name, unit: updates.unit, quality: updates.quality });
+    await setStoreMaterialPrice(storeId, brandId, { price: updates.price, inStock: updates.available, stockQty: updates.stockQty }, quotationFile);
     await loadStoreCatalog(storeId);
   }, [loadStoreCatalog]);
 

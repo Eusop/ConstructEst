@@ -19,14 +19,20 @@ import { colors } from '../../theme/palette';
  * no brands (unlike BrandFormDialog).
  */
 function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit }) {
-  const [form, setForm] = useState({ price: '', available: true });
+  const [form, setForm] = useState({ price: '', available: true, stockQty: '' });
   const [error, setError] = useState('');
   const [quotationFile, setQuotationFile] = useState(null);
   const [quotationError, setQuotationError] = useState('');
+  const [stockError, setStockError] = useState('');
 
   useEffect(() => {
     if (open) {
-      setForm({ price: data?.price != null ? String(data.price) : '', available: data?.available ?? true });
+      setForm({
+        price: data?.price != null ? String(data.price) : '',
+        available: data?.available ?? true,
+        stockQty: data?.stockQty != null ? String(data.stockQty) : '',
+      });
+      setStockError('');
       setError('');
       setQuotationFile(null);
       setQuotationError('');
@@ -39,12 +45,18 @@ function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit 
       setError('Enter a valid price');
       hasError = true;
     }
-    if (!quotationFile) {
+    if (form.stockQty !== '' && (Number.isNaN(Number(form.stockQty)) || Number(form.stockQty) < 0)) {
+      setStockError('Enter 0 or more, or leave blank');
+      hasError = true;
+    }
+    // A quotation is only needed when the price is new or changed.
+    const priceChanged = data?.price == null || Number(form.price) !== Number(data.price);
+    if (priceChanged && !quotationFile) {
       setQuotationError('A quotation is required to set or change this price');
       hasError = true;
     }
     if (hasError) return;
-    onSubmit({ price: Number(form.price), available: form.available }, quotationFile);
+    onSubmit({ price: Number(form.price), available: form.available, stockQty: form.stockQty === '' ? null : Number(form.stockQty) }, quotationFile);
   };
 
   return (
@@ -87,6 +99,20 @@ function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit 
               <ToggleButton value="out">Out of stock</ToggleButton>
             </ToggleButtonGroup>
           </Box>
+          <Box>
+            <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Stock on hand</Typography>
+            <FormTextField
+              placeholder="Leave blank if not known"
+              value={form.stockQty}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, stockQty: event.target.value }));
+                setStockError('');
+              }}
+              error={Boolean(stockError)}
+              helperText={stockError || ' '}
+              slotProps={{ input: { endAdornment: <InputAdornment position="end">{unit}</InputAdornment> } }}
+            />
+          </Box>
 
           <QuotationFilePicker
             file={quotationFile}
@@ -96,6 +122,11 @@ function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit 
             }}
             error={quotationError}
           />
+          {data?.price != null && !quotationError && (
+            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: -1.5 }}>
+              Only needed when you change the price.
+            </Typography>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>

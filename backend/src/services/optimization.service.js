@@ -205,7 +205,7 @@ export async function computeBom(projectId, storeId) {
     let row;
     if (selectionByKey[material.material_key]) {
       [row] = await query(
-        `SELECT mb.brand, mb.category, mb.spec, smp.price
+        `SELECT mb.brand, mb.category, mb.spec, smp.price, smp.stock_qty
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
          WHERE smp.store_id = ? AND smp.material_brand_id = ?`,
@@ -214,7 +214,7 @@ export async function computeBom(projectId, storeId) {
     }
     if (!row) {
       [row] = await query(
-        `SELECT mb.brand, mb.category, mb.spec, smp.price
+        `SELECT mb.brand, mb.category, mb.spec, smp.price, smp.stock_qty
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
          WHERE smp.store_id = ? AND mb.material_key = ? AND smp.in_stock = 1
@@ -230,11 +230,14 @@ export async function computeBom(projectId, storeId) {
     let quantity = Number(material.quantity);
     let unit = material.unit;
     let pieceConversion = null;
+    // Stock count set by the admin, in the price unit. Null if not known.
+    let stockQty = available && row.stock_qty != null ? Number(row.stock_qty) : null;
 
     const bdFtPerPiece = available && material.material_key === 'lumber' ? boardFeetPerPiece(row.spec) : null;
     if (bdFtPerPiece) {
       pieceConversion = { takeoffQuantity: quantity, takeoffUnit: unit, boardFeetPerPiece: Math.round(bdFtPerPiece * 1000) / 1000 };
       quantity = Math.ceil(quantity / bdFtPerPiece);
+      if (stockQty != null) stockQty = Math.floor(stockQty / bdFtPerPiece);
       unitPrice = Math.round(unitPrice * bdFtPerPiece * 100) / 100;
       unit = 'pcs';
     }
@@ -250,6 +253,8 @@ export async function computeBom(projectId, storeId) {
       unit,
       unitPrice,
       amount: available ? Math.round(unitPrice * quantity * 100) / 100 : null,
+      stockQty,
+      stockShort: stockQty != null && stockQty < quantity,
       ...(pieceConversion ? { pieceConversion } : {}),
     });
   }

@@ -41,7 +41,7 @@ function rowLength(row) {
  */
 function MemberScheduleHelper({ onApply }) {
   const [open, setOpen] = useState(false);
-  const [diameterMm, setDiameterMm] = useState(12);
+  const [diameterMm, setDiameterMm] = useState(16);
   const [rows, setRows] = useState(() => [emptyRow()]);
 
   const total = Math.round(rows.reduce((sum, row) => sum + rowLength(row), 0) * 100) / 100;

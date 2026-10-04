@@ -35,6 +35,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { ADMIN_ROUTES } from '../../routes/paths';
 import { colors } from '../../theme/palette';
 import { formatPeso as formatPesoAmount } from '../../utils/formatNumbers';
+import { qualityLabel, formatStock } from '../data/qualityLevels';
 
 // Keeps the dash placeholder for an unpriced material (the shared helper treats
 // null as 0, which would look like a real 0.00 price).
@@ -56,6 +57,19 @@ function AvailabilityChip({ available, sx }) {
         ...sx,
       }}
     />
+  );
+}
+
+// Quality (brands only) and stock count, e.g. "Good (3) · Stock: 120 bags".
+function StockText({ quality, stockQty, unit, sx }) {
+  const parts = [];
+  if (quality !== undefined) parts.push(qualityLabel(quality));
+  const stock = formatStock(stockQty);
+  parts.push(stock == null ? 'Stock: not set' : `Stock: ${stock} ${unit}`);
+  return (
+    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', ...sx }}>
+      {parts.join(' · ')}
+    </Typography>
   );
 }
 
@@ -88,6 +102,7 @@ function BulkMaterialMobileCard({ material, data, onOpenMenu }) {
         </Typography>
         <AvailabilityChip available={data.available ?? true} />
       </Stack>
+      <StockText stockQty={data.stockQty} unit={material.unit} sx={{ mt: 0.75 }} />
     </Paper>
   );
 }
@@ -108,9 +123,10 @@ function BrandMobileCard({ brand, onOpenMenu }) {
           </IconButton>
         </Stack>
       </Stack>
-      <Box sx={{ mt: 0.75 }}>
+      <Stack direction="row" spacing={1} sx={{ mt: 0.75, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
         <AvailabilityChip available={brand.available} />
-      </Box>
+        <StockText quality={brand.quality} stockQty={brand.stockQty} unit={brand.unit} />
+      </Stack>
     </Paper>
   );
 }
@@ -462,6 +478,7 @@ function AdminMaterialsPage() {
                         <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 600 }}> /{material.unit}</Typography>
                       </Typography>
                       <AvailabilityChip available={data.available ?? true} />
+                      <StockText stockQty={data.stockQty} unit={material.unit} />
                       <Tooltip title="Edit price / availability">
                         <IconButton size="small" onClick={() => setBulkDialog({ open: true, materialKey: material.key })}>
                           <EditRoundedIcon fontSize="small" />
@@ -594,6 +611,7 @@ function AdminMaterialsPage() {
                               </Typography>
                               <Box sx={{ order: 4, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
                               <AvailabilityChip available={brand.available} sx={{ order: 5 }} />
+                              <StockText quality={brand.quality} stockQty={brand.stockQty} unit={brand.unit} sx={{ order: 5 }} />
                               <Box sx={{ order: 6, flex: 1, display: { xs: 'none', sm: 'block' } }} />
                               <Tooltip title="Edit">
                                 <IconButton

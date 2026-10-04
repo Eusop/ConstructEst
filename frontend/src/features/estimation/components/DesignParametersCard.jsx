@@ -36,36 +36,46 @@ const GROUPS = [
       { key: 'footingWidth', label: 'Footing width', unit: 'm', step: 0.01 },
       { key: 'footingLength', label: 'Footing length', unit: 'm', step: 0.01 },
       { key: 'footingThickness', label: 'Footing thickness', unit: 'm', step: 0.05 },
-      // Below ground: sets how far the column bars go down, not the concrete.
-      { key: 'footingDepth', label: 'Footing depth (below ground)', unit: 'm', step: 0.1 },
       { key: 'footingCount', label: 'Footing count', unit: 'pcs', step: 1, projectOnly: true },
       { key: 'footingRebarKgPerM3', label: 'Footing rebar (16mm)', unit: 'kg/m³', step: 5 },
     ],
   },
+  // Columns and beams are separate groups (the engineer, 2026-10-04).
   {
-    key: 'columnsAndBeams',
-    label: 'Columns & Beams',
+    key: 'columns',
+    label: 'Columns',
     fields: [
       { key: 'columnWidth', label: 'Column width', unit: 'm', step: 0.01 },
       { key: 'columnDepth', label: 'Column depth', unit: 'm', step: 0.01 },
       { key: 'columnHeight', label: 'Column height', unit: 'm', step: 0.1 },
       { key: 'columnCount', label: 'Column count', unit: 'pcs', step: 1 },
-      { key: 'columnBarCount', label: 'Main bars per column', unit: 'pcs', step: 1 },
-      { key: 'columnBarMm', label: 'Column bar size', unit: 'mm', options: BAR_SIZES_MM },
-      { key: 'columnTieSpacing', label: 'Column tie spacing', unit: 'm', step: 0.01 },
       // Only meaningful with a separate second floor DXF. Hidden on a 1-storey
       // project, shown on the admin page (storeys unknown).
       { key: 'columnWidthSecond', label: '2nd floor column width', unit: 'm', step: 0.01, twoStoreyOnly: true },
       { key: 'columnDepthSecond', label: '2nd floor column depth', unit: 'm', step: 0.01, twoStoreyOnly: true },
+      // Below ground: how far the column bars go down when they are counted.
+      { key: 'footingDepth', label: 'Footing depth (below ground)', unit: 'm', step: 0.1 },
+      // Half 16mm main bars, half 10mm ties, unless bars are entered below.
+      { key: 'columnRebarKgPerM3', label: 'Column rebar', unit: 'kg/m³', step: 5 },
+      { key: 'columnBarCount', label: 'Main bars per column', unit: 'pcs', step: 1 },
+      { key: 'columnBarMm', label: 'Column bar size', unit: 'mm', options: BAR_SIZES_MM },
+      { key: 'columnTieSpacing', label: 'Column tie spacing', unit: 'm', step: 0.01 },
+    ],
+  },
+  {
+    key: 'beams',
+    label: 'Beams',
+    fields: [
       { key: 'beamWidth', label: 'Beam width', unit: 'm', step: 0.01 },
       { key: 'beamDepth', label: 'Beam depth', unit: 'm', step: 0.01 },
       { key: 'beamLength', label: 'Beam total length', unit: 'm', step: 0.5 },
+      // Half 16mm main bars, half 10mm stirrups, unless the schedule or a
+      // stirrup spacing is entered below.
+      { key: 'beamRebarKgPerM3', label: 'Beam rebar', unit: 'kg/m³', step: 5 },
       // From the project's own beam schedule, so project page only (a global
       // default would give every project the same schedule).
-      { key: 'beamRebarLength', label: 'Beam rebar total length', unit: 'm', step: 1, projectOnly: true },
-      // Capped at 16mm, the largest size Tarlac stores usually carry (2026-10-03 meeting).
-      { key: 'beamRebarDiameterMm', label: 'Beam rebar bar size', unit: 'mm', options: BAR_SIZES_MM, projectOnly: true },
-      // Stirrups are only computed when a spacing is entered, like beam rebar.
+      { key: 'beamRebarLength', label: 'Beam main bars total length', unit: 'm', step: 1, projectOnly: true },
+      { key: 'beamRebarDiameterMm', label: 'Beam main bar size', unit: 'mm', options: BAR_SIZES_MM, projectOnly: true },
       { key: 'beamStirrupSpacing', label: 'Beam stirrup spacing', unit: 'm', step: 0.01 },
       { key: 'beamStirrupMm', label: 'Beam stirrup bar size', unit: 'mm', options: BAR_SIZES_MM },
     ],
@@ -84,6 +94,16 @@ const GROUPS = [
       { key: 'groundSlabBarSpacing', label: 'Ground slab bar spacing', unit: 'm', step: 0.01 },
       { key: 'secondSlabBarMm', label: '2nd floor slab bar size', unit: 'mm', options: BAR_SIZES_MM, twoStoreyOnly: true },
       { key: 'secondSlabBarSpacing', label: '2nd floor slab bar spacing', unit: 'm', step: 0.01, twoStoreyOnly: true },
+    ],
+  },
+  // Truss angle bar by weight (the engineer, 2026-10-04): roof area x framing
+  // weight / angle bar weight / 6 m, plus the general wastage.
+  {
+    key: 'roofing',
+    label: 'Roofing',
+    fields: [
+      { key: 'trussFramingKgPerM2', label: 'Truss framing weight', unit: 'kg/m²', step: 0.5 },
+      { key: 'angleBarKgPerM', label: 'Angle bar weight', unit: 'kg/m', step: 0.1 },
     ],
   },
   {
@@ -138,9 +158,11 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
   if (fieldKey === 'columnDepthSecond') return fieldPlaceholder('columnDepth', storeys, effectiveDefaults);
   // Blank means no beam rebar at all (no computed default), not an automatic
   // value, so "Auto" would be misleading.
-  if (fieldKey === 'beamRebarLength') return 'None (from schedule)';
-  if (fieldKey === 'beamStirrupSpacing') return 'None (from plan)';
-  if (fieldKey === 'columnTieSpacing') return codeTieSpacing(storeys, effectiveDefaults, overrides);
+  // Blank bar fields mean the kg per m3 rate is used (the engineer, 2026-10-04).
+  if (fieldKey === 'beamRebarLength' || fieldKey === 'beamStirrupSpacing') return 'Use kg/m³ rate';
+  const columnBarsFromPlan = ['columnBarCount', 'columnBarMm', 'columnTieSpacing'].some((key) => overrides[key] != null);
+  if (fieldKey === 'columnBarCount' && !columnBarsFromPlan) return 'Use kg/m³ rate';
+  if (fieldKey === 'columnTieSpacing') return columnBarsFromPlan ? codeTieSpacing(storeys, effectiveDefaults, overrides) : 'Use kg/m³ rate';
   if (fieldKey === 'footingCount') return overrides.columnCount != null ? String(overrides.columnCount) : 'Same as columns';
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
@@ -254,7 +276,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                   gap: 2,
                 }}
               >
-                {group.key === 'columnsAndBeams' && showTwoStoreyNotice && (
+                {group.key === 'columns' && showTwoStoreyNotice && (
                   <Alert severity="info" sx={{ gridColumn: '1 / -1', fontSize: '0.8rem' }}>
                     No valid default exists for 2-storey column sizes: the grayed-out numbers are only
                     an assumption. Enter the sizes from the structural plan (per floor, if they differ).
@@ -308,7 +330,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                   />
                 )))}
               </Box>
-              {group.key === 'columnsAndBeams' && storeys != null && (
+              {group.key === 'beams' && storeys != null && (
                 <MemberScheduleHelper
                   onApply={(totalLengthM, diameterMm) => {
                     onOverrideChange('beamRebarLength', totalLengthM);

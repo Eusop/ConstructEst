@@ -27,6 +27,7 @@ const EMPTY_OVERRIDES = {
   groundSlabBarMm: null, groundSlabBarSpacing: null, secondSlabBarMm: null, secondSlabBarSpacing: null,
   columnBarCount: null, columnBarMm: null, columnTieSpacing: null, beamStirrupSpacing: null, beamStirrupMm: null,
   formworkUses: null, scaffoldingUses: null,
+  columnRebarKgPerM3: null, beamRebarKgPerM3: null, trussFramingKgPerM2: null, angleBarKgPerM: null,
 };
 
 function toApiShape(factors) {

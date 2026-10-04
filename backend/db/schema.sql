@@ -173,6 +173,8 @@ CREATE TABLE store_material_prices (
   material_brand_id INT UNSIGNED NOT NULL,
   price DECIMAL(12, 2) NOT NULL,
   in_stock TINYINT(1) NOT NULL DEFAULT 1,
+  -- Stock count in the price unit, NULL if unknown (migration 032).
+  stock_qty DECIMAL(12, 2) NULL,
   CONSTRAINT fk_smp_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
   CONSTRAINT fk_smp_brand FOREIGN KEY (material_brand_id) REFERENCES material_brands(id) ON DELETE CASCADE,
   UNIQUE KEY uq_store_brand (store_id, material_brand_id)
@@ -250,10 +252,14 @@ CREATE TABLE project_design_overrides (
   column_bar_count SMALLINT UNSIGNED NULL,
   column_bar_mm SMALLINT UNSIGNED NULL,
   column_tie_spacing DECIMAL(5,3) NULL,
+  column_rebar_kg_per_m3 DECIMAL(6,1) NULL,
+  beam_rebar_kg_per_m3 DECIMAL(6,1) NULL,
   beam_stirrup_spacing DECIMAL(5,3) NULL,
   beam_stirrup_mm SMALLINT UNSIGNED NULL,
   formwork_uses TINYINT UNSIGNED NULL,
   scaffolding_uses SMALLINT UNSIGNED NULL,
+  truss_framing_kg_per_m2 DECIMAL(6,2) NULL,
+  angle_bar_kg_per_m DECIMAL(6,3) NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_design_overrides_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE KEY uq_design_overrides_project (project_id)

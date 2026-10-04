@@ -17,6 +17,18 @@ import { formatAmount } from '../../../utils/formatNumbers';
 
 const COLUMNS = ['MATERIAL', 'BRAND', 'SPEC', 'QTY', 'UNIT P', 'AMOUNT'];
 
+// Store stock under the quantity, in red when the store has less than needed.
+// Nothing shows when the admin has not set a count.
+function StockNote({ item }) {
+  if (item.available === false || item.stockQty == null) return null;
+  const stock = Number(item.stockQty).toLocaleString('en-PH', { maximumFractionDigits: 2 });
+  return (
+    <Typography sx={{ fontSize: '0.72rem', mt: 0.25, color: item.stockShort ? 'error.main' : 'text.secondary', fontWeight: item.stockShort ? 700 : 400 }}>
+      {item.stockShort ? `Store has only ${stock} ${item.unit}` : `Store stock: ${stock} ${item.unit}`}
+    </Typography>
+  );
+}
+
 function BomMobileCard({ item }) {
   return (
     <Paper
@@ -48,6 +60,7 @@ function BomMobileCard({ item }) {
         <Box>
           <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>Qty</Typography>
           <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary' }}>{item.quantityLabel}</Typography>
+          <StockNote item={item} />
         </Box>
         <Box sx={{ textAlign: 'right' }}>
           <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>Unit price</Typography>
@@ -67,7 +80,7 @@ function BomMobileCard({ item }) {
  * of a horizontally scrolling table (see BomMobileCard above).
  *
  * @param {object} props
- * @param {Array<{key: string, material: string, brand: string, spec: string|null, available: boolean, quantityLabel: string, unitPrice: number|null, amount: number|null}>} props.items
+ * @param {Array<{key: string, material: string, brand: string, spec: string|null, available: boolean, quantityLabel: string, unit: string, unitPrice: number|null, amount: number|null, stockQty?: number|null, stockShort?: boolean}>} props.items
  */
 function BomTable({ items }) {
   const categoryGroups = groupMaterialsByCategory(items);
@@ -125,7 +138,10 @@ function BomTable({ items }) {
                 </TableCell>
                 <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{item.brand}</TableCell>
                 <TableCell sx={{ color: 'text.secondary', fontSize: '0.82rem', borderColor: 'divider' }}>{item.spec || '—'}</TableCell>
-                <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>{item.quantityLabel}</TableCell>
+                <TableCell sx={{ color: 'text.primary', borderColor: 'divider' }}>
+                  {item.quantityLabel}
+                  <StockNote item={item} />
+                </TableCell>
                 {item.available === false ? (
                   <TableCell sx={{ color: 'text.secondary', fontStyle: 'italic', borderColor: 'divider' }} colSpan={2}>
                     Not available at this store

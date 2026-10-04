@@ -79,7 +79,7 @@ export const deleteAdminMaterial = (id) => apiRequest(`/admin/materials/${id}`, 
  *
  * @param {number} storeId
  * @param {number} materialBrandId
- * @param {{price: number, inStock: boolean, usesCatalogPrice?: boolean}} body
+ * @param {{price: number, inStock: boolean, stockQty?: number|null, usesCatalogPrice?: boolean}} body
  * @param {File} [quotationFile]
  */
 export const setStoreMaterialPrice = (storeId, materialBrandId, body, quotationFile) => {
@@ -89,6 +89,8 @@ export const setStoreMaterialPrice = (storeId, materialBrandId, body, quotationF
   const formData = new FormData();
   formData.append('price', String(body.price));
   formData.append('inStock', String(body.inStock));
+  // Blank clears the stock count.
+  if (body.stockQty !== undefined) formData.append('stockQty', body.stockQty == null ? '' : String(body.stockQty));
   formData.append('quotationFile', quotationFile);
   return apiRequest(`/admin/stores/${storeId}/materials/${materialBrandId}`, { method: 'PUT', body: formData, isMultipart: true });
 };

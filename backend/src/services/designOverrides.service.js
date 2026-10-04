@@ -39,11 +39,16 @@ const FIELDS = [
   ['columnBarCount', 'column_bar_count'],
   ['columnBarMm', 'column_bar_mm'],
   ['columnTieSpacing', 'column_tie_spacing'],
+  // The engineer's rebar by weight and truss formula (2026-10-04, migration 031).
+  ['columnRebarKgPerM3', 'column_rebar_kg_per_m3'],
+  ['beamRebarKgPerM3', 'beam_rebar_kg_per_m3'],
   ['beamStirrupSpacing', 'beam_stirrup_spacing'],
   ['beamStirrupMm', 'beam_stirrup_mm'],
   // Price only, read by optimization.service.js (migration 029).
   ['formworkUses', 'formwork_uses'],
   ['scaffoldingUses', 'scaffolding_uses'],
+  ['trussFramingKgPerM2', 'truss_framing_kg_per_m2'],
+  ['angleBarKgPerM', 'angle_bar_kg_per_m'],
 ];
 
 // Bar sizes stop at 16mm, the largest Tarlac stores usually carry, and a
@@ -73,6 +78,17 @@ function validateOverrides(overrides) {
   }
   if (given('scaffoldingUses') && !(Number.isInteger(Number(overrides.scaffoldingUses)) && Number(overrides.scaffoldingUses) >= 1 && Number(overrides.scaffoldingUses) <= 10)) {
     throw new HttpError(400, 'Scaffolding uses must be a whole number from 1 to 10.');
+  }
+  // Plausible ranges, so a typo can't give a silly estimate.
+  const ranges = [
+    ['footingRebarKgPerM3', 20, 400, 'Footing rebar must be 20 to 400 kg per m3.'],
+    ['columnRebarKgPerM3', 20, 400, 'Column rebar must be 20 to 400 kg per m3.'],
+    ['beamRebarKgPerM3', 20, 400, 'Beam rebar must be 20 to 400 kg per m3.'],
+    ['trussFramingKgPerM2', 1, 60, 'Truss framing weight must be 1 to 60 kg per m2.'],
+    ['angleBarKgPerM', 0.5, 15, 'Angle bar weight must be 0.5 to 15 kg per m.'],
+  ];
+  for (const [key, min, max, message] of ranges) {
+    if (given(key) && !(Number(overrides[key]) >= min && Number(overrides[key]) <= max)) throw new HttpError(400, message);
   }
   for (const key of ['footingCount', 'columnBarCount']) {
     if (given(key) && !(Number.isInteger(Number(overrides[key])) && Number(overrides[key]) >= 1)) {
