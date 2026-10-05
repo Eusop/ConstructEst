@@ -18,6 +18,9 @@ export const BASE_PRICING = {
   sand: { brand: 'Local', category: 'Aggregate', unitPrice: 1300 },
   gravel: { brand: 'Local', category: 'Aggregate', unitPrice: 1250 },
   steelRebar: { brand: '', category: 'Reinforcement' },
+  rebar10mm: { brand: '', category: 'Reinforcement' },
+  rebar12mm: { brand: '', category: 'Reinforcement' },
+  rebar16mm: { brand: '', category: 'Reinforcement' },
   tieWire: { brand: '', category: 'Reinforcement' },
   roofingSheets: { brand: '', category: 'Roofing' },
   purlins: { brand: '', category: 'Roofing' },
@@ -34,7 +37,11 @@ export const BASE_PRICING = {
 export const BRAND_MATERIAL_SHORT_LABELS = {
   hollowBlocks: 'CHB',
   cement: 'Cement',
+  // Old estimates without bar counts still price rebar per ton.
   steelRebar: 'Rebar',
+  rebar10mm: 'Rebar 10mm',
+  rebar12mm: 'Rebar 12mm',
+  rebar16mm: 'Rebar 16mm',
   tieWire: 'Tie Wire',
   roofingSheets: 'Roofing',
   purlins: 'Purlins',

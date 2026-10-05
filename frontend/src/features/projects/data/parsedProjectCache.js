@@ -24,6 +24,10 @@ export let ESTIMATED_COST_VALUE = 0;
 // features/estimation/data/quantityTakeoffMaterials.js for the full take-off
 // (this module only carries what Results and Store Locator need).
 export const MATERIALS = [];
+// Same as MATERIALS, but rebar is split into 6 m bars per size (rebar10mm, ...),
+// since it is priced per piece (migration 036, splitRebarBySize in
+// optimization.service.js). Estimates without bar counts keep rebar in tons.
+export const PRICED_MATERIALS = [];
 
 // Re-exported for modules that import it from here (e.g. BillOfMaterialsPage).
 // The implementation lives in utils/formatNumbers so the copies can't drift apart.
@@ -77,5 +81,20 @@ export function loadParsedProject(estimation) {
       quantityLabel: formatQuantity(material.quantity, material.unit),
       unit: material.unit,
     })),
+  );
+
+  PRICED_MATERIALS.length = 0;
+  PRICED_MATERIALS.push(
+    ...MATERIALS.flatMap((material) => {
+      const pieces = materials.find((m) => m.key === material.key)?.barPieces;
+      if (material.key !== 'steelRebar' || !Array.isArray(pieces) || pieces.length === 0) return [material];
+      return pieces.map((piece) => ({
+        key: `rebar${piece.diameterMm}mm`,
+        name: `Rebar ${piece.diameterMm}mm`,
+        quantity: piece.pieces,
+        quantityLabel: formatQuantity(piece.pieces, 'pcs'),
+        unit: 'pcs',
+      }));
+    }),
   );
 }

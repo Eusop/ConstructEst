@@ -50,6 +50,10 @@ export function loadQuantityTakeoff(materials) {
       sourceBreakdown: material.sourceBreakdown ?? null,
       // Engine computation lines for "Show computation". Null on old estimations.
       steps: material.steps ?? null,
+      // Rebar only: the 6 m bars per size that the BOM prices, e.g. "10mm 448 · 16mm 103 pcs".
+      piecesLabel: Array.isArray(material.barPieces) && material.barPieces.length > 0
+        ? `${material.barPieces.map((p) => `${p.diameterMm}mm ${p.pieces}`).join(' · ')} pcs (6 m)`
+        : null,
       color: MATERIAL_COLORS[material.key] ?? 'blue',
     })),
   );

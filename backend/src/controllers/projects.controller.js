@@ -35,7 +35,7 @@ async function loadCurrentEstimation(projectId) {
   // Uses the cheapest catalog price per material as a rough estimate
   // before a store is picked. Real pricing comes later from brand selection.
   const lineItems = await query(
-    `SELECT eli.material_key AS \`key\`, eli.name, eli.quantity, eli.unit, eli.basis, eli.source_breakdown, eli.calc_steps,
+    `SELECT eli.material_key AS \`key\`, eli.name, eli.quantity, eli.unit, eli.basis, eli.source_breakdown, eli.calc_steps, eli.bar_pieces,
             COALESCE((SELECT MIN(base_price) FROM material_brands WHERE material_key = eli.material_key), 0) AS unitCost
      FROM estimation_line_items eli
      WHERE eli.estimation_id = ?`,
@@ -62,7 +62,7 @@ async function loadCurrentEstimation(projectId) {
   return {
     measurements,
     estimatedCost: estimation.estimated_cost,
-    materials: lineItems.map(({ source_breakdown, calc_steps, ...item }) => ({
+    materials: lineItems.map(({ source_breakdown, calc_steps, bar_pieces, ...item }) => ({
       ...item,
       quantity: Number(item.quantity),
       unitCost: Number(item.unitCost),
@@ -71,6 +71,8 @@ async function loadCurrentEstimation(projectId) {
       sourceBreakdown: typeof source_breakdown === 'string' ? JSON.parse(source_breakdown) : source_breakdown,
       // Null for estimations saved before migration 023 (recalculate to get them).
       steps: typeof calc_steps === 'string' ? JSON.parse(calc_steps) : calc_steps,
+      // 6 m bars per size for rebar, priced per piece (migration 036). Null for other materials.
+      barPieces: typeof bar_pieces === 'string' ? JSON.parse(bar_pieces) : bar_pieces ?? null,
     })),
   };
 }

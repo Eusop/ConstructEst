@@ -69,6 +69,24 @@ function lineCost(materialKey, quantity, unitPrice, spec) {
   return Math.ceil(quantity / perPiece) * (Math.round(unitPrice * perPiece * 100) / 100);
 }
 
+// Rebar is priced per 6 m bar of each size (migration 036), since stores sell
+// it by the piece and sizes cost differently per kg. The take-off keeps rebar
+// in tons; here that row is split into one row per size from its bar counts.
+// Estimates saved without bar counts keep the per-ton row.
+function splitRebarBySize(rows) {
+  return rows.flatMap((row) => {
+    const pieces = parseJson(row.bar_pieces);
+    if (row.material_key !== 'steelRebar' || !Array.isArray(pieces) || pieces.length === 0) return [row];
+    return pieces.map((piece) => ({
+      material_key: `rebar${piece.diameterMm}mm`,
+      name: `Rebar ${piece.diameterMm}mm`,
+      quantity: piece.pieces,
+      unit: 'pcs',
+      bar_pieces: null,
+    }));
+  });
+}
+
 async function getQuantityTakeoff(projectId) {
   const rows = await query(
     `SELECT eli.material_key, eli.name, eli.quantity, eli.unit, eli.bar_pieces
@@ -80,7 +98,7 @@ async function getQuantityTakeoff(projectId) {
   if (rows.length === 0) {
     throw new HttpError(409, 'This project has no computed estimate yet.');
   }
-  return rows;
+  return splitRebarBySize(rows);
 }
 
 /**

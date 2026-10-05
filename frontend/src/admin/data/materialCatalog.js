@@ -10,7 +10,12 @@ export const MATERIAL_CATALOG = [
   { key: 'cement', name: 'Cement', unit: 'bags', bulk: false },
   { key: 'sand', name: 'Sand', unit: 'm3', bulk: true },
   { key: 'gravel', name: 'Gravel', unit: 'm3', bulk: true },
-  { key: 'steelRebar', name: 'Rebar', unit: 'tons', bulk: false },
+  // Rebar is priced per 6 m bar by size (migration 036). The per-ton row is
+  // only used by estimates saved without bar counts.
+  { key: 'rebar10mm', name: 'Rebar 10mm', unit: 'pcs', bulk: false },
+  { key: 'rebar12mm', name: 'Rebar 12mm', unit: 'pcs', bulk: false },
+  { key: 'rebar16mm', name: 'Rebar 16mm', unit: 'pcs', bulk: false },
+  { key: 'steelRebar', name: 'Rebar (per ton, old estimates)', unit: 'tons', bulk: false },
   { key: 'tieWire', name: 'Tie Wire', unit: 'kg', bulk: false },
   { key: 'roofingSheets', name: 'Roofing', unit: 'sheets', bulk: false },
   { key: 'purlins', name: 'Purlins', unit: 'lengths', bulk: false },

@@ -4,7 +4,7 @@
  * and QuantityTakeoffTable.jsx). Presentation only; it does not affect pricing.
  */
 export const MATERIAL_CATEGORY_GROUPS = [
-  { label: 'Structural', keys: ['hollowBlocks', 'cement', 'sand', 'gravel', 'steelRebar', 'tieWire'] },
+  { label: 'Structural', keys: ['hollowBlocks', 'cement', 'sand', 'gravel', 'steelRebar', 'rebar10mm', 'rebar12mm', 'rebar16mm', 'tieWire'] },
   { label: 'Roofing', keys: ['roofingSheets', 'purlins', 'ridge', 'flashing', 'angleBar', 'gutter'] },
   { label: 'Formwork & Scaffolding', keys: ['plywood', 'lumber', 'steelProps', 'scaffolding'] },
 ];

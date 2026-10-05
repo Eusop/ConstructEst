@@ -1,4 +1,4 @@
-import { MATERIALS } from '../../projects/data/parsedProjectCache';
+import { PRICED_MATERIALS } from '../../projects/data/parsedProjectCache';
 import { BASE_PRICING, OPTIMIZATION_TIERS, getStoreBrandOptions } from '../data/brandOptionsCache';
 
 function resolveBrandOption(storeId, materialKey, optionId) {
@@ -22,7 +22,7 @@ function resolveBrandOption(storeId, materialKey, optionId) {
  *   disagree with the per-store prices the backend actually charges.
  */
 export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeId = null, realUnitPrices = null) {
-  const lineItems = MATERIALS.map((material) => {
+  const lineItems = PRICED_MATERIALS.map((material) => {
     const base = BASE_PRICING[material.key];
     const brandOption = choices[material.key] ? resolveBrandOption(storeId, material.key, choices[material.key]) : null;
     // Falls back to 0 (unitPrice is undefined for non-commodities) when a material

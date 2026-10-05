@@ -47,7 +47,7 @@ function buildSourceGroups(materials) {
       .filter((material) => (material.sourceBreakdown?.[key] ?? 0) > 0)
       .map((material) => {
         const categoryQuantity = material.sourceBreakdown[key];
-        return { ...material, quantity: categoryQuantity, quantityLabel: formatQuantity(categoryQuantity, material.unit) };
+        return { ...material, quantity: categoryQuantity, quantityLabel: formatQuantity(categoryQuantity, material.unit), piecesLabel: null };
       }),
   })).filter((group) => group.items.length > 0);
 }
@@ -123,7 +123,12 @@ function MaterialTableRow({ material }) {
             <ComputationToggle open={open} onToggle={() => setOpen((value) => !value)} />
           </Box>
         </TableCell>
-        <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>{material.quantityLabel}</TableCell>
+        <TableCell sx={{ fontWeight: 700, color: 'text.primary', borderColor: 'divider' }}>
+          {material.quantityLabel}
+          {material.piecesLabel && (
+            <Typography sx={{ fontSize: '0.72rem', fontWeight: 400, color: 'text.secondary', whiteSpace: 'nowrap' }}>{material.piecesLabel}</Typography>
+          )}
+        </TableCell>
         <TableCell sx={{ color: 'text.secondary', borderColor: 'divider' }}>{material.unit}</TableCell>
       </TableRow>
       {open && (
@@ -151,7 +156,7 @@ function MaterialMobileCard({ material, showComputation = false }) {
       <Divider sx={{ mb: 1.25 }} />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
-        <StatCell label="Quantity" value={material.quantityLabel} />
+        <StatCell label="Quantity" value={material.piecesLabel ? `${material.quantityLabel} (${material.piecesLabel})` : material.quantityLabel} />
         <StatCell label="Unit" value={material.unit} />
       </Box>
 
