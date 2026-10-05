@@ -39,6 +39,7 @@ const FIELDS = [
   ['secondSlabBarSpacing', 'second_slab_bar_spacing'],
   ['columnBarCount', 'column_bar_count'],
   ['columnBarMm', 'column_bar_mm'],
+  ['columnTieMm', 'column_tie_mm'],
   ['columnTieSpacing', 'column_tie_spacing'],
   // The engineer's rebar by weight and truss formula (2026-10-04, migration 031).
   ['columnRebarKgPerM3', 'column_rebar_kg_per_m3'],
@@ -54,7 +55,7 @@ const FIELDS = [
 
 // Bar sizes stop at 16mm, the largest Tarlac stores usually carry, and a
 // spacing under 5 cm is a typo (engineers, 2026-10-03 meeting).
-const BAR_SIZE_KEYS = ['beamRebarDiameterMm', 'groundSlabBarMm', 'secondSlabBarMm', 'columnBarMm', 'beamStirrupMm'];
+const BAR_SIZE_KEYS = ['beamRebarDiameterMm', 'groundSlabBarMm', 'secondSlabBarMm', 'columnBarMm', 'columnTieMm', 'beamStirrupMm'];
 const SPACING_KEYS = ['groundSlabBarSpacing', 'secondSlabBarSpacing', 'columnTieSpacing', 'beamStirrupSpacing'];
 const ALLOWED_BAR_SIZES_MM = [10, 12, 16];
 const MIN_SPACING_M = 0.05;

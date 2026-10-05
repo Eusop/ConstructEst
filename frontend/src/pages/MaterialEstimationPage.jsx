@@ -34,7 +34,7 @@ const EMPTY_OVERRIDES = {
   beamRebarLength: null, beamRebarDiameterMm: null,
   footingCount: null, footingRebarKgPerM3: null, footingThickness: null,
   groundSlabBarMm: null, groundSlabBarSpacing: null, secondSlabBarMm: null, secondSlabBarSpacing: null,
-  columnBarCount: null, columnBarMm: null, columnTieSpacing: null, beamStirrupSpacing: null, beamStirrupMm: null,
+  columnBarCount: null, columnBarMm: null, columnTieMm: null, columnTieSpacing: null, beamStirrupSpacing: null, beamStirrupMm: null,
   formworkUses: null, scaffoldingUses: null,
   columnRebarKgPerM3: null, beamRebarKgPerM3: null, trussFramingKgPerM2: null, angleBarKgPerM: null,
 };

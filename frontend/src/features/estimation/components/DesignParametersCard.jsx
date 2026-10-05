@@ -13,7 +13,6 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import { getEngineDefaults, getEngineDefaultsBothVariants } from '../data/engineDefaultParameters';
-import MemberScheduleHelper from './MemberScheduleHelper';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { colors } from '../../../theme/palette';
 
@@ -46,20 +45,20 @@ const GROUPS = [
     label: 'Columns',
     fields: [
       { key: 'columnWidth', label: 'Column width', unit: 'm', step: 0.01 },
-      { key: 'columnDepth', label: 'Column depth', unit: 'm', step: 0.01 },
+      { key: 'columnDepth', label: 'Column length', unit: 'm', step: 0.01 },
       { key: 'columnHeight', label: 'Column height', unit: 'm', step: 0.1 },
       { key: 'columnCount', label: 'Column count', unit: 'pcs', step: 1 },
       // Only meaningful with a separate second floor DXF. Hidden on a 1-storey
       // project, shown on the admin page (storeys unknown).
       { key: 'columnWidthSecond', label: '2nd floor column width', unit: 'm', step: 0.01, twoStoreyOnly: true },
-      { key: 'columnDepthSecond', label: '2nd floor column depth', unit: 'm', step: 0.01, twoStoreyOnly: true },
-      // Below ground: how far the column bars go down when they are counted.
+      { key: 'columnDepthSecond', label: '2nd floor column length', unit: 'm', step: 0.01, twoStoreyOnly: true },
+      // Below ground. Not used in the quantities since column bars are by weight.
       { key: 'footingDepth', label: 'Footing depth (below ground)', unit: 'm', step: 0.1 },
-      // Half 16mm main bars, half 10mm ties, unless bars are entered below.
-      { key: 'columnRebarKgPerM3', label: 'Column rebar', unit: 'kg/m³', step: 5 },
-      { key: 'columnBarCount', label: 'Main bars per column', unit: 'pcs', step: 1 },
-      { key: 'columnBarMm', label: 'Column bar size', unit: 'mm', options: BAR_SIZES_MM },
-      { key: 'columnTieSpacing', label: 'Column tie spacing', unit: 'm', step: 0.01 },
+      // Rebar is always by weight: half main bars, half lateral ties. The sizes
+      // only split each half into lengths (the engineer, 2026-10-05).
+      { key: 'columnRebarKgPerM3', label: 'Concrete rebar ratio', unit: 'kg/m³', step: 5 },
+      { key: 'columnBarMm', label: 'Main bar size', unit: 'mm', options: BAR_SIZES_MM },
+      { key: 'columnTieMm', label: 'Lateral ties size', unit: 'mm', options: BAR_SIZES_MM },
     ],
   },
   {
@@ -69,14 +68,9 @@ const GROUPS = [
       { key: 'beamWidth', label: 'Beam width', unit: 'm', step: 0.01 },
       { key: 'beamDepth', label: 'Beam depth', unit: 'm', step: 0.01 },
       { key: 'beamLength', label: 'Beam total length', unit: 'm', step: 0.5 },
-      // Half 16mm main bars, half 10mm stirrups, unless the schedule or a
-      // stirrup spacing is entered below.
-      { key: 'beamRebarKgPerM3', label: 'Beam rebar', unit: 'kg/m³', step: 5 },
-      // From the project's own beam schedule, so project page only (a global
-      // default would give every project the same schedule).
-      { key: 'beamRebarLength', label: 'Beam main bars total length', unit: 'm', step: 1, projectOnly: true },
-      { key: 'beamRebarDiameterMm', label: 'Beam main bar size', unit: 'mm', options: BAR_SIZES_MM, projectOnly: true },
-      { key: 'beamStirrupSpacing', label: 'Beam stirrup spacing', unit: 'm', step: 0.01 },
+      // Half main bars, half stirrups, by weight like the columns.
+      { key: 'beamRebarKgPerM3', label: 'Concrete rebar ratio', unit: 'kg/m³', step: 5 },
+      { key: 'beamRebarDiameterMm', label: 'Beam main bar size', unit: 'mm', options: BAR_SIZES_MM },
       { key: 'beamStirrupMm', label: 'Beam stirrup bar size', unit: 'mm', options: BAR_SIZES_MM },
     ],
   },
@@ -123,24 +117,6 @@ const GROUPS = [
   },
 ];
 
-// Largest tie spacing the code allows (NSCP 425.7.2), worked out the same way
-// as formulas.py: the smallest of 16 x main bar, 48 x the 10mm tie, and the
-// column's smaller side. Uses the sizes in the fields right now, typed or default.
-function codeTieSpacing(storeys, effectiveDefaults, overrides) {
-  const forStoreys = (s) => {
-    const value = (key) => overrides[key] ?? Number(fieldPlaceholder(key, s, effectiveDefaults, overrides));
-    const barM = value('columnBarMm') / 1000;
-    const spacing = (w, d) => Number(Math.min(16 * barM, 48 * 0.010, w, d).toFixed(3));
-    const ground = spacing(value('columnWidth'), value('columnDepth'));
-    if (s < 2) return String(ground);
-    const second = spacing(overrides.columnWidthSecond ?? value('columnWidth'), overrides.columnDepthSecond ?? value('columnDepth'));
-    return second === ground ? String(ground) : `${ground} / ${second} (2nd floor)`;
-  };
-  if (storeys != null) return forStoreys(storeys);
-  // Admin global page: no project, so show the 1-storey and 2-storey values.
-  return `${forStoreys(1)} / ${forStoreys(2)}`;
-}
-
 // columnCount (detected from the DXF) and beamLength (from wall run) have no
 // fixed number to show. Every other placeholder is the value the engine will use,
 // computed for `storeys` when known (a project), or both the 1-storey and
@@ -157,13 +133,6 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
   if (fieldKey === 'columnDepthSecond' && overrides.columnDepth != null) return String(overrides.columnDepth);
   if (fieldKey === 'columnWidthSecond') return fieldPlaceholder('columnWidth', storeys, effectiveDefaults);
   if (fieldKey === 'columnDepthSecond') return fieldPlaceholder('columnDepth', storeys, effectiveDefaults);
-  // Blank means no beam rebar at all (no computed default), not an automatic
-  // value, so "Auto" would be misleading.
-  // Blank bar fields mean the kg per m3 rate is used (the engineer, 2026-10-04).
-  if (fieldKey === 'beamRebarLength' || fieldKey === 'beamStirrupSpacing') return 'Use kg/m³ rate';
-  const columnBarsFromPlan = ['columnBarCount', 'columnBarMm', 'columnTieSpacing'].some((key) => overrides[key] != null);
-  if (fieldKey === 'columnBarCount' && !columnBarsFromPlan) return 'Use kg/m³ rate';
-  if (fieldKey === 'columnTieSpacing') return columnBarsFromPlan ? codeTieSpacing(storeys, effectiveDefaults, overrides) : 'Use kg/m³ rate';
   if (fieldKey === 'footingCount') return overrides.columnCount != null ? String(overrides.columnCount) : 'Same as columns';
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
@@ -336,14 +305,6 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                   />
                 )))}
               </Box>
-              {group.key === 'beams' && storeys != null && (
-                <MemberScheduleHelper
-                  onApply={(totalLengthM, diameterMm) => {
-                    onOverrideChange('beamRebarLength', totalLengthM);
-                    onOverrideChange('beamRebarDiameterMm', diameterMm);
-                  }}
-                />
-              )}
             </AccordionDetails>
           </Accordion>
         ))}

@@ -252,6 +252,7 @@ CREATE TABLE project_design_overrides (
   second_slab_bar_spacing DECIMAL(5,3) NULL,
   column_bar_count SMALLINT UNSIGNED NULL,
   column_bar_mm SMALLINT UNSIGNED NULL,
+  column_tie_mm SMALLINT UNSIGNED NULL,
   column_tie_spacing DECIMAL(5,3) NULL,
   column_rebar_kg_per_m3 DECIMAL(6,1) NULL,
   beam_rebar_kg_per_m3 DECIMAL(6,1) NULL,

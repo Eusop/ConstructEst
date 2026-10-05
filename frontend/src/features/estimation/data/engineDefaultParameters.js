@@ -19,12 +19,9 @@ export function getEngineDefaults(storeys) {
     beamWidth: 0.20,
     beamDepth: 0.30,
   beamLength: null, // from the BEAM layer, else wall run length (not fixed)
-    beamRebarLength: null, // no default: zero unless entered from the beam schedule
-    beamRebarDiameterMm: 16, // main bar size when a schedule length is entered (the engineer's 16mm)
-    columnBarCount: 4, // NSCP minimum (docs/nscp-citations.md)
-    columnBarMm: isTwoStorey ? 16 : 12,
-    columnTieSpacing: null, // code maximum spacing, worked out per column (Fajardo Sec. 3-9)
-    beamStirrupSpacing: null, // no default: no stirrups unless a spacing is entered
+    beamRebarDiameterMm: 16, // main bars, the engineer's 16mm
+    columnBarMm: 16, // main bars
+    columnTieMm: 10, // lateral ties
     beamStirrupMm: 10,
     footingWidth: 0.60,
     footingLength: 0.60,
