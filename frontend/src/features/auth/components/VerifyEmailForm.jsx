@@ -65,8 +65,9 @@ function VerifyEmailForm() {
 
     setIsSubmitting(true);
     try {
-      await verifyEmailRequest({ email: email.trim(), code });
-      showToast('Email verified! An admin will review your account next.', 'success');
+      // Admin-created accounts are already approved, so the server says "You can now sign in".
+      const result = await verifyEmailRequest({ email: email.trim(), code });
+      showToast(result?.message || 'Email verified! An admin will review your account next.', 'success');
       navigate(ROUTES.LOGIN);
     } catch (error) {
       if (REDIRECT_TO_LOGIN_CODES.has(error.code)) {

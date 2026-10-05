@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { query } from '../config/db.js';
-import { sendPasswordResetCodeEmail } from './mailer.service.js';
+import { sendPasswordResetCodeEmail, sendVerificationCodeEmail } from './mailer.service.js';
 
 // Shared by Forgot password (auth.controller.js) and the admin "Send reset
 // code" action (admin.controller.js), so both send and save codes the same way.
@@ -30,6 +30,27 @@ export async function issuePasswordResetCode(user, { byAdmin = false } = {}) {
      WHERE id = ?`,
     [code, user.id],
   );
+}
+
+/** Saves a new email verification code (the signup code) and emails it.
+ * Used when an admin creates an account or changes its email. Returns false
+ * if the email could not be sent; the code is saved either way, and the user
+ * can ask for a new one on the sign-in screen. */
+export async function issueEmailVerificationCode(user) {
+  const code = generateVerificationCode();
+  await query(
+    `UPDATE users SET email_verification_code = ?, email_verification_expires_at = NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE,
+                       email_verification_last_sent_at = NOW(), email_verification_attempts = 0
+     WHERE id = ?`,
+    [code, user.id],
+  );
+  try {
+    await sendVerificationCodeEmail(user.email, code, user.user_id);
+    return true;
+  } catch (err) {
+    console.error('Failed to send verification email:', err);
+    return false;
+  }
 }
 
 // No look-alike characters (0/O, 1/l/I), so the password can be read out or

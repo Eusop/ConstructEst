@@ -156,7 +156,12 @@ export const verifyEmail = asyncHandler(async (req, res) => {
      WHERE id = ?`,
     [user.id],
   );
-  res.json({ message: 'Email verified. An admin will review your account next.' });
+  // Admin-created accounts are already approved, so they can sign in now.
+  const approved = Boolean(user.is_verified);
+  res.json({
+    message: approved ? 'Email verified. You can now sign in.' : 'Email verified. An admin will review your account next.',
+    approved,
+  });
 });
 
 export const resendVerificationCode = asyncHandler(async (req, res) => {

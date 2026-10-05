@@ -14,6 +14,12 @@ CREATE TABLE users (
   last_name VARCHAR(100) NOT NULL,
   user_id VARCHAR(20) NOT NULL UNIQUE,   -- login ID the system assigns, year + 4 digits (e.g. 20260001)
   email VARCHAR(255) NOT NULL UNIQUE,
+  -- A new email waits here until the code sent to it is entered (migration 037).
+  pending_email VARCHAR(255) NULL,
+  email_change_code CHAR(6) NULL,
+  email_change_expires_at TIMESTAMP NULL,
+  email_change_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  email_change_last_sent_at TIMESTAMP NULL,
   password_hash VARCHAR(255) NOT NULL,
   access_role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
   avatar_url VARCHAR(500) NULL,
@@ -21,8 +27,8 @@ CREATE TABLE users (
   -- Self-registered accounts start unverified (register sets 0). Admin-created
   -- accounts and existing rows use the default (1). See migration 008.
   is_verified TINYINT(1) NOT NULL DEFAULT 1,
-  -- Independent of is_verified. Set once when the owner types back the code
-  -- sent to their email, never cleared. See migration 012 and
+  -- Independent of is_verified. Set when the owner types back the code
+  -- sent to their email. Cleared when an admin changes the email (migration 037). See migration 012 and
   -- auth.controller.js (register, verifyEmail, resendVerificationCode).
   email_verified_at TIMESTAMP NULL,
   email_verification_code CHAR(6) NULL,

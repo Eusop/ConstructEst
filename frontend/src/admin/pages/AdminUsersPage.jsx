@@ -206,6 +206,9 @@ function UserMobileCard({ user, onOpenMenu }) {
             size="small"
             sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: userStatus(user).bg, color: userStatus(user).fg }}
           />
+          {user.emailVerified === false && (
+            <Chip label="Email not verified" size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: colors.iconOrangeBg, color: colors.iconOrangeFg }} />
+          )}
         </Stack>
         <Typography sx={{ color: 'text.secondary', fontSize: '0.68rem', flexShrink: 0 }} noWrap>
           {formatDate(user.createdAt)}
@@ -292,15 +295,17 @@ function AdminUsersPage() {
   const closeRowMenu = () => setRowMenu(null);
 
   const handleSubmit = async (form) => {
+    // A new or changed email gets a verification code (TC-A04); the server's
+    // message says whether it was sent.
     if (editingUser) {
-      await updateAdminUser(editingUser.id, { firstName: form.firstName, lastName: form.lastName, email: form.email, accessRole: form.accessRole });
+      const result = await updateAdminUser(editingUser.id, { firstName: form.firstName, lastName: form.lastName, email: form.email, accessRole: form.accessRole });
       logActivity({ message: `User updated: ${form.firstName} ${form.lastName}`, icon: EditRoundedIcon, iconBg: colors.iconBlueBg, iconFg: colors.iconBlueFg });
-      showToast('User updated');
+      showToast(result?.message || 'User updated', result?.emailSent === false ? 'warning' : 'success');
     } else {
       // The admin passes the new User ID to the person, so show it.
-      const { user: created } = await createAdminUser(form);
+      const { user: created, message, emailSent } = await createAdminUser(form);
       logActivity({ message: `User account created: ${form.firstName} ${form.lastName}`, icon: AddRoundedIcon, iconBg: colors.iconGreenBg, iconFg: colors.iconGreenFg });
-      showToast(`User created. User ID: ${created.userId}`);
+      showToast(`User ID: ${created.userId}. ${message || 'User created.'}`, emailSent === false ? 'warning' : 'success');
     }
     setDialogOpen(false);
     load();
@@ -530,7 +535,12 @@ function AdminUsersPage() {
                       </Stack>
                     </TableCell>
                     <TableCell sx={{ color: 'text.secondary' }}>{user.userId}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary' }}>{user.email}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>
+                      {user.email}
+                      {user.emailVerified === false && (
+                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: colors.iconOrangeFg }}>Email not verified</Typography>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={user.accessRole === 'admin' ? 'Admin' : 'User'}

@@ -10,7 +10,8 @@ import { getEffectiveConstants } from '../services/constants.service.js';
 import { generateUserId } from '../services/userId.service.js';
 import { getDesignOverrides, saveDesignOverrides } from '../services/designOverrides.service.js';
 import { UPLOAD_DIR } from '../middleware/upload.js';
-import { cooldownSecondsLeft, issuePasswordResetCode, generateTemporaryPassword, TEMP_PASSWORD_HOURS } from '../services/passwordReset.service.js';
+import { cooldownSecondsLeft, issuePasswordResetCode, generateTemporaryPassword, TEMP_PASSWORD_HOURS, issueEmailVerificationCode } from '../services/passwordReset.service.js';
+import { isValidEmail } from '../utils/email.js';
 import { sendTemporaryPasswordNoticeEmail } from '../services/mailer.service.js';
 
 // --- Admin activity log ---
@@ -58,7 +59,7 @@ export const listAdminActivity = asyncHandler(async (req, res) => {
 
 export const listUsers = asyncHandler(async (req, res) => {
   const users = await query('SELECT * FROM users ORDER BY created_at DESC');
-  res.json({ users: users.map((u) => ({ ...toPublicUser(u), isActive: Boolean(u.is_active), isVerified: Boolean(u.is_verified) })) });
+  res.json({ users: users.map((u) => ({ ...toPublicUser(u), isActive: Boolean(u.is_active), isVerified: Boolean(u.is_verified), emailVerified: Boolean(u.email_verified_at) })) });
 });
 
 export const createUser = asyncHandler(async (req, res) => {
@@ -67,6 +68,7 @@ export const createUser = asyncHandler(async (req, res) => {
     throw new HttpError(400, 'firstName, lastName, email, and password are required.');
   }
   if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
+  if (!isValidEmail(email)) throw new HttpError(400, 'Enter a valid email address.');
   if (!isValidPassword(password)) throw new HttpError(400, PASSWORD_RULE_MESSAGE);
 
   // Same as register: check the email before using up a User ID number.
@@ -75,16 +77,24 @@ export const createUser = asyncHandler(async (req, res) => {
 
   const passwordHash = bcrypt.hashSync(password, 10);
   const userId = await generateUserId();
-  // Set email_verified_at right away. An admin creating the account is trusted,
-  // so no email check is needed.
+  // Approved right away (an admin made it), but the email is checked like
+  // sign-up: the user enters the emailed code at their first sign-in (IT
+  // test TC-A04, an email could be one the user does not own).
   const result = await query(
-    `INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role, email_verified_at)
-     VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+    `INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [firstName, lastName, userId, email, passwordHash, accessRole],
   );
   const [user] = await query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+  const emailSent = await issueEmailVerificationCode(user);
   await logAdminActivity(req.user.id, 'user_management', 'user_created', `Created user account: ${firstName} ${lastName} (${userId})`);
-  res.status(201).json({ user: toPublicUser(user) });
+  res.status(201).json({
+    user: { ...toPublicUser(user), emailVerified: false },
+    emailSent,
+    message: emailSent
+      ? `Account created. A verification code was sent to ${email}; the user enters it at their first sign-in.`
+      : `Account created, but the verification code could not be sent to ${email}. The user can request a new code when signing in.`,
+  });
 });
 
 export const updateUser = asyncHandler(async (req, res) => {
@@ -94,7 +104,21 @@ export const updateUser = asyncHandler(async (req, res) => {
   const changedFields = [];
   if (firstName !== undefined) { fields.push('first_name = ?'); params.push(firstName); changedFields.push('name'); }
   if (lastName !== undefined) { fields.push('last_name = ?'); params.push(lastName); if (!changedFields.includes('name')) changedFields.push('name'); }
-  if (email !== undefined) { fields.push('email = ?'); params.push(email); changedFields.push('email'); }
+  // A new email has to be confirmed by its owner, like sign-up (TC-A04).
+  let emailChanged = false;
+  if (email !== undefined) {
+    const [current] = await query('SELECT email FROM users WHERE id = ?', [req.params.id]);
+    if (current && String(email).trim().toLowerCase() !== current.email.toLowerCase()) {
+      if (String(req.params.id) === String(req.user.id)) {
+        throw new HttpError(400, 'Change your own email from Profile.');
+      }
+      if (!isValidEmail(email)) throw new HttpError(400, 'Enter a valid email address.');
+      const [taken] = await query('SELECT id FROM users WHERE email = ? AND id != ?', [email, req.params.id]);
+      if (taken) throw new HttpError(409, 'That email address is already in use.');
+      fields.push('email = ?', 'email_verified_at = NULL'); params.push(String(email).trim()); changedFields.push('email');
+      emailChanged = true;
+    }
+  }
   if (accessRole !== undefined) {
     if (!['user', 'admin'].includes(accessRole)) throw new HttpError(400, 'accessRole must be "user" or "admin".');
 
@@ -127,8 +151,15 @@ export const updateUser = asyncHandler(async (req, res) => {
   await query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
   const [user] = await query('SELECT * FROM users WHERE id = ?', [req.params.id]);
   if (!user) throw new HttpError(404, 'User not found.');
+  const emailSent = emailChanged ? await issueEmailVerificationCode(user) : null;
   await logAdminActivity(req.user.id, 'user_management', 'user_updated', `Updated user: ${user.first_name} ${user.last_name} (${changedFields.join(', ')})`);
-  res.json({ user: toPublicUser(user) });
+  let message = 'User updated.';
+  if (emailChanged) {
+    message = emailSent
+      ? `User updated. A verification code was sent to ${user.email}; the user enters it at their next sign-in.`
+      : `User updated, but the verification code could not be sent to ${user.email}. The user can request a new code when signing in.`;
+  }
+  res.json({ user: { ...toPublicUser(user), emailVerified: Boolean(user.email_verified_at) }, emailSent, message });
 });
 
 export const setUserActive = asyncHandler(async (req, res) => {

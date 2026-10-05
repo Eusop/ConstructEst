@@ -203,6 +203,10 @@ function StoreLocatorPage() {
     writeManualLocation(picked);
     setPickingLocation(false);
     setFocusOnUser(true);
+    // Picking a spot is about distance, so sort by it (IT test TC-U18: with
+    // Cheapest the order did not change, so it looked like nothing happened).
+    setSortMode('nearest');
+    showToast('Sorted by distance from the spot you set. Choose Cheapest to sort by cost.', 'info', 6000);
   };
 
   const setLocationLink = (label) => (

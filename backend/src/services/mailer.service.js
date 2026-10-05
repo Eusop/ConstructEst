@@ -93,3 +93,25 @@ export async function sendVerificationCodeEmail(toEmail, code, userId) {
     html: `<p>Your ConstructEst verification code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p><p>This code expires in 10 minutes.</p>${idHtml}`,
   });
 }
+
+/** Code for changing the account email, sent to the NEW address so the
+ * user proves they own it. Throws on failure. */
+export async function sendEmailChangeCodeEmail(toEmail, code) {
+  await send({
+    to: toEmail,
+    subject: 'Confirm your new ConstructEst email',
+    text: `Your code to confirm this email for your ConstructEst account is ${code}. It expires in 10 minutes. If you did not ask to change your email, you can ignore this email.`,
+    html: `<p>Your code to confirm this email for your ConstructEst account is:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p><p>This code expires in 10 minutes.</p><p style="color:#555">If you did not ask to change your email, you can ignore this email.</p>`,
+  });
+}
+
+/** Notice to the OLD address after the email was changed. Sent after the
+ * change is saved, so the caller must ignore a failure here. */
+export async function sendEmailChangedNoticeEmail(toEmail, newEmail, name) {
+  await send({
+    to: toEmail,
+    subject: 'Your ConstructEst email was changed',
+    text: `Hi ${name || 'there'}, the email for your ConstructEst account was changed to ${newEmail}. If this was not you, contact your administrator right away.`,
+    html: `<p>Hi ${name || 'there'},</p><p>The email for your ConstructEst account was changed to <strong>${newEmail}</strong>.</p><p style="color:#b3261e"><strong>If this was not you, contact your administrator right away.</strong></p>`,
+  });
+}

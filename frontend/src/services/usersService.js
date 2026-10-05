@@ -5,9 +5,23 @@ import { apiRequest } from './apiClient';
  * the signed-in user's own profile and password. authService.js has the
  * pre-session `/auth/*` calls and adminService.js the `/admin/*` ones.
  */
-export async function updateProfileRequest({ firstName, lastName, email }) {
-  const { user } = await apiRequest('/users/me', { method: 'PUT', body: { firstName, lastName, email } });
+export async function updateProfileRequest({ firstName, lastName }) {
+  const { user } = await apiRequest('/users/me', { method: 'PUT', body: { firstName, lastName } });
   return user;
+}
+
+/** Email change step 1: sends a code to the new address (it is not saved yet). */
+export async function requestEmailChangeRequest(email) {
+  return apiRequest('/users/me/email-change', { method: 'POST', body: { email } });
+}
+
+/** Email change step 2: the code from the new address. Returns { user }. */
+export async function confirmEmailChangeRequest(code) {
+  return apiRequest('/users/me/email-change/confirm', { method: 'POST', body: { code } });
+}
+
+export async function cancelEmailChangeRequest() {
+  return apiRequest('/users/me/email-change', { method: 'DELETE' });
 }
 
 export async function changePasswordRequest({ currentPassword, newPassword }) {

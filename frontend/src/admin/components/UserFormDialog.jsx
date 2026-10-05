@@ -127,7 +127,7 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Email</Typography>
-              <FormTextField name="email" type="email" value={form.email} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('email'))} helperText={showError('email') || ' '} />
+              <FormTextField name="email" type="email" value={form.email} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('email'))} helperText={showError('email') || 'A new or changed email gets a verification code'} />
             </Box>
           </Stack>
 

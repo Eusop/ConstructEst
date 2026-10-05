@@ -15,11 +15,14 @@ import ProfileAvatarSection from '../features/profile/components/ProfileAvatarSe
 import ProfileSectionHeader from '../features/profile/components/ProfileSectionHeader';
 import PersonalInformationSection from '../features/profile/components/PersonalInformationSection';
 import ChangePasswordSection from '../features/profile/components/ChangePasswordSection';
+import EmailChangeDialog from '../features/profile/components/EmailChangeDialog';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { isRequired, isValidEmail, passwordsMatch, isStrongPassword, PASSWORD_RULE_MESSAGE } from '../utils/validators';
-import { updateProfileRequest, changePasswordRequest, uploadAvatarRequest, removeAvatarRequest } from '../services/usersService';
+import {
+  updateProfileRequest, changePasswordRequest, uploadAvatarRequest, removeAvatarRequest, requestEmailChangeRequest, cancelEmailChangeRequest,
+} from '../services/usersService';
 import { resolveAssetUrl } from '../services/apiClient';
 import { colors } from '../theme/palette';
 
@@ -98,6 +101,8 @@ function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
+  // New email waiting for its code (EmailChangeDialog). Null when none.
+  const [pendingEmail, setPendingEmail] = useState(null);
 
   // Recomputed from `form` every render; `touched` decides which errors show.
   // Password errors only show once the user starts filling that section, so an
@@ -175,15 +180,26 @@ function ProfilePage() {
 
     setIsSaving(true);
     try {
-      const { firstName, lastName } = splitFullName(form.fullName);
-      const user = await updateProfileRequest({ firstName, lastName, email: form.email });
-      // Put the server response into UserContext so the header shows the new name.
-      updateProfile({ userName: user.userName, email: user.email });
-
-      showToast('Profile updated', 'success');
-
-      setSavedForm((prev) => ({ ...prev, fullName: form.fullName, email: form.email }));
-      setTouched((prev) => ({ ...prev, fullName: false, email: false }));
+      // The name saves right away. A new email is not saved yet: a code goes
+      // to the new address first (EmailChangeDialog, IT test TC-U25).
+      const nameChanged = form.fullName.trim() !== savedForm.fullName.trim();
+      const newEmail = form.email.trim();
+      const emailChanged = newEmail.toLowerCase() !== savedForm.email.trim().toLowerCase();
+      if (nameChanged) {
+        const { firstName, lastName } = splitFullName(form.fullName);
+        const user = await updateProfileRequest({ firstName, lastName });
+        // Put the server response into UserContext so the header shows the new name.
+        updateProfile({ userName: user.userName });
+        setSavedForm((prev) => ({ ...prev, fullName: form.fullName }));
+        setTouched((prev) => ({ ...prev, fullName: false }));
+      }
+      if (emailChanged) {
+        await requestEmailChangeRequest(newEmail);
+        setPendingEmail(newEmail);
+        if (nameChanged) showToast('Name updated. Enter the code to change your email.', 'success');
+      } else {
+        showToast('Profile updated', 'success');
+      }
     } catch (error) {
       showToast(error.message || 'Could not save your changes. Please try again.');
     } finally {
@@ -191,10 +207,28 @@ function ProfilePage() {
     }
   };
 
+  const handleEmailConfirmed = (user) => {
+    updateProfile({ email: user.email });
+    setSavedForm((prev) => ({ ...prev, email: user.email }));
+    setForm((prev) => ({ ...prev, email: user.email }));
+    setTouched((prev) => ({ ...prev, email: false }));
+    setPendingEmail(null);
+    showToast('Email changed', 'success');
+  };
+
+  // Cancel keeps the old email and forgets the code.
+  const handleEmailCancel = () => {
+    setPendingEmail(null);
+    setForm((prev) => ({ ...prev, email: savedForm.email }));
+    cancelEmailChangeRequest().catch(() => {});
+  };
+
   return (
     // Mobile doesn't stretch to fill the viewport (both accordions start closed,
     // which left an empty gap). sm+ unchanged.
     <Stack spacing={2.5} sx={{ width: '100%', flex: { xs: 'unset', sm: 1 }, minHeight: { xs: 'auto', sm: 0 } }}>
+      {/* key: a new email starts the dialog fresh (empty code, full cooldown). */}
+      <EmailChangeDialog key={pendingEmail ?? 'none'} email={pendingEmail} onConfirmed={handleEmailConfirmed} onCancel={handleEmailCancel} />
       <Paper
         elevation={0}
         sx={{
