@@ -56,12 +56,22 @@ export const requestEmailChange = asyncHandler(async (req, res) => {
     }
   }
 
-  const code = generateVerificationCode();
+  // Resending to the same new address reuses the code while it is still valid,
+  // so a delayed earlier email still works. Expiry and attempts are kept.
+  const stillValid = user.pending_email && user.pending_email.toLowerCase() === email.toLowerCase()
+    && user.email_change_code && user.email_change_expires_at
+    && new Date(user.email_change_expires_at).getTime() > Date.now();
+  const code = stillValid ? user.email_change_code : generateVerificationCode();
   try {
     await sendEmailChangeCodeEmail(email, code);
   } catch (err) {
     console.error('Failed to send email change code:', err);
     throw new HttpError(502, "We couldn't send a code to that address. Check it and try again.", 'EMAIL_SEND_FAILED');
+  }
+  if (stillValid) {
+    await query('UPDATE users SET email_change_last_sent_at = NOW() WHERE id = ?', [user.id]);
+    res.json({ message: `We sent your code to ${email} again. It is the same code as before.`, pendingEmail: email });
+    return;
   }
   await query(
     `UPDATE users SET pending_email = ?, email_change_code = ?, email_change_expires_at = NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE,

@@ -180,7 +180,12 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
     }
   }
 
-  const code = generateVerificationCode();
+  // Emails can be delayed and arrive out of order, so while the code is still
+  // valid we send the same one again. Then any of the emails works. Expiry and
+  // wrong attempts are kept, so resending gives no extra guesses.
+  const stillValid = user.email_verification_code && user.email_verification_expires_at
+    && new Date(user.email_verification_expires_at).getTime() > Date.now();
+  const code = stillValid ? user.email_verification_code : generateVerificationCode();
   // Send first, save after, so a failed send keeps the old code working.
   try {
     await sendVerificationCodeEmail(user.email, code, user.user_id);
@@ -189,7 +194,11 @@ export const resendVerificationCode = asyncHandler(async (req, res) => {
     throw new HttpError(502, 'Could not send the email. Try again in a moment.', 'EMAIL_SEND_FAILED');
   }
 
-
+  if (stillValid) {
+    await query('UPDATE users SET email_verification_last_sent_at = NOW() WHERE id = ?', [user.id]);
+    res.json({ message: 'We sent your code again. It is the same code as before.' });
+    return;
+  }
   await query(
     `UPDATE users SET email_verification_code = ?, email_verification_expires_at = NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE,
                        email_verification_last_sent_at = NOW(), email_verification_attempts = 0
