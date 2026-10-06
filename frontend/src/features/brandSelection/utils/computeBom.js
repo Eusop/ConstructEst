@@ -1,8 +1,31 @@
-import { PRICED_MATERIALS } from '../../projects/data/parsedProjectCache';
+import { PRICED_MATERIALS, formatQuantityLabel } from '../../projects/data/parsedProjectCache';
 import { BASE_PRICING, OPTIMIZATION_TIERS, getStoreBrandOptions } from '../data/brandOptionsCache';
 
 // The material is left out of the BOM (bought elsewhere or already on hand).
 export const EXCLUDED = 'none';
+
+// Board feet in one piece from a spec like 2"x2"x10ft. Same as
+// boardFeetPerPiece in backend optimization.service.js. Null if unreadable.
+function boardFeetPerPiece(spec) {
+  const match = /(\d+(?:\.\d+)?)\s*"?\s*x\s*(\d+(?:\.\d+)?)\s*"?\s*x\s*(\d+(?:\.\d+)?)\s*(?:ft|')?/i.exec(spec ?? '');
+  if (!match) return null;
+  const [thicknessIn, widthIn, lengthFt] = [match[1], match[2], match[3]].map(Number);
+  const perPiece = (thicknessIn * widthIn * lengthFt) / 12;
+  return perPiece > 0 ? perPiece : null;
+}
+
+// Quantity, unit price and amount of one line. Lumber is taken off in bd.ft
+// but sold by the piece, so it is rounded up to whole pieces like the BOM,
+// which keeps this page's totals equal to the BOM and Store Locator.
+function priceLine(material, unitPrice, spec) {
+  const perPiece = material.key === 'lumber' ? boardFeetPerPiece(spec) : null;
+  if (!perPiece) {
+    return { quantity: material.quantity, quantityLabel: material.quantityLabel, unit: material.unit, unitPrice, amount: material.quantity * unitPrice };
+  }
+  const pieces = Math.ceil(material.quantity / perPiece);
+  const piecePrice = Math.round(unitPrice * perPiece * 100) / 100;
+  return { quantity: pieces, quantityLabel: formatQuantityLabel(pieces, 'pcs'), unit: 'pcs', unitPrice: piecePrice, amount: pieces * piecePrice, perPiece: true };
+}
 
 function resolveBrandOption(storeId, materialKey, optionId) {
   return getStoreBrandOptions(storeId, materialKey)?.find((option) => option.id === optionId) ?? null;
@@ -37,10 +60,9 @@ export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeI
     if (supplier != null && supplier !== storeId) {
       const options = getStoreBrandOptions(supplier, material.key);
       const option = options.find((o) => o.id === choices[material.key]) ?? options[0];
-      const unitPrice = option?.price ?? 0;
       return {
         key: material.key, material: material.name.replace(/\s*\(.*\)$/, ''), category: BASE_PRICING[material.key]?.category, brand: option?.brand ?? '',
-        quantity: material.quantity, quantityLabel: material.quantityLabel, unit: material.unit, unitPrice, amount: material.quantity * unitPrice,
+        ...priceLine(material, option?.price ?? 0, option?.spec),
         excluded: false, storeId: supplier, available: Boolean(option),
       };
     }
@@ -57,11 +79,7 @@ export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeI
       material: material.name.replace(/\s*\(.*\)$/, ''),
       category: base.category,
       brand,
-      quantity: material.quantity,
-      quantityLabel: material.quantityLabel,
-      unit: material.unit,
-      unitPrice,
-      amount: material.quantity * unitPrice,
+      ...priceLine(material, unitPrice, brandOption?.spec),
       excluded: false,
       storeId,
       // Sand and gravel have no brand option; the backend BOM price says if this store sells them.

@@ -147,7 +147,7 @@ function BrandCell({ materialKey, row, onChoiceChange, small = false }) {
 
 // MUI's TextField defaults to 1rem, much bigger than this page's 0.7-0.85rem
 // scale, so everything here is sized down. Desktop's table is untouched.
-function MaterialMobileCard({ materialKey, storeId, choices, suppliers, onChoiceChange, onSupplierChange, estimatedCost }) {
+function MaterialMobileCard({ materialKey, storeId, choices, suppliers, onChoiceChange, onSupplierChange, estimatedCost, unitPriceText }) {
   const row = rowState(materialKey, storeId, choices, suppliers);
   return (
     <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', p: 1.5 }}>
@@ -162,7 +162,7 @@ function MaterialMobileCard({ materialKey, storeId, choices, suppliers, onChoice
       {row.selected && (
         <>
           <Divider sx={{ my: 1 }} />
-          <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.85rem' }}>{formatPeso(row.selected.price)}</Typography>
+          <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.85rem' }}>{unitPriceText(materialKey, row)}</Typography>
         </>
       )}
     </Paper>
@@ -195,6 +195,12 @@ function ManualBrandTable({ choices, onChoiceChange, suppliers, onSupplierChange
   const categoryGroups = groupMaterialsByCategory(materialKeys.map((key) => ({ key })));
   const orderedKeys = categoryGroups.flatMap((group) => group.items.map((item) => item.key));
   const costOf = (materialKey) => lineItems?.find((item) => item.key === materialKey)?.amount ?? 0;
+  // Lumber is priced per piece like the BOM, so show the line's price, not the per bd.ft one.
+  const unitPriceOf = (materialKey, row) => {
+    const item = lineItems?.find((line) => line.key === materialKey);
+    if (item?.perPiece) return `${formatPeso(item.unitPrice)} / pc`;
+    return formatPeso(row.selected.price);
+  };
 
   return (
     <Paper
@@ -246,6 +252,7 @@ function ManualBrandTable({ choices, onChoiceChange, suppliers, onSupplierChange
                       onChoiceChange={onChoiceChange}
                       onSupplierChange={onSupplierChange}
                       estimatedCost={costOf(materialKey)}
+                      unitPriceText={unitPriceOf}
                     />
                   ))}
                 </Stack>
@@ -284,7 +291,7 @@ function ManualBrandTable({ choices, onChoiceChange, suppliers, onSupplierChange
                       <BrandCell materialKey={materialKey} row={row} onChoiceChange={onChoiceChange} />
                     </TableCell>
                     <TableCell sx={{ ...TRUNCATE_SX, color: 'text.primary', fontWeight: 700, borderColor: 'divider' }}>
-                      {row.selected ? formatPeso(row.selected.price) : '—'}
+                      {row.selected ? unitPriceOf(materialKey, row) : '—'}
                     </TableCell>
                     <TableCell sx={{ ...TRUNCATE_SX, color: 'text.primary', fontWeight: 700, borderColor: 'divider' }}>
                       {row.excluded || !row.selected ? '—' : formatPeso(costOf(materialKey))}
