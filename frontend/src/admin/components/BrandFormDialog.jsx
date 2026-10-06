@@ -10,23 +10,20 @@ import Button from '@mui/material/Button';
 import InputAdornment from '@mui/material/InputAdornment';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import MenuItem from '@mui/material/MenuItem';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import FormTextField from '../../components/FormTextField';
 import QuotationFilePicker from './QuotationFilePicker';
 import { isRequired } from '../../utils/validators';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
-import { QUALITY_LEVELS } from '../data/qualityLevels';
 
 function buildForm(brand, unit) {
-  if (!brand) return { name: '', unit, price: '', available: true, quality: 3, stockQty: '' };
+  if (!brand) return { name: '', unit, price: '', available: true, stockQty: '' };
   return {
     name: brand.name,
     unit: brand.unit ?? unit,
     price: String(brand.price ?? ''),
     available: brand.available,
-    quality: brand.quality ?? 3,
     stockQty: brand.stockQty == null ? '' : String(brand.stockQty),
   };
 }
@@ -81,7 +78,6 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
         unit: form.unit,
         price: Number(form.price),
         available: form.available,
-        quality: Number(form.quality),
         stockQty: form.stockQty === '' ? null : Number(form.stockQty),
       },
       quotationFile,
@@ -143,22 +139,6 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Quality</Typography>
-              <FormTextField
-                select
-                name="quality"
-                value={form.quality}
-                onChange={handleChange}
-                helperText="Premium picks the highest quality"
-              >
-                {QUALITY_LEVELS.map((level) => (
-                  <MenuItem key={level.value} value={level.value}>
-                    {level.value} – {level.label}
-                  </MenuItem>
-                ))}
-              </FormTextField>
-            </Box>
-            <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Stock on hand</Typography>
               <FormTextField
                 name="stockQty"
@@ -170,6 +150,7 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
                 slotProps={{ input: { endAdornment: <InputAdornment position="end">{form.unit}</InputAdornment> } }}
               />
             </Box>
+            <Box sx={{ flex: 1, display: { xs: 'none', sm: 'block' } }} />
           </Stack>
 
           <QuotationFilePicker

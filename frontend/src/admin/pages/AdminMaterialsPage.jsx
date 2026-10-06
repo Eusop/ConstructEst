@@ -35,7 +35,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { ADMIN_ROUTES } from '../../routes/paths';
 import { colors } from '../../theme/palette';
 import { formatPeso as formatPesoAmount } from '../../utils/formatNumbers';
-import { qualityLabel, formatStock } from '../data/qualityLevels';
+import { formatStock } from '../data/formatStock';
 
 // Keeps the dash placeholder for an unpriced material (the shared helper treats
 // null as 0, which would look like a real 0.00 price).
@@ -60,15 +60,12 @@ function AvailabilityChip({ available, sx }) {
   );
 }
 
-// Quality (brands only) and stock count, e.g. "Good (3) · Stock: 120 bags".
-function StockText({ quality, stockQty, unit, sx }) {
-  const parts = [];
-  if (quality !== undefined) parts.push(qualityLabel(quality));
+// Stock count, e.g. "Stock: 120 bags".
+function StockText({ stockQty, unit, sx }) {
   const stock = formatStock(stockQty);
-  parts.push(stock == null ? 'Stock: not set' : `Stock: ${stock} ${unit}`);
   return (
     <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', ...sx }}>
-      {parts.join(' · ')}
+      {stock == null ? 'Stock: not set' : `Stock: ${stock} ${unit}`}
     </Typography>
   );
 }
@@ -125,7 +122,7 @@ function BrandMobileCard({ brand, onOpenMenu }) {
       </Stack>
       <Stack direction="row" spacing={1} sx={{ mt: 0.75, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
         <AvailabilityChip available={brand.available} />
-        <StockText quality={brand.quality} stockQty={brand.stockQty} unit={brand.unit} />
+        <StockText stockQty={brand.stockQty} unit={brand.unit} />
       </Stack>
     </Paper>
   );
@@ -611,7 +608,7 @@ function AdminMaterialsPage() {
                               </Typography>
                               <Box sx={{ order: 4, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
                               <AvailabilityChip available={brand.available} sx={{ order: 5 }} />
-                              <StockText quality={brand.quality} stockQty={brand.stockQty} unit={brand.unit} sx={{ order: 5 }} />
+                              <StockText stockQty={brand.stockQty} unit={brand.unit} sx={{ order: 5 }} />
                               <Box sx={{ order: 6, flex: 1, display: { xs: 'none', sm: 'block' } }} />
                               <Tooltip title="Edit">
                                 <IconButton

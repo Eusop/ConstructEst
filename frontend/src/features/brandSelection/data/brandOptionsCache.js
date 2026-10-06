@@ -57,13 +57,13 @@ export const BRAND_MATERIAL_SHORT_LABELS = {
 
 export const BRAND_SELECTABLE_MATERIAL_KEYS = Object.keys(BRAND_MATERIAL_SHORT_LABELS);
 
-// materialKey -> array of { id, brand, spec, price, quality, supplier } for the
+// materialKey -> array of { id, brand, spec, price, supplier } for the
 // store last loaded.
 export const MATERIAL_BRAND_OPTIONS = {};
 let currentStoreId = null;
 
 export const OPTIMIZATION_TIERS = {
-  premium: { key: 'premium', label: 'Premium', description: 'Highest quality rated brands', choices: {} },
+  premium: { key: 'premium', label: 'Premium', description: 'Highest-priced brands', choices: {} },
   standard: {
     key: 'standard',
     label: 'Standard',
@@ -74,8 +74,10 @@ export const OPTIMIZATION_TIERS = {
   budget: { key: 'budget', label: 'Budget', description: 'Cheapest brands', choices: {} },
 };
 
+// All three tiers go by price only. The paper leaves material quality out of
+// scope (Table 20 picks the lowest price), so there is no quality rating.
 function pickPremium(options) {
-  return [...options].sort((a, b) => b.quality - a.quality || b.price - a.price)[0];
+  return [...options].sort((a, b) => b.price - a.price)[0];
 }
 
 function pickBudget(options) {
@@ -89,7 +91,7 @@ function pickStandard(options) {
 
 /**
  * @param {string|number} storeId
- * @param {Record<string, Array<{id:number, brand:string, spec:string, price:number, quality:number, supplier:string}>>} catalog
+ * @param {Record<string, Array<{id:number, brand:string, spec:string, price:number, supplier:string}>>} catalog
  */
 export function loadBrandCatalog(storeId, catalog) {
   currentStoreId = storeId;

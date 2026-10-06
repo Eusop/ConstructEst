@@ -31,7 +31,7 @@ Self-registering a new account (`/signup`) doesn't log straight in; it goes to `
 
 **Password pages**: `/reset-password` (Forgot password: emailed code) and `/set-new-password`, where a user who signed in with an admin's temporary password must choose their own before anything else (`RequireRole` sends them there).
 
-**Admin module** (`/admin/...`): user management (including Password help: send a reset code or set a temporary password), hardware stores (with a map view), materials & brands catalog (global brand definitions with a 1-5 quality shown as Low to Excellent, + per-store pricing, availability and stock on hand, which the Bill of Materials shows under each quantity), and the global calibration/design-parameter defaults every new project falls back to.
+**Admin module** (`/admin/...`): user management (including Password help: send a reset code or set a temporary password), hardware stores (with a map view), materials & brands catalog (global brand definitions + per-store pricing, availability and stock on hand, which the Bill of Materials shows under each quantity), and the global calibration/design-parameter defaults every new project falls back to.
 
 ## Project layout
 

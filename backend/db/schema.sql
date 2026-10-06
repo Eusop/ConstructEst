@@ -144,7 +144,6 @@ CREATE TABLE material_brands (
   brand VARCHAR(100) NOT NULL,
   spec VARCHAR(150) NULL,
   base_price DECIMAL(12, 2) NOT NULL,
-  quality TINYINT UNSIGNED NULL,          -- 1-5, used by the Premium/Budget tiers
   category VARCHAR(50) NULL,
   is_commodity TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

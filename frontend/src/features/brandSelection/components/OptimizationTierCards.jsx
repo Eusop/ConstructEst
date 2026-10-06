@@ -125,7 +125,7 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
     </Stack>
     {/* How each tier picks its brands (see pickBudget, pickStandard, pickPremium). */}
     <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-      For each material at this store: Budget takes the cheapest brand, Standard the middle-priced brand, and Premium the brand with the highest quality rating.
+      For each material at this store: Budget takes the cheapest brand, Standard the middle-priced brand, and Premium the highest-priced brand.
     </Typography>
     </Stack>
   );
