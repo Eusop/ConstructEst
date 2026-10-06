@@ -25,65 +25,65 @@ INSERT INTO user_id_counters (id_year, last_seq) VALUES (2026, 1);
 -- Material catalog: 14 brand-selectable materials x 3 brands, plus sand and
 -- gravel priced flat with no brand choice (see brandOptionsMock.js).
 -- ---------------------------------------------------------------------------
-INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, quality, category, is_commodity) VALUES
-('hollowBlocks', 'CHB (Concrete Hollow Blocks)', 'pcs', 'JBC', '4" CHB', 12, 4, 'Masonry', 0),
-('hollowBlocks', 'CHB (Concrete Hollow Blocks)', 'pcs', 'Eagle Blocks', '4" CHB', 10, 3, 'Masonry', 0),
-('hollowBlocks', 'CHB (Concrete Hollow Blocks)', 'pcs', 'Eversafe', '4" CHB', 14, 5, 'Masonry', 0),
+INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, category, is_commodity) VALUES
+('hollowBlocks', 'CHB (Concrete Hollow Blocks)', 'pcs', 'JBC', '4" CHB', 12, 'Masonry', 0),
+('hollowBlocks', 'CHB (Concrete Hollow Blocks)', 'pcs', 'Eagle Blocks', '4" CHB', 10, 'Masonry', 0),
+('hollowBlocks', 'CHB (Concrete Hollow Blocks)', 'pcs', 'Eversafe', '4" CHB', 14, 'Masonry', 0),
 
-('cement', 'Cement', 'bags', 'Republic', '40kg', 255, 4, 'Cementitious', 0),
-('cement', 'Cement', 'bags', 'Holcim', '40kg', 268, 5, 'Cementitious', 0),
-('cement', 'Cement', 'bags', 'Eagle', '40kg', 239, 3, 'Cementitious', 0),
+('cement', 'Cement', 'bags', 'Republic', '40kg', 255, 'Cementitious', 0),
+('cement', 'Cement', 'bags', 'Holcim', '40kg', 268, 'Cementitious', 0),
+('cement', 'Cement', 'bags', 'Eagle', '40kg', 239, 'Cementitious', 0),
 
-('sand', 'Sand', 'm3', 'Local', NULL, 1300, NULL, 'Aggregate', 1),
-('gravel', 'Gravel', 'm3', 'Local', NULL, 1250, NULL, 'Aggregate', 1),
+('sand', 'Sand', 'm3', 'Local', NULL, 1300, 'Aggregate', 1),
+('gravel', 'Gravel', 'm3', 'Local', NULL, 1250, 'Aggregate', 1),
 
-('steelRebar', 'Rebar', 'tons', 'SteelAsia', 'Grade 40', 58000, 5, 'Reinforcement', 0),
-('steelRebar', 'Rebar', 'tons', 'Capitol Steel', 'Grade 40', 54500, 3, 'Reinforcement', 0),
-('steelRebar', 'Rebar', 'tons', 'Pag-asa Steel', 'Grade 40', 61200, 4, 'Reinforcement', 0),
+('steelRebar', 'Rebar', 'tons', 'SteelAsia', 'Grade 40', 58000, 'Reinforcement', 0),
+('steelRebar', 'Rebar', 'tons', 'Capitol Steel', 'Grade 40', 54500, 'Reinforcement', 0),
+('steelRebar', 'Rebar', 'tons', 'Pag-asa Steel', 'Grade 40', 61200, 'Reinforcement', 0),
 
-('tieWire', 'Tie Wire', 'kg', 'Local GI', '#16 gauge', 85, 3, 'Reinforcement', 0),
-('tieWire', 'Tie Wire', 'kg', 'Firmex', '#16 gauge', 90, 4, 'Reinforcement', 0),
-('tieWire', 'Tie Wire', 'kg', 'GalvSteel', '#16 gauge', 105, 5, 'Reinforcement', 0),
+('tieWire', 'Tie Wire', 'kg', 'Local GI', '#16 gauge', 85, 'Reinforcement', 0),
+('tieWire', 'Tie Wire', 'kg', 'Firmex', '#16 gauge', 90, 'Reinforcement', 0),
+('tieWire', 'Tie Wire', 'kg', 'GalvSteel', '#16 gauge', 105, 'Reinforcement', 0),
 
-('roofingSheets', 'Roofing', 'm2', 'DN Steel', '0.4mm', 520, 4, 'Roofing', 0),
-('roofingSheets', 'Roofing', 'm2', 'Clark Steel', '0.5mm', 585, 5, 'Roofing', 0),
-('roofingSheets', 'Roofing', 'm2', 'MetroTile', '0.35mm', 470, 3, 'Roofing', 0),
+('roofingSheets', 'Roofing', 'm2', 'DN Steel', '0.4mm', 520, 'Roofing', 0),
+('roofingSheets', 'Roofing', 'm2', 'Clark Steel', '0.5mm', 585, 'Roofing', 0),
+('roofingSheets', 'Roofing', 'm2', 'MetroTile', '0.35mm', 470, 'Roofing', 0),
 
-('purlins', 'Purlins', 'lengths', 'MetroTile', '2"x3" C-purlin, 6m', 750, 3, 'Roofing', 0),
-('purlins', 'Purlins', 'lengths', 'DN Steel', '2"x3" C-purlin, 6m', 850, 4, 'Roofing', 0),
-('purlins', 'Purlins', 'lengths', 'Clark Steel', '2"x3" C-purlin, 6m', 980, 5, 'Roofing', 0),
+('purlins', 'Purlins', 'lengths', 'MetroTile', '2"x3" C-purlin, 6m', 750, 'Roofing', 0),
+('purlins', 'Purlins', 'lengths', 'DN Steel', '2"x3" C-purlin, 6m', 850, 'Roofing', 0),
+('purlins', 'Purlins', 'lengths', 'Clark Steel', '2"x3" C-purlin, 6m', 980, 'Roofing', 0),
 
-('ridge', 'Ridge', 'lengths', 'MetroTile', 'Ridge roll, 2.20m length', 143, 3, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 2.20m length', 165, 4, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 2.20m length', 190.67, 5, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'MetroTile', 'Ridge roll, 2.20m length', 143, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 2.20m length', 165, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 2.20m length', 190.67, 'Roofing', 0),
 
-('flashing', 'Flashing', 'pcs', 'MetroTile', 'GI flashing, 2.30m length', 345, 3, 'Roofing', 0),
-('flashing', 'Flashing', 'pcs', 'DN Steel', 'GI flashing, 2.30m length', 414, 4, 'Roofing', 0),
-('flashing', 'Flashing', 'pcs', 'Clark Steel', 'GI flashing, 2.30m length', 483, 5, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'MetroTile', 'GI flashing, 2.30m length', 345, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'DN Steel', 'GI flashing, 2.30m length', 414, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'Clark Steel', 'GI flashing, 2.30m length', 483, 'Roofing', 0),
 
-('angleBar', 'Angle Bar', 'lengths', 'Capitol Steel', '1/4"x1.5"x1.5", 6m', 560, 3, 'Roofing', 0),
-('angleBar', 'Angle Bar', 'lengths', 'SteelAsia', '1/4"x1.5"x1.5", 6m', 620, 4, 'Roofing', 0),
-('angleBar', 'Angle Bar', 'lengths', 'Pag-asa Steel', '1/4"x1.5"x1.5", 6m', 680, 5, 'Roofing', 0),
+('angleBar', 'Angle Bar', 'lengths', 'Capitol Steel', '1/4"x1.5"x1.5", 6m', 560, 'Roofing', 0),
+('angleBar', 'Angle Bar', 'lengths', 'SteelAsia', '1/4"x1.5"x1.5", 6m', 620, 'Roofing', 0),
+('angleBar', 'Angle Bar', 'lengths', 'Pag-asa Steel', '1/4"x1.5"x1.5", 6m', 680, 'Roofing', 0),
 
-('gutter', 'Gutter', 'pcs', 'MetroTile', 'GI gutter, 2.35m length', 417.78, 3, 'Roofing', 0),
-('gutter', 'Gutter', 'pcs', 'DN Steel', 'GI gutter, 2.35m length', 496.11, 4, 'Roofing', 0),
-('gutter', 'Gutter', 'pcs', 'Clark Steel', 'GI gutter, 2.35m length', 574.44, 5, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'MetroTile', 'GI gutter, 2.35m length', 417.78, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'DN Steel', 'GI gutter, 2.35m length', 496.11, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'Clark Steel', 'GI gutter, 2.35m length', 574.44, 'Roofing', 0),
 
-('plywood', 'Plywood', 'pcs', 'Generic Marine', '1/2" 4x8ft', 680, 3, 'Formwork', 0),
-('plywood', 'Plywood', 'pcs', 'Federation', '1/2" 4x8ft', 780, 4, 'Formwork', 0),
-('plywood', 'Plywood', 'pcs', 'Basilisa', '1/2" 4x8ft marine', 920, 5, 'Formwork', 0),
+('plywood', 'Plywood', 'pcs', 'Generic Marine', '1/2" 4x8ft', 680, 'Formwork', 0),
+('plywood', 'Plywood', 'pcs', 'Federation', '1/2" 4x8ft', 780, 'Formwork', 0),
+('plywood', 'Plywood', 'pcs', 'Basilisa', '1/2" 4x8ft marine', 920, 'Formwork', 0),
 
-('lumber', 'Lumber', 'bd.ft.', 'Local Coco Lumber', '2"x2"x10ft', 24, 3, 'Formwork', 0),
-('lumber', 'Lumber', 'bd.ft.', 'Goodwood', '2"x2"x10ft', 28.5, 4, 'Formwork', 0),
-('lumber', 'Lumber', 'bd.ft.', 'Primewood', '2"x2"x10ft', 34.5, 5, 'Formwork', 0),
+('lumber', 'Lumber', 'bd.ft.', 'Local Coco Lumber', '2"x2"x10ft', 24, 'Formwork', 0),
+('lumber', 'Lumber', 'bd.ft.', 'Goodwood', '2"x2"x10ft', 28.5, 'Formwork', 0),
+('lumber', 'Lumber', 'bd.ft.', 'Primewood', '2"x2"x10ft', 34.5, 'Formwork', 0),
 
-('steelProps', 'Steel Props', 'pcs', 'Generic Steel Props', 'Adjustable, 3m', 1250, 3, 'Formwork', 0),
-('steelProps', 'Steel Props', 'pcs', 'FormWorks PH', 'Adjustable, 3m', 1450, 4, 'Formwork', 0),
-('steelProps', 'Steel Props', 'pcs', 'Doka', 'Adjustable, 3m', 1750, 5, 'Formwork', 0),
+('steelProps', 'Steel Props', 'pcs', 'Generic Steel Props', 'Adjustable, 3m', 1250, 'Formwork', 0),
+('steelProps', 'Steel Props', 'pcs', 'FormWorks PH', 'Adjustable, 3m', 1450, 'Formwork', 0),
+('steelProps', 'Steel Props', 'pcs', 'Doka', 'Adjustable, 3m', 1750, 'Formwork', 0),
 
-('scaffolding', 'Scaffolding', 'sets', 'Generic Scaffold', 'H-frame set', 2800, 3, 'Formwork', 0),
-('scaffolding', 'Scaffolding', 'sets', 'Bosco Scaffolding', 'H-frame set', 3200, 4, 'Formwork', 0),
-('scaffolding', 'Scaffolding', 'sets', 'Layher', 'H-frame set', 3900, 5, 'Formwork', 0);
+('scaffolding', 'Scaffolding', 'sets', 'Generic Scaffold', 'H-frame set', 2800, 'Formwork', 0),
+('scaffolding', 'Scaffolding', 'sets', 'Bosco Scaffolding', 'H-frame set', 3200, 'Formwork', 0),
+('scaffolding', 'Scaffolding', 'sets', 'Layher', 'H-frame set', 3900, 'Formwork', 0);
 
 -- ---------------------------------------------------------------------------
 -- Stores. Matches storesMock.js (Tarlac City).
@@ -142,10 +142,10 @@ VALUES (NULL, 1.08, 1.05, 1.07, 5.00);
 
 -- Rebar priced per 6 m bar by size, provisional prices and assumed stock
 -- (see migrations/036_rebar_per_size.sql).
-INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, quality, category, is_commodity)
+INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, category, is_commodity)
 SELECT CONCAT('rebar', s.mm, 'mm'), CONCAT('Rebar ', s.mm, 'mm'), 'pcs', mb.brand,
        CONCAT(COALESCE(mb.spec, 'Grade 40'), ', ', s.mm, 'mm x 6 m'),
-       ROUND(s.ref_price * mb.base_price / 54500, 2), mb.quality, mb.category, 0
+       ROUND(s.ref_price * mb.base_price / 54500, 2), mb.category, 0
 FROM material_brands mb
 JOIN (SELECT 10 AS mm, 175 AS ref_price UNION ALL SELECT 12, 218 UNION ALL SELECT 16, 355) s
 WHERE mb.material_key = 'steelRebar'

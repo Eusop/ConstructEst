@@ -187,7 +187,7 @@ export async function getBrandCatalog(projectId, storeId) {
 
   for (const material of materials) {
     const options = await query(
-      `SELECT mb.id, mb.brand, mb.spec, mb.quality, smp.price, s.name AS supplier
+      `SELECT mb.id, mb.brand, mb.spec, smp.price, s.name AS supplier
        FROM material_brands mb
        JOIN store_material_prices smp ON smp.material_brand_id = mb.id
        JOIN stores s ON s.id = smp.store_id
@@ -222,7 +222,7 @@ export async function getAllStoreCatalog(projectId) {
   if (keys.length === 0) return { stores, catalog };
 
   const rows = await query(
-    `SELECT mb.id, mb.material_key, mb.brand, mb.spec, mb.quality, mb.is_commodity, smp.price, smp.stock_qty,
+    `SELECT mb.id, mb.material_key, mb.brand, mb.spec, mb.is_commodity, smp.price, smp.stock_qty,
             s.id AS store_id, s.name AS supplier
      FROM material_brands mb
      JOIN store_material_prices smp ON smp.material_brand_id = mb.id
@@ -238,7 +238,6 @@ export async function getAllStoreCatalog(projectId) {
       id: row.id,
       brand: row.brand,
       spec: effectiveSpec(row.material_key, row.spec, reuse),
-      quality: row.quality,
       isCommodity: Boolean(row.is_commodity),
       price: effectivePrice(row.material_key, Number(row.price), reuse),
       supplier: row.supplier,

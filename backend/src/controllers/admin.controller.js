@@ -268,14 +268,14 @@ export const listMaterials = asyncHandler(async (req, res) => {
 });
 
 export const createMaterial = asyncHandler(async (req, res) => {
-  const { materialKey, materialName, unit, brand, spec, basePrice, quality, category, isCommodity } = req.body;
+  const { materialKey, materialName, unit, brand, spec, basePrice, category, isCommodity } = req.body;
   if (!materialKey || !materialName || !unit || !brand || basePrice == null) {
     throw new HttpError(400, 'materialKey, materialName, unit, brand, and basePrice are required.');
   }
   const result = await query(
-    `INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, quality, category, is_commodity)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [materialKey, materialName, unit, brand, spec || null, basePrice, quality || null, category || null, isCommodity ? 1 : 0],
+    `INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, category, is_commodity)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [materialKey, materialName, unit, brand, spec || null, basePrice, category || null, isCommodity ? 1 : 0],
   );
   const [material] = await query('SELECT * FROM material_brands WHERE id = ?', [result.insertId]);
   await logAdminActivity(req.user.id, 'store_management', 'brand_created', `Added brand: ${brand} (${materialName})`);
@@ -283,7 +283,7 @@ export const createMaterial = asyncHandler(async (req, res) => {
 });
 
 export const updateMaterial = asyncHandler(async (req, res) => {
-  const { materialName, unit, brand, spec, basePrice, quality, category } = req.body;
+  const { materialName, unit, brand, spec, basePrice, category } = req.body;
   const fields = [];
   const params = [];
   const set = (col, val) => { if (val !== undefined) { fields.push(`${col} = ?`); params.push(val); } };
@@ -292,7 +292,6 @@ export const updateMaterial = asyncHandler(async (req, res) => {
   set('brand', brand);
   set('spec', spec);
   set('base_price', basePrice);
-  set('quality', quality);
   set('category', category);
   if (fields.length === 0) throw new HttpError(400, 'No fields to update.');
 
@@ -373,7 +372,7 @@ export const setStoreActive = asyncHandler(async (req, res) => {
 export const getStoreCatalog = asyncHandler(async (req, res) => {
   const rows = await query(
     `SELECT mb.id AS material_brand_id, mb.material_key, mb.material_name, mb.unit, mb.brand, mb.spec,
-            mb.base_price, mb.quality, mb.category, mb.is_commodity,
+            mb.base_price, mb.category, mb.is_commodity,
             smp.price AS store_price, smp.in_stock AS store_in_stock, smp.stock_qty AS store_stock_qty
      FROM material_brands mb
      LEFT JOIN store_material_prices smp ON smp.material_brand_id = mb.id AND smp.store_id = ?
@@ -397,7 +396,6 @@ export const getStoreCatalog = asyncHandler(async (req, res) => {
       brand: row.brand,
       spec: row.spec,
       basePrice: Number(row.base_price),
-      quality: row.quality == null ? null : Number(row.quality),
       category: row.category,
       storePrice: row.store_price == null ? null : Number(row.store_price),
       inStock: row.store_in_stock == null ? null : Boolean(row.store_in_stock),

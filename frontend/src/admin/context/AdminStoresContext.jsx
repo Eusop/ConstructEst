@@ -34,7 +34,6 @@ function projectCatalog(catalogGroups) {
           unit: group.unit,
           price: brand.storePrice,
           available: brand.inStock,
-          quality: brand.quality,
           stockQty: brand.stockQty,
         })),
       };
@@ -51,7 +50,7 @@ function projectCatalog(catalogGroups) {
  * AdminMaterialsPage). Backed by the real `stores`, `material_brands` and
  * `store_material_prices` tables, the same catalog Store Locator and Brand
  * Selection read, so a change here shows up there. A brand's identity (name,
- * unit, quality) lives in the global `material_brands` row; its price and stock
+ * unit) lives in the global `material_brands` row; its price and stock
  * at a store live in `store_material_prices`. "Add Brand" creates both, and
  * "Remove" only deletes the store's price row (the brand stays, in case another
  * store prices it). A store's catalog is fetched lazily when it becomes active:
@@ -173,7 +172,6 @@ export function AdminStoresProvider({ children }) {
       unit: brand.unit ?? definition?.unit ?? '',
       brand: brand.name,
       basePrice: brand.price,
-      quality: brand.quality,
       isCommodity: false,
     });
     await setStoreMaterialPrice(storeId, material.id, { price: brand.price, inStock: brand.available, stockQty: brand.stockQty }, quotationFile);
@@ -182,7 +180,7 @@ export function AdminStoresProvider({ children }) {
   }, [loadStoreCatalog]);
 
   const updateBrand = useCallback(async (storeId, materialKey, brandId, updates, quotationFile) => {
-    await updateAdminMaterial(brandId, { brand: updates.name, unit: updates.unit, quality: updates.quality });
+    await updateAdminMaterial(brandId, { brand: updates.name, unit: updates.unit });
     await setStoreMaterialPrice(storeId, brandId, { price: updates.price, inStock: updates.available, stockQty: updates.stockQty }, quotationFile);
     await loadStoreCatalog(storeId);
   }, [loadStoreCatalog]);
