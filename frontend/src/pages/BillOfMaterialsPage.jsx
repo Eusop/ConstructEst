@@ -12,8 +12,8 @@ import NoActiveProjectState from '../features/projects/components/NoActiveProjec
 import { useProjects } from '../context/ProjectsContext';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
 import { useToast } from '../context/ToastContext';
-import { computeTierTotal } from '../features/brandSelection/utils/computeBom';
-import { loadBrandCatalog } from '../features/brandSelection/data/brandOptionsCache';
+import { computeBom, EXCLUDED } from '../features/brandSelection/utils/computeBom';
+import { OPTIMIZATION_TIERS, loadBrandCatalog, loadAllStoreCatalog } from '../features/brandSelection/data/brandOptionsCache';
 import { STORES, loadStores } from '../features/storeLocator/data/storesCache';
 import { cheapestFullStore } from '../features/storeLocator/utils/budgetCheck';
 import { loadParsedProject, formatQuantityLabel } from '../features/projects/data/parsedProjectCache';
@@ -74,13 +74,16 @@ function BillOfMaterialsPage() {
 
       // The brand catalog is still needed: the Premium subtotal below has no
       // backend equivalent (the endpoint prices only the saved selection).
-      const [{ catalog }, { stores }, fetchedBom] = await Promise.all([
+      const [{ catalog }, { stores }, fetchedBom, allStores] = await Promise.all([
         apiRequest(`/projects/${activeProject.id}/brand-catalog?storeId=${storeId}`),
         apiRequest(`/projects/${activeProject.id}/stores`),
         apiRequest(`/projects/${activeProject.id}/bom?storeId=${storeId}`),
+        // Other stores' prices, for the Premium baseline of items bought elsewhere.
+        apiRequest(`/projects/${activeProject.id}/brand-catalog/all-stores`).catch(() => ({ stores: [], catalog: {} })),
       ]);
       if (cancelled) return;
       loadBrandCatalog(storeId, catalog);
+      loadAllStoreCatalog(allStores.stores, allStores.catalog);
       loadStores(stores);
       setBom({ ...fetchedBom, lineItems: toDisplayLineItems(fetchedBom.lineItems) });
       setLoadedForKey(`${activeProject.id}-${storeId}`);
@@ -147,17 +150,27 @@ function BillOfMaterialsPage() {
   }
 
   const { lineItems, grandTotal } = bom;
-  // The selected store may not carry everything (StoreLocatorPage allows partial
-  // stores). grandTotal only covers what it sells, so the budget check must say so.
-  const missingCount = lineItems.filter((item) => item.available === false).length;
+  // A material can come from another store or be left out (migration 038).
+  const excludedItems = lineItems.filter((item) => item.excluded);
+  const supplierGroups = (bom.suppliers ?? [{ storeId, name: null, subtotal: grandTotal }]).map((group) => ({
+    ...group,
+    items: lineItems.filter((item) => !item.excluded && (item.storeId ?? storeId) === group.storeId),
+  }));
+  const supplierMap = Object.fromEntries(lineItems
+    .filter((item) => item.excluded || (item.storeId != null && item.storeId !== storeId))
+    .map((item) => [item.key, item.excluded ? EXCLUDED : item.storeId]));
+  // A store may not carry everything (StoreLocatorPage allows partial stores).
+  // grandTotal only covers what is sold, so the budget check must say so.
+  const missingCount = lineItems.filter((item) => item.available === false && !item.excluded).length;
   // Price the Premium baseline with the same per-store prices as the fetched BOM,
   // so sand and gravel (no brands) don't use BASE_PRICING's flat prices. Lumber's
   // BOM line is in pieces while computeBom.js prices board feet, so leave it out
   // and let that side use the catalog per-board-foot price.
   const realUnitPrices = Object.fromEntries(
-    lineItems.filter((item) => !item.pieceConversion).map((item) => [item.key, item.unitPrice]),
+    lineItems.filter((item) => !item.pieceConversion && item.storeId === storeId).map((item) => [item.key, item.unitPrice]),
   );
-  const premiumTotal = computeTierTotal('premium', storeId, realUnitPrices);
+  // Same suppliers as the BOM, so items bought elsewhere or left out compare fairly.
+  const premiumTotal = computeBom(OPTIMIZATION_TIERS.premium.choices, storeId, realUnitPrices, supplierMap).grandTotal;
   const saving = Math.max(0, premiumTotal - grandTotal);
 
   const ceilingValue = Number(String(activeProject.budgetCeiling).replace(/,/g, ''));
@@ -168,10 +181,11 @@ function BillOfMaterialsPage() {
   const ceilingLabel = Number.isFinite(ceilingValue) && ceilingValue > 0 ? formatPeso(ceilingValue) : null;
 
   const selectedStore = STORES.find((store) => store.id === storeId) ?? STORES[0] ?? { name: 'Selected store' };
+  const storeNames = supplierGroups.map((group) => group.name ?? selectedStore.name);
   const summaryTags = [
     `${activeProject.storeys} ${activeProject.storeys === 1 ? 'storey' : 'storeys'}`,
     ...(activeProject.includeRoofing ? ['roofing'] : []),
-    selectedStore.name,
+    storeNames.join(' + '),
     'materials only',
   ];
 
@@ -185,12 +199,16 @@ function BillOfMaterialsPage() {
         { label: 'Location', value: activeProject.location },
         { label: 'Storeys', value: `${activeProject.storeys} ${activeProject.storeys === 1 ? 'storey' : 'storeys'}` },
         { label: 'Roofing', value: activeProject.includeRoofing ? 'Included' : 'Not included' },
-        { label: 'Store', value: selectedStore.name },
+        { label: storeNames.length > 1 ? 'Stores' : 'Store', value: storeNames.join(', ') },
         // "Php", since the PDF fonts have no peso sign (see bomPdfService.js).
         ...(ceilingLabel ? [{ label: 'Budget ceiling', value: `Php ${formatAmount(ceilingValue)}` }] : []),
         ...(formworkUses > 1 ? [{ label: 'Formwork uses', value: `${formworkUses} (plywood and lumber price / ${formworkUses})` }] : []),
       ],
-      lineItems,
+      lineItems: lineItems.filter((item) => !item.excluded),
+      groups: supplierGroups.length > 1
+        ? supplierGroups.map((group) => ({ title: group.name ?? selectedStore.name, items: group.items, subtotal: group.subtotal }))
+        : null,
+      excludedItems,
       grandTotal,
     });
     logActivity({ type: 'pdf_downloaded', message: `Downloaded PDF report for ${activeProject.projectName}` });
@@ -226,7 +244,36 @@ function BillOfMaterialsPage() {
         }}
       >
         <Stack spacing={{ xs: 2, md: 3 }}>
-          <BomTable items={lineItems} />
+          {supplierGroups.length > 1 || excludedItems.length > 0 ? (
+            supplierGroups.map((group) => (
+              <Box key={group.storeId}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 1, gap: 1, flexWrap: 'wrap' }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary' }}>
+                    {group.name ?? selectedStore.name}
+                    {group.storeId === storeId && (
+                      <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.8rem' }}> · selected store</Typography>
+                    )}
+                  </Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                    {group.items.length} item{group.items.length === 1 ? '' : 's'} · Subtotal <strong>{formatPeso(group.subtotal)}</strong>
+                  </Typography>
+                </Stack>
+                <BomTable items={group.items} />
+              </Box>
+            ))
+          ) : (
+            <BomTable items={lineItems} />
+          )}
+
+          {excludedItems.length > 0 && (
+            <Box sx={{ bgcolor: 'grey.50', border: '1px dashed', borderColor: 'grey.300', borderRadius: 2, p: 2 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'text.primary' }}>Not included in this BOM</Typography>
+              <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mt: 0.5 }}>
+                {excludedItems.map((item) => `${item.material} (${item.quantityLabel} ${item.unit})`).join(', ')}. Not priced; buy these
+                elsewhere or use what you have.
+              </Typography>
+            </Box>
+          )}
 
           <BomCostSummaryCard
             ceilingLabel={ceilingLabel}

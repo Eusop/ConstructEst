@@ -208,13 +208,64 @@ export async function getBrandCatalog(projectId, storeId) {
 }
 
 /**
- * Prices the full take-off at one store. Uses the saved brand choice if
- * there is one, otherwise picks the cheapest option. Sand/gravel just use
- * the store's flat price since they don't have brands.
+ * Every in-stock option for every material the project needs, at every active
+ * store, grouped by store. Feeds the per-material supplier dropdown in Brand
+ * Selection (Manual), so a material can be bought at another store. Includes
+ * the bulk commodities (sand, gravel), which have no brand choice.
+ */
+export async function getAllStoreCatalog(projectId) {
+  const materials = await getQuantityTakeoff(projectId);
+  const reuse = await getReuse(projectId);
+  const keys = materials.map((m) => m.material_key);
+  const stores = await query('SELECT id, name FROM stores WHERE is_active = 1 ORDER BY name');
+  const catalog = Object.fromEntries(stores.map((s) => [s.id, {}]));
+  if (keys.length === 0) return { stores, catalog };
+
+  const rows = await query(
+    `SELECT mb.id, mb.material_key, mb.brand, mb.spec, mb.quality, mb.is_commodity, smp.price, smp.stock_qty,
+            s.id AS store_id, s.name AS supplier
+     FROM material_brands mb
+     JOIN store_material_prices smp ON smp.material_brand_id = mb.id
+     JOIN stores s ON s.id = smp.store_id
+     WHERE s.is_active = 1 AND smp.in_stock = 1 AND mb.material_key IN (?)
+     ORDER BY smp.price ASC`,
+    [keys],
+  );
+  for (const row of rows) {
+    const byKey = catalog[row.store_id];
+    if (!byKey) continue;
+    (byKey[row.material_key] ??= []).push({
+      id: row.id,
+      brand: row.brand,
+      spec: effectiveSpec(row.material_key, row.spec, reuse),
+      quality: row.quality,
+      isCommodity: Boolean(row.is_commodity),
+      price: effectivePrice(row.material_key, Number(row.price), reuse),
+      supplier: row.supplier,
+      storeId: row.store_id,
+    });
+  }
+  return { stores, catalog };
+}
+
+async function getMaterialSuppliers(projectId) {
+  const rows = await query('SELECT material_key, store_id, excluded FROM project_material_suppliers WHERE project_id = ?', [projectId]);
+  return Object.fromEntries(rows.map((r) => [r.material_key, r.excluded ? 'none' : r.store_id]));
+}
+
+/**
+ * Prices the full take-off. Each material is priced at its own supplier
+ * (project_material_suppliers, migration 038), else at `storeId`, the
+ * project's selected store; a material left out of the BOM is listed but not
+ * priced. Uses the saved brand choice if that store has it, otherwise the
+ * store's cheapest option. Sand/gravel just use the store's flat price since
+ * they don't have brands.
  */
 export async function computeBom(projectId, storeId) {
   const materials = await getQuantityTakeoff(projectId);
   const reuse = await getReuse(projectId);
+  const suppliers = await getMaterialSuppliers(projectId);
+  const storeNames = Object.fromEntries((await query('SELECT id, name FROM stores')).map((s) => [s.id, s.name]));
   const selections = await query(
     'SELECT material_key, material_brand_id FROM project_brand_selections WHERE project_id = ?',
     [projectId],
@@ -223,6 +274,16 @@ export async function computeBom(projectId, storeId) {
 
   const lineItems = [];
   for (const material of materials) {
+    // Left out of the BOM: shown in its own list, not priced.
+    if (suppliers[material.material_key] === 'none') {
+      lineItems.push({
+        key: material.material_key, material: material.name, category: null, brand: null, spec: null,
+        available: false, excluded: true, storeId: null, storeName: null,
+        quantity: Number(material.quantity), unit: material.unit, unitPrice: null, amount: null, stockQty: null, stockShort: false,
+      });
+      continue;
+    }
+    const lineStoreId = Number(suppliers[material.material_key] ?? storeId);
     let row;
     if (selectionByKey[material.material_key]) {
       [row] = await query(
@@ -230,7 +291,7 @@ export async function computeBom(projectId, storeId) {
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
          WHERE smp.store_id = ? AND smp.material_brand_id = ?`,
-        [storeId, selectionByKey[material.material_key]],
+        [lineStoreId, selectionByKey[material.material_key]],
       );
     }
     if (!row) {
@@ -240,7 +301,7 @@ export async function computeBom(projectId, storeId) {
          JOIN material_brands mb ON mb.id = smp.material_brand_id
          WHERE smp.store_id = ? AND mb.material_key = ? AND smp.in_stock = 1
          ORDER BY smp.price ASC LIMIT 1`,
-        [storeId, material.material_key],
+        [lineStoreId, material.material_key],
       );
     }
 
@@ -266,6 +327,9 @@ export async function computeBom(projectId, storeId) {
     lineItems.push({
       key: material.material_key,
       material: material.name,
+      storeId: lineStoreId,
+      storeName: storeNames[lineStoreId] ?? null,
+      excluded: false,
       category: row?.category ?? null,
       brand: row?.brand ?? null,
       spec: available ? effectiveSpec(material.material_key, row.spec, reuse, parseJson(material.bar_pieces)) : null,
@@ -281,11 +345,40 @@ export async function computeBom(projectId, storeId) {
   }
 
   const grandTotal = Math.round(lineItems.reduce((sum, item) => sum + (item.amount ?? 0), 0) * 100) / 100;
-  return { lineItems, grandTotal, ...reuse };
+  // One entry per store the BOM buys from, the selected store first.
+  const storeIds = [...new Set(lineItems.filter((item) => !item.excluded).map((item) => item.storeId))]
+    .sort((a, b) => (a === Number(storeId) ? -1 : b === Number(storeId) ? 1 : 0));
+  const suppliersSummary = storeIds.map((id) => {
+    const items = lineItems.filter((item) => !item.excluded && item.storeId === id);
+    return {
+      storeId: id,
+      name: storeNames[id] ?? null,
+      itemCount: items.length,
+      subtotal: Math.round(items.reduce((sum, item) => sum + (item.amount ?? 0), 0) * 100) / 100,
+    };
+  });
+  return { lineItems, grandTotal, suppliers: suppliersSummary, excludedCount: lineItems.filter((item) => item.excluded).length, ...reuse };
 }
 
-export async function saveBrandSelection(projectId, storeId, choices) {
+/**
+ * @param {Record<string, number>} choices materialKey -> material_brand_id
+ * @param {Record<string, number|'none'>|undefined} suppliers materialKey -> another
+ *   store id, or 'none' to leave it out of the BOM. Omitted keys (and the
+ *   selected store itself) mean the selected store. Undefined keeps the saved ones.
+ */
+export async function saveBrandSelection(projectId, storeId, choices, suppliers) {
   await query('UPDATE projects SET selected_store_id = ? WHERE id = ?', [storeId, projectId]);
+
+  if (suppliers !== undefined) {
+    await query('DELETE FROM project_material_suppliers WHERE project_id = ?', [projectId]);
+    for (const [materialKey, value] of Object.entries(suppliers ?? {})) {
+      if (value === 'none') {
+        await query('INSERT INTO project_material_suppliers (project_id, material_key, store_id, excluded) VALUES (?, ?, NULL, 1)', [projectId, materialKey]);
+      } else if (value != null && Number(value) !== Number(storeId)) {
+        await query('INSERT INTO project_material_suppliers (project_id, material_key, store_id, excluded) VALUES (?, ?, ?, 0)', [projectId, materialKey, Number(value)]);
+      }
+    }
+  }
 
   for (const [materialKey, materialBrandId] of Object.entries(choices)) {
     await query(

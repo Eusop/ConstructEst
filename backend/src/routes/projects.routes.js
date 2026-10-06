@@ -10,6 +10,7 @@ import {
   getProjectBrandCatalog,
   postBrandSelection,
   getProjectBom,
+  getProjectAllStoreCatalog,
   getProjectConstants,
   putProjectConstants,
   resetProjectConstants,
@@ -29,6 +30,7 @@ router.delete('/:id', deleteProject);
 
 router.get('/:id/stores', getProjectStores);
 router.get('/:id/brand-catalog', getProjectBrandCatalog);
+router.get('/:id/brand-catalog/all-stores', getProjectAllStoreCatalog);
 router.post('/:id/brand-selection', postBrandSelection);
 router.get('/:id/bom', getProjectBom);
 

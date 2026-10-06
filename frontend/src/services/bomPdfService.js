@@ -29,7 +29,44 @@ function hexToRgb(hex) {
  * @param {number} bom.grandTotal
  * @param {Date} [bom.generatedAt]
  */
-export function generateBomPdf({ projectName, projectInfo, lineItems, grandTotal, generatedAt = new Date() }) {
+function itemRow(item) {
+  return [
+    item.material,
+    item.category,
+    // Sand and gravel have no spec, so show a dash like the on-screen table.
+    item.spec || '—',
+    item.quantityLabel,
+    item.unit,
+    item.available === false ? 'Not available' : formatCurrency(item.unitPrice),
+    item.available === false ? 'Not available' : formatCurrency(item.amount),
+  ];
+}
+
+// Shaded full-width row naming a store (or the left-out list) above its items.
+function sectionRow(text) {
+  return [{ content: text, colSpan: 7, styles: { fontStyle: 'bold', fillColor: [232, 238, 248], textColor: [20, 20, 20] } }];
+}
+
+// One section per store when the BOM buys from more than one (migration 038),
+// then the materials left out of the BOM, listed but not priced.
+function buildBody(lineItems, groups, excludedItems) {
+  const body = [];
+  if (groups && groups.length > 1) {
+    groups.forEach((group) => {
+      body.push(sectionRow(`${group.title}: ${group.items.length} item(s), subtotal ${formatCurrency(group.subtotal)}`));
+      group.items.forEach((item) => body.push(itemRow(item)));
+    });
+  } else {
+    lineItems.forEach((item) => body.push(itemRow(item)));
+  }
+  if (excludedItems.length > 0) {
+    body.push(sectionRow('Not included in this BOM (not priced)'));
+    excludedItems.forEach((item) => body.push([item.material, item.category || '', '—', item.quantityLabel, item.unit, '—', '—']));
+  }
+  return body;
+}
+
+export function generateBomPdf({ projectName, projectInfo, lineItems, grandTotal, groups = null, excludedItems = [], generatedAt = new Date() }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const marginX = 40;
   const brandBlue = hexToRgb(colors.brandBlue);
@@ -66,16 +103,7 @@ export function generateBomPdf({ projectName, projectInfo, lineItems, grandTotal
     startY: infoY + 2,
     margin: { left: marginX, right: marginX },
     head: [['Material', 'Category', 'Spec', 'Quantity', 'Unit', 'Unit Cost', 'Total Cost']],
-    body: lineItems.map((item) => [
-      item.material,
-      item.category,
-      // Sand and gravel have no spec, so show a dash like the on-screen table.
-      item.spec || '—',
-      item.quantityLabel,
-      item.unit,
-      item.available === false ? 'Not available' : formatCurrency(item.unitPrice),
-      item.available === false ? 'Not available' : formatCurrency(item.amount),
-    ]),
+    body: buildBody(lineItems, groups, excludedItems),
     headStyles: { fillColor: brandBlue, textColor: [255, 255, 255], fontStyle: 'bold' },
     // Number headers line up with their right-aligned values.
     didParseCell: (data) => {

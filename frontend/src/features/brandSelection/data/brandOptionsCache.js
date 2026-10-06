@@ -107,9 +107,35 @@ export function loadBrandCatalog(storeId, catalog) {
   });
 }
 
+// Every active store's options (GET /projects/:id/brand-catalog/all-stores),
+// for buying a material at another store (migration 038). storeId -> materialKey
+// -> options, cheapest first. Includes sand and gravel.
+export const ALL_STORE_OPTIONS = {};
+// Active stores in name order: [{ id, name }].
+export const ALL_STORES = [];
+
+export function loadAllStoreCatalog(stores, catalog) {
+  ALL_STORES.length = 0;
+  ALL_STORES.push(...stores);
+  Object.keys(ALL_STORE_OPTIONS).forEach((key) => delete ALL_STORE_OPTIONS[key]);
+  Object.assign(ALL_STORE_OPTIONS, catalog);
+}
+
 export function getStoreBrandOptions(storeId, materialKey) {
-  if (storeId !== currentStoreId) return [];
-  return MATERIAL_BRAND_OPTIONS[materialKey] ?? [];
+  if (storeId === currentStoreId && MATERIAL_BRAND_OPTIONS[materialKey]) return MATERIAL_BRAND_OPTIONS[materialKey];
+  return ALL_STORE_OPTIONS[storeId]?.[materialKey] ?? [];
+}
+
+/** Stores that carry this material, cheapest first: [{ id, name, price }]. */
+export function getSupplierOptions(materialKey) {
+  return ALL_STORES
+    .map((store) => ({ id: store.id, name: store.name, price: ALL_STORE_OPTIONS[store.id]?.[materialKey]?.[0]?.price }))
+    .filter((store) => store.price != null)
+    .sort((a, b) => a.price - b.price);
+}
+
+export function getStoreName(storeId) {
+  return ALL_STORES.find((store) => store.id === storeId)?.name ?? null;
 }
 
 /**

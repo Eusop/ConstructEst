@@ -7,7 +7,7 @@ import { runDxfEngine } from '../services/engine.service.js';
 import { getEffectiveConstants } from '../services/constants.service.js';
 import { getDesignOverrides, getEffectiveDesignOverrides, saveDesignOverrides, toEngineOverrides } from '../services/designOverrides.service.js';
 import { logActivity } from '../services/activity.service.js';
-import { getStoreOptimization, getBrandCatalog, saveBrandSelection, computeBom } from '../services/optimization.service.js';
+import { getStoreOptimization, getBrandCatalog, getAllStoreCatalog, saveBrandSelection, computeBom } from '../services/optimization.service.js';
 
 function parseBoolean(value) {
   return value === true || value === 'true' || value === '1';
@@ -321,14 +321,30 @@ export const getProjectBrandCatalog = asyncHandler(async (req, res) => {
   res.json({ catalog });
 });
 
+// Every store's options, for the per-material supplier dropdown (migration 038).
+export const getProjectAllStoreCatalog = asyncHandler(async (req, res) => {
+  const project = await loadProjectOr404(req.params.id);
+  assertAccess(project, req.user);
+  res.json(await getAllStoreCatalog(project.id));
+});
+
 export const postBrandSelection = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
-  const { storeId, choices } = req.body;
+  const { storeId, choices, suppliers } = req.body;
   if (!storeId || !choices || typeof choices !== 'object') {
     throw new HttpError(400, 'storeId and a choices object are required.');
   }
-  const bom = await saveBrandSelection(project.id, storeId, choices);
+  if (suppliers !== undefined) {
+    if (suppliers === null || typeof suppliers !== 'object') throw new HttpError(400, 'suppliers must be an object.');
+    const storeIds = [...new Set(Object.values(suppliers).filter((v) => v !== 'none' && v != null).map(Number))];
+    if (storeIds.some((id) => !Number.isInteger(id))) throw new HttpError(400, "Each supplier must be a store id or 'none'.");
+    if (storeIds.length > 0) {
+      const found = await query('SELECT id FROM stores WHERE is_active = 1 AND id IN (?)', [storeIds]);
+      if (found.length !== storeIds.length) throw new HttpError(400, 'One of the suppliers is not an active store.');
+    }
+  }
+  const bom = await saveBrandSelection(project.id, storeId, choices, suppliers);
   await logActivity(req.user.id, project.id, 'brand_selection_saved', `Saved brand selection for "${project.project_name}".`);
   res.json(bom);
 });

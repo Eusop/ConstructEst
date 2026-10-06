@@ -14,9 +14,10 @@ import OptimizationTierCards from '../features/brandSelection/components/Optimiz
 import RecommendedBrandsSummary from '../features/brandSelection/components/RecommendedBrandsSummary';
 import ManualBrandTable from '../features/brandSelection/components/ManualBrandTable';
 import { useProjects } from '../context/ProjectsContext';
+import { loadParsedProject } from '../features/projects/data/parsedProjectCache';
 import { useDashboardActivity } from '../context/DashboardActivityContext';
-import { OPTIMIZATION_TIERS, loadBrandCatalog } from '../features/brandSelection/data/brandOptionsCache';
-import { computeBom } from '../features/brandSelection/utils/computeBom';
+import { OPTIMIZATION_TIERS, loadBrandCatalog, loadAllStoreCatalog, getStoreBrandOptions } from '../features/brandSelection/data/brandOptionsCache';
+import { computeBom, EXCLUDED } from '../features/brandSelection/utils/computeBom';
 import { apiRequest } from '../services/apiClient';
 import { ROUTES } from '../routes/paths';
 import { colors } from '../theme/palette';
@@ -28,15 +29,20 @@ import { formatPeso } from '../utils/formatNumbers';
  * a selected store, since brands and prices come from that store's catalog
  * (GET /api/projects/:id/brand-catalog, loaded into brandOptionsCache).
  * "Continue" saves the choice with POST /api/projects/:id/brand-selection.
+ * In Manual mode each material can also come from another store, or be left
+ * out of the BOM (`suppliers`, migration 038). Automatic uses one store.
  */
 function BrandSelectionPage() {
-  const { activeProject, updateActiveProject } = useProjects();
+  const { activeProject, updateActiveProject, refreshActiveProjectEstimation } = useProjects();
   const { logActivity } = useDashboardActivity();
   const navigate = useNavigate();
 
   const storeId = activeProject?.selectedStoreId ?? null;
   const [loadedForStoreId, setLoadedForStoreId] = useState(null);
-  const catalogReady = storeId != null && loadedForStoreId === storeId;
+  const [allStoresLoadedFor, setAllStoresLoadedFor] = useState(null);
+  const [materialsLoadedFor, setMaterialsLoadedFor] = useState(null);
+  const catalogReady = storeId != null && loadedForStoreId === storeId && allStoresLoadedFor === activeProject?.id
+    && materialsLoadedFor === activeProject?.id;
   const [isSaving, setIsSaving] = useState(false);
   // materialKey -> this store's real price, from the backend BOM. Only used for
   // materials without brand options (sand, gravel), which would otherwise use
@@ -47,6 +53,8 @@ function BrandSelectionPage() {
   const [mode, setMode] = useState(initialSelection?.mode ?? 'automatic');
   const [tier, setTier] = useState(initialSelection?.tier ?? 'standard');
   const [choices, setChoices] = useState(initialSelection?.choices ?? null);
+  // materialKey -> another store id, or EXCLUDED. Filled from the saved BOM on load.
+  const [suppliers, setSuppliers] = useState(initialSelection?.suppliers ?? null);
 
   useEffect(() => {
     if (!activeProject || typeof activeProject.id !== 'number' || !storeId) return undefined;
@@ -63,23 +71,58 @@ function BrandSelectionPage() {
         if (!cancelled) setLoadedForStoreId(storeId);
       });
 
+    // The priced material list (rebar per size, sand, gravel...) comes from the
+    // estimate, so a reload straight onto this page still has it.
+    Promise.resolve(activeProject.estimation ?? refreshActiveProjectEstimation())
+      .then((estimation) => {
+        if (cancelled) return;
+        if (estimation) loadParsedProject(estimation);
+        setMaterialsLoadedFor(activeProject.id);
+      })
+      .catch(() => {
+        if (!cancelled) setMaterialsLoadedFor(activeProject.id);
+      });
+
+    // Every store's options, for the per-material supplier dropdown (Manual).
+    apiRequest(`/projects/${activeProject.id}/brand-catalog/all-stores`)
+      .then(({ stores, catalog }) => {
+        if (cancelled) return;
+        loadAllStoreCatalog(stores, catalog);
+        setAllStoresLoadedFor(activeProject.id);
+      })
+      .catch(() => {
+        if (!cancelled) setAllStoresLoadedFor(activeProject.id);
+      });
+
     // Separate request so the page still works if it fails (totals fall back to
-    // BASE_PRICING). Brand picks don't change it, so it isn't refetched.
+    // BASE_PRICING). Brand picks don't change it, so it isn't refetched. It also
+    // brings back the saved suppliers after a reload.
     apiRequest(`/projects/${activeProject.id}/bom?storeId=${storeId}`)
       .then(({ lineItems }) => {
         if (cancelled) return;
-        setRealUnitPrices(Object.fromEntries(lineItems.map((item) => [item.key, item.unitPrice])));
+        setRealUnitPrices(Object.fromEntries(lineItems.filter((item) => item.storeId === storeId).map((item) => [item.key, item.unitPrice])));
+        const saved = {};
+        lineItems.forEach((item) => {
+          if (item.excluded) saved[item.key] = EXCLUDED;
+          else if (item.storeId != null && item.storeId !== storeId) saved[item.key] = item.storeId;
+        });
+        setSuppliers((prev) => prev ?? saved);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setSuppliers((prev) => prev ?? {});
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [activeProject?.id, storeId]);
+  }, [activeProject?.id, storeId, refreshActiveProjectEstimation]);
 
+  // Other-store picks only apply in Manual; Automatic prices one store.
+  const activeSuppliers = mode === 'manual' ? (suppliers ?? {}) : {};
   const { lineItems, grandTotal } = useMemo(
-    () => (catalogReady && choices ? computeBom(choices, storeId, realUnitPrices) : { lineItems: [], grandTotal: 0 }),
-    [choices, storeId, catalogReady, realUnitPrices],
+    () => (catalogReady && choices ? computeBom(choices, storeId, realUnitPrices, activeSuppliers) : { lineItems: [], grandTotal: 0 }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [choices, storeId, catalogReady, realUnitPrices, mode, suppliers],
   );
 
   if (!activeProject) {
@@ -107,13 +150,30 @@ function BrandSelectionPage() {
     setChoices((prev) => ({ ...prev, [materialKey]: optionId }));
   };
 
+  // Another store (or left out). Keeps the same brand if the new store sells
+  // it, else that store's cheapest.
+  const handleSupplierChange = (materialKey, value) => {
+    setSuppliers((prev) => {
+      const next = { ...(prev ?? {}) };
+      if (value === storeId) delete next[materialKey];
+      else next[materialKey] = value;
+      return next;
+    });
+    if (value === EXCLUDED) return;
+    const options = getStoreBrandOptions(value, materialKey);
+    if (options.length > 0 && !options.some((option) => option.id === choices[materialKey])) {
+      setChoices((prev) => ({ ...prev, [materialKey]: options[0].id }));
+    }
+  };
+
   const handleContinue = async () => {
-    const brandSelection = { mode, tier: mode === 'automatic' ? tier : null, choices };
+    const savedSuppliers = mode === 'manual' ? (suppliers ?? {}) : {};
+    const brandSelection = { mode, tier: mode === 'automatic' ? tier : null, choices, suppliers: savedSuppliers };
     setIsSaving(true);
     try {
       const bom = await apiRequest(`/projects/${activeProject.id}/brand-selection`, {
         method: 'POST',
-        body: { storeId, choices },
+        body: { storeId, choices, suppliers: savedSuppliers },
       });
       updateActiveProject({ brandSelection, status: 'Optimized', bom });
       logActivity({
@@ -148,6 +208,11 @@ function BrandSelectionPage() {
         // button spill on top of the cards.
         <Stack spacing={2.5} sx={{ minWidth: 0 }}>
           <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} realUnitPrices={realUnitPrices} />
+          {suppliers && Object.keys(suppliers).length > 0 && (
+            <Typography sx={{ fontSize: '0.8rem', color: colors.orangeDark }}>
+              Automatic buys everything at the selected store. Your other-store picks from Manual are not used unless you switch back to Manual.
+            </Typography>
+          )}
           <RecommendedBrandsSummary tierKey={tier} grandTotal={grandTotal} storeId={storeId} />
         </Stack>
       ) : (
@@ -155,6 +220,8 @@ function BrandSelectionPage() {
           <ManualBrandTable
             choices={choices}
             onChoiceChange={handleManualChoiceChange}
+            suppliers={suppliers ?? {}}
+            onSupplierChange={handleSupplierChange}
             storeId={storeId}
             lineItems={lineItems}
             grandTotal={grandTotal}

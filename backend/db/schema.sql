@@ -200,6 +200,20 @@ CREATE TABLE project_brand_selections (
   UNIQUE KEY uq_project_material (project_id, material_key)
 ) ENGINE=InnoDB;
 
+-- Per-material supplier (migration 038): another store for this material, or
+-- left out of the BOM. No row means the project's selected store.
+CREATE TABLE project_material_suppliers (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id INT UNSIGNED NOT NULL,
+  material_key VARCHAR(50) NOT NULL,
+  store_id INT UNSIGNED NULL,
+  excluded TINYINT(1) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pms_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pms_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_pms_project_material (project_id, material_key)
+) ENGINE=InnoDB;
+
 -- ---------------------------------------------------------------------------
 -- Estimation calibration constants. One global default row (project_id
 -- NULL); a project may override it (matches Settings page + FR-9's
