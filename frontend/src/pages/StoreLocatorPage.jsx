@@ -283,7 +283,7 @@ function StoreLocatorPage() {
         </Typography>
         {/* Same rule as getStoreOptimization in optimization.service.js. */}
         <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25 }}>
-          Total cost = the cheapest in-stock brand of each material x its quantity. When sorted by Cheapest, stores with every material in stock come first.
+          Total cost = the cheapest in-stock brand of each material x its quantity. When sorted by Cheapest, stores with every material in stock come first. The lowest-cost store with every material is marked Recommended.
         </Typography>
         <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', mt: 0.25 }}>
           {DISTANCE_IS_BY_ROAD

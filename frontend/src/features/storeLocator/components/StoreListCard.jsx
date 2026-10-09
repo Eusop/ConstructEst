@@ -77,9 +77,11 @@ function StoreListCard({ store, badgeColor, selected, onSelect, ceiling = null }
           <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: 'text.primary', minWidth: 0, overflowWrap: 'anywhere' }}>{store.name}</Typography>
         </Stack>
 
+        {/* The cheapest store that has every material is the recommended one
+            (the paper's TC-U16 and the panel's Hardware Store Recommender). */}
         {store.isCheapest && (
           <Box sx={{ bgcolor: colors.iconGreenBg, color: colors.iconGreenFg, borderRadius: 999, px: 1.25, py: 0.3, flexShrink: 0 }}>
-            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700 }}>Cheapest</Typography>
+            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700 }}>Recommended</Typography>
           </Box>
         )}
       </Stack>
