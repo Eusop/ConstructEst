@@ -15,9 +15,6 @@ export const updateAdminUser = (id, body) => apiRequest(`/admin/users/${id}`, { 
 export const setAdminUserActive = (id, isActive) =>
   apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', body: { isActive } });
 
-/** Approves a pending self-registered account: sets it verified and active in one step. */
-export const verifyAdminUser = (id) => apiRequest(`/admin/users/${id}/verify`, { method: 'PATCH' });
-
 /** Emails the user a password reset code (same as Forgot password). */
 export const sendUserResetCode = (id) => apiRequest(`/admin/users/${id}/send-reset-code`, { method: 'POST' });
 

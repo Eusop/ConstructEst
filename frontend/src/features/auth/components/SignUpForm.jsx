@@ -76,8 +76,8 @@ function validate(form) {
  * message only shows after it has been blurred once (`touched`) or a submit was
  * attempted (same as NewProjectPage.jsx), so nothing turns red while typing the
  * first time. Uses the real backend (services/authService.js). Submitting
- * creates the account but doesn't log it in: new accounts stay unverified and
- * inactive until an admin approves them, so it redirects to Login with a toast.
+ * creates the account but doesn't log it in: the email code comes first, so
+ * it goes to Verify Email.
  */
 function SignUpForm() {
   const [form, setForm] = useState(INITIAL_FORM);
@@ -156,8 +156,8 @@ function SignUpForm() {
 
     setIsSubmitting(true);
     try {
-      // No session yet: the account must confirm this email (next), then get
-      // admin approval (see auth.controller.js register/login). Go to Verify
+      // No session yet: the account must confirm this email first (see
+      // auth.controller.js register/login). Go to Verify
       // Email with the address just typed, not Login. The new User ID goes
       // along so the Verify Email page can show it.
       const { userId } = await signUpRequest(form);

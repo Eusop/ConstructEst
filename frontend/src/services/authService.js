@@ -10,8 +10,8 @@ export async function loginRequest({ identifier, password, keepSignedIn }) {
   return user;
 }
 
-// Registration doesn't create a session: the account stays unverified and
-// inactive until an admin approves it (verifyUser), so no token is returned.
+// Registration doesn't create a session: the email code comes first, so no
+// token is returned.
 // Only set one if a response ever includes it. The response has the User ID
 // the server assigned (`userId`).
 export async function signUpRequest(details) {

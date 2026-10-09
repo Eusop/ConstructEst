@@ -39,13 +39,12 @@ export const register = asyncHandler(async (req, res) => {
   const code = generateVerificationCode();
   const userId = await generateUserId();
 
-  // New accounts start inactive and unverified, admin has to approve them
-  // later (see verifyUser). No token given here so they can't log in yet.
-  // Also saves a verification code right away since that's checked first.
+  // No admin approval (FR-1, Form 12): the account is active once the email
+  // is verified. No token given here, since the email code comes first.
   const insertResult = await query(
     `INSERT INTO users (first_name, last_name, user_id, email, password_hash, access_role, is_active, is_verified,
                          email_verification_code, email_verification_expires_at, email_verification_last_sent_at)
-     VALUES (?, ?, ?, ?, ?, 'user', 0, 0, ?, NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE, NOW())`,
+     VALUES (?, ?, ?, ?, ?, 'user', 1, 1, ?, NOW() + INTERVAL ${CODE_EXPIRY_MINUTES} MINUTE, NOW())`,
     [firstName, lastName, userId, email, passwordHash, code],
   );
 
@@ -96,13 +95,9 @@ export const login = asyncHandler(async (req, res) => {
     throw new HttpError(401, 'Incorrect email/User ID or password.');
   }
 
-  // Check email verification first. An admin could approve an account before
-  // its email is verified, so login blocks on it separately.
+  // The email must be verified first. There is no admin approval step.
   if (!user.email_verified_at) {
     throw new HttpError(403, 'Please verify your email before signing in.', 'EMAIL_NOT_VERIFIED', user.email);
-  }
-  if (!user.is_verified) {
-    throw new HttpError(403, "Your account hasn't been approved by an admin yet.", 'PENDING_VERIFICATION');
   }
   if (!user.is_active) {
     throw new HttpError(403, 'This account has been deactivated.', 'ACCOUNT_DEACTIVATED');
@@ -156,12 +151,7 @@ export const verifyEmail = asyncHandler(async (req, res) => {
      WHERE id = ?`,
     [user.id],
   );
-  // Admin-created accounts are already approved, so they can sign in now.
-  const approved = Boolean(user.is_verified);
-  res.json({
-    message: approved ? 'Email verified. You can now sign in.' : 'Email verified. An admin will review your account next.',
-    approved,
-  });
+  res.json({ message: 'Email verified. You can now sign in.', approved: true });
 });
 
 export const resendVerificationCode = asyncHandler(async (req, res) => {

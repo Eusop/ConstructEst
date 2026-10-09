@@ -236,14 +236,6 @@ export const setTemporaryPassword = asyncHandler(async (req, res) => {
   res.json({ temporaryPassword, expiresInHours: TEMP_PASSWORD_HOURS });
 });
 
-export const verifyUser = asyncHandler(async (req, res) => {
-  const [target] = await query('SELECT first_name, last_name FROM users WHERE id = ?', [req.params.id]);
-  if (!target) throw new HttpError(404, 'User not found.');
-  await query('UPDATE users SET is_verified = 1, is_active = 1 WHERE id = ?', [req.params.id]);
-  await logAdminActivity(req.user.id, 'user_management', 'user_verified', `Verified user account: ${target.first_name} ${target.last_name}`);
-  res.json({ message: 'User verified.' });
-});
-
 export const deleteUser = asyncHandler(async (req, res) => {
   const [target] = await query('SELECT first_name, last_name, user_id, access_role FROM users WHERE id = ?', [req.params.id]);
   if (!target) throw new HttpError(404, 'User not found.');

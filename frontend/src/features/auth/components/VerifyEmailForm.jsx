@@ -24,8 +24,8 @@ const REDIRECT_TO_LOGIN_CODES = new Set(['ALREADY_VERIFIED', 'ACCOUNT_NOT_FOUND'
  * login that returned EMAIL_NOT_VERIFIED, see LoginForm.jsx). The email comes
  * from router `state`, not a query param, so it stays out of the URL and
  * history. State doesn't survive a hard refresh, so the field is then blank and
- * editable. It doesn't create a session either way (same as SignUpForm), since
- * an admin still has to approve the account (see login in auth.controller.js).
+ * editable. It doesn't create a session either way (same as SignUpForm): after
+ * the code, the user signs in on the Login page.
  */
 function VerifyEmailForm() {
   const location = useLocation();
@@ -65,9 +65,8 @@ function VerifyEmailForm() {
 
     setIsSubmitting(true);
     try {
-      // Admin-created accounts are already approved, so the server says "You can now sign in".
       const result = await verifyEmailRequest({ email: email.trim(), code });
-      showToast(result?.message || 'Email verified! An admin will review your account next.', 'success');
+      showToast(result?.message || 'Email verified. You can now sign in.', 'success');
       navigate(ROUTES.LOGIN);
     } catch (error) {
       if (REDIRECT_TO_LOGIN_CODES.has(error.code)) {

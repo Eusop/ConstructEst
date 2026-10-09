@@ -11,7 +11,7 @@ A capstone project (Tarlac State University, BSIT–Web and Mobile Applications)
 3. **Compare stores and pick brands.** Per-store pricing is optimized against a user-defined budget ceiling, with automatic (Premium/Standard/Budget tier) or manual brand selection, and a Store Locator with map distance and material-unavailability notifications.
 4. **Generate a Bill of Materials.** Downloadable as a PDF for procurement.
 
-An Admin module manages users (including approving self-registered accounts, which must also first verify their email via a 6-digit code before an admin ever sees them), the hardware-store/material-brand catalog and pricing (store price changes require an attached quotation file as proof; stores can be deactivated/reactivated without deleting them), and the global calibration/design-parameter defaults every new project falls back to. Admins can also help a user with their password (send a reset code, or set a one-time temporary password the user must replace at sign in) without ever seeing the user's own password.
+Anyone can sign up: a 6-digit code emailed to the address proves it is theirs, then they can sign in (no admin approval, per FR-1). An Admin module manages users (add, edit, deactivate or reactivate), the hardware-store/material-brand catalog and pricing (store price changes require an attached quotation file as proof; stores can be deactivated/reactivated without deleting them), and the global calibration/design-parameter defaults every new project falls back to. Admins can also help a user with their password (send a reset code, or set a one-time temporary password the user must replace at sign in) without ever seeing the user's own password.
 
 ## Structure
 

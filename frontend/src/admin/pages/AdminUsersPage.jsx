@@ -38,7 +38,7 @@ import TypedConfirmDialog from '../../components/TypedConfirmDialog';
 import { useAdminActivity } from '../context/AdminActivityContext';
 import { useAdminToast } from '../context/AdminToastContext';
 import {
-  listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, verifyAdminUser, deleteAdminUser,
+  listAdminUsers, createAdminUser, updateAdminUser, setAdminUserActive, deleteAdminUser,
   sendUserResetCode, setUserTemporaryPassword,
 } from '../services/adminService';
 import { getInitials } from '../../utils/getInitials';
@@ -116,11 +116,9 @@ function isAdminAccount(user) {
   return user?.accessRole === 'admin';
 }
 
-// A new self-registered account (isVerified: false) reads as "Pending" whatever
-// isActive is, unlike an account an admin deactivated. See verifyUser in
-// admin.controller.js and register in auth.controller.js.
+// No admin approval (migration 042): an account is Active or, if an admin
+// deactivated it, Inactive.
 function userStatus(user) {
-  if (!user.isVerified) return { label: 'Pending', bg: colors.iconOrangeBg, fg: colors.iconOrangeFg };
   return user.isActive
     ? { label: 'Active', bg: colors.iconGreenBg, fg: colors.iconGreenFg }
     : { label: 'Inactive', bg: 'grey.100', fg: 'text.secondary' };
@@ -235,8 +233,6 @@ function AdminUsersPage() {
   // Both directions of the active/inactive toggle need a typed word
   // (DEACTIVATE / REACTIVATE), see handleToggleActive.
   const [pendingToggleUser, setPendingToggleUser] = useState(null);
-  // Approving a pending account needs a typed ACTIVATE (see handleVerify).
-  const [pendingVerifyUser, setPendingVerifyUser] = useState(null);
   // Deleting is permanent (unlike deactivate), so it needs a typed DELETE. Admin
   // accounts never reach this state: the button is disabled for them, and the
   // backend rejects it too (see deleteUser).
@@ -332,26 +328,6 @@ function AdminUsersPage() {
     } catch (error) {
       const verb = pendingToggleUser.isActive ? 'deactivate' : 'reactivate';
       showToast(error.message || `Could not ${verb} this user. Try again.`, 'warning');
-      throw error;
-    }
-  };
-
-  const handleVerify = (user) => setPendingVerifyUser(user);
-
-  const handleConfirmVerify = async () => {
-    try {
-      await verifyAdminUser(pendingVerifyUser.id);
-      logActivity({
-        message: `Verified user account: ${pendingVerifyUser.userName}`,
-        icon: CheckCircleOutlineRoundedIcon,
-        iconBg: colors.iconGreenBg,
-        iconFg: colors.iconGreenFg,
-      });
-      showToast('User verified', 'success');
-      setPendingVerifyUser(null);
-      load();
-    } catch (error) {
-      showToast(error.message || 'Could not activate this user. Try again.', 'warning');
       throw error;
     }
   };
@@ -567,24 +543,16 @@ function AdminUsersPage() {
                             <EditRoundedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        {!user.isVerified ? (
-                          <Tooltip title="Verify">
-                            <IconButton size="small" onClick={() => handleVerify(user)}>
-                              <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
+                        {/* Admin accounts can't be deactivated (the backend rejects it too),
+                            or an admin could lock every admin out. Shown disabled, not hidden,
+                            so the reason is visible. */}
+                        <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deactivated' : user.isActive ? 'Deactivate' : 'Activate'}>
+                          <span>
+                            <IconButton size="small" disabled={isAdminAccount(user)} onClick={() => handleToggleActive(user)}>
+                              {user.isActive ? <BlockRoundedIcon fontSize="small" color={isAdminAccount(user) ? 'disabled' : 'error'} /> : <CheckCircleOutlineRoundedIcon fontSize="small" color={isAdminAccount(user) ? 'disabled' : 'success'} />}
                             </IconButton>
-                          </Tooltip>
-                        ) : (
-                          // Admin accounts can't be deactivated (the backend rejects it too),
-                          // or an admin could lock every admin out. Shown disabled, not hidden,
-                          // so the reason is visible.
-                          <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deactivated' : user.isActive ? 'Deactivate' : 'Activate'}>
-                            <span>
-                              <IconButton size="small" disabled={isAdminAccount(user)} onClick={() => handleToggleActive(user)}>
-                                {user.isActive ? <BlockRoundedIcon fontSize="small" color={isAdminAccount(user) ? 'disabled' : 'error'} /> : <CheckCircleOutlineRoundedIcon fontSize="small" color={isAdminAccount(user) ? 'disabled' : 'success'} />}
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                        )}
+                          </span>
+                        </Tooltip>
                         {/* Same admin protection as Deactivate. Delete is permanent, so it
                             also needs a typed-DELETE confirm below. */}
                         <Tooltip title="Password help">
@@ -633,16 +601,6 @@ function AdminUsersPage() {
         onConfirm={handleConfirmToggle}
       />
 
-      <TypedConfirmDialog
-        key={pendingVerifyUser?.id ? `verify-${pendingVerifyUser.id}` : 'verify-closed'}
-        open={Boolean(pendingVerifyUser)}
-        title="Activate user"
-        confirmWord="ACTIVATE"
-        message={<UserProfileReview user={pendingVerifyUser} intro="Review this account before activating it." />}
-        confirmLabel="Yes, Activate"
-        onCancel={() => setPendingVerifyUser(null)}
-        onConfirm={handleConfirmVerify}
-      />
 
       <TypedConfirmDialog
         key={pendingDeleteUser?.id ? `delete-${pendingDeleteUser.id}` : 'delete-closed'}
@@ -737,41 +695,27 @@ function AdminUsersPage() {
           </ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
-        {rowMenu && !rowMenu.user.isVerified ? (
-          <MenuItem
-            onClick={() => {
-              handleVerify(rowMenu.user);
-              closeRowMenu();
-            }}
-          >
-            <ListItemIcon>
+        {/* Same admin protection as the desktop table above. */}
+        <MenuItem
+          disabled={Boolean(rowMenu && isAdminAccount(rowMenu.user))}
+          onClick={() => {
+            handleToggleActive(rowMenu.user);
+            closeRowMenu();
+          }}
+        >
+          <ListItemIcon>
+            {rowMenu?.user.isActive ? (
+              <BlockRoundedIcon fontSize="small" color="error" />
+            ) : (
               <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
-            </ListItemIcon>
-            <ListItemText>Verify</ListItemText>
-          </MenuItem>
-        ) : (
-          // Same admin protection as the desktop table above.
-          <MenuItem
-            disabled={Boolean(rowMenu && isAdminAccount(rowMenu.user))}
-            onClick={() => {
-              handleToggleActive(rowMenu.user);
-              closeRowMenu();
-            }}
-          >
-            <ListItemIcon>
-              {rowMenu?.user.isActive ? (
-                <BlockRoundedIcon fontSize="small" color="error" />
-              ) : (
-                <CheckCircleOutlineRoundedIcon fontSize="small" color="success" />
-              )}
-            </ListItemIcon>
-            <ListItemText>
-              {rowMenu && isAdminAccount(rowMenu.user)
-                ? 'Admins cannot be deactivated'
-                : rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}
-            </ListItemText>
-          </MenuItem>
-        )}
+            )}
+          </ListItemIcon>
+          <ListItemText>
+            {rowMenu && isAdminAccount(rowMenu.user)
+              ? 'Admins cannot be deactivated'
+              : rowMenu?.user.isActive ? 'Deactivate' : 'Activate'}
+          </ListItemText>
+        </MenuItem>
         {/* Same admin protection as the desktop table above. */}
         <MenuItem
           disabled={Boolean(rowMenu && isAdminAccount(rowMenu.user))}
