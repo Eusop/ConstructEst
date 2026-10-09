@@ -247,7 +247,13 @@ export async function getAllStoreCatalog(projectId) {
   return { stores, catalog };
 }
 
-async function getMaterialSuppliers(projectId) {
+// The other-store and left-out choices belong to the store they were saved
+// with (projects.selected_store_id). For any other store the BOM is priced
+// at that store alone, so picking a new store in Store Locator does not keep
+// the old cross-store plan.
+async function getMaterialSuppliers(projectId, storeId) {
+  const [project] = await query('SELECT selected_store_id FROM projects WHERE id = ?', [projectId]);
+  if (!project || Number(project.selected_store_id) !== Number(storeId)) return {};
   const rows = await query('SELECT material_key, store_id, excluded FROM project_material_suppliers WHERE project_id = ?', [projectId]);
   return Object.fromEntries(rows.map((r) => [r.material_key, r.excluded ? 'none' : r.store_id]));
 }
@@ -263,7 +269,7 @@ async function getMaterialSuppliers(projectId) {
 export async function computeBom(projectId, storeId) {
   const materials = await getQuantityTakeoff(projectId);
   const reuse = await getReuse(projectId);
-  const suppliers = await getMaterialSuppliers(projectId);
+  const suppliers = await getMaterialSuppliers(projectId, storeId);
   const storeNames = Object.fromEntries((await query('SELECT id, name FROM stores')).map((s) => [s.id, s.name]));
   const selections = await query(
     'SELECT material_key, material_brand_id FROM project_brand_selections WHERE project_id = ?',

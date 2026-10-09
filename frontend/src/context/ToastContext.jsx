@@ -14,14 +14,22 @@ const ToastContext = createContext(null);
  * kept once dismissed.
  */
 export function ToastProvider({ children }) {
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'error', duration: 4000 });
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'error', duration: 4000, key: 0 });
 
   // duration: longer for messages that need reading (e.g. the over budget warning).
+  // A new key per message, so a new toast replaces the one on screen and its
+  // timer starts over.
   const showToast = useCallback((message, severity = 'error', duration = 4000) => {
-    setToast({ open: true, message, severity, duration });
+    setToast((prev) => ({ open: true, message, severity, duration, key: prev.key + 1 }));
   }, []);
 
-  const handleClose = () => setToast((prev) => ({ ...prev, open: false }));
+  // A click elsewhere does not close it. That click is often the one showing
+  // the next toast (e.g. picking another store in Store Locator), so it used to
+  // close the new message right away. It closes on its timer or with the X.
+  const handleClose = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setToast((prev) => ({ ...prev, open: false }));
+  };
 
   const value = useMemo(() => ({ showToast }), [showToast]);
 
@@ -29,6 +37,7 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={value}>
       {children}
       <Snackbar
+        key={toast.key}
         open={toast.open}
         autoHideDuration={toast.duration}
         onClose={handleClose}
