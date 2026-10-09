@@ -107,6 +107,7 @@ CREATE TABLE estimation_results (
   second_floor_area DECIMAL(10, 2) NULL,
   estimated_cost DECIMAL(14, 2) NULL,
   computed_defaults JSON NULL,
+  member_breakdown JSON NULL,
   is_current TINYINT(1) NOT NULL DEFAULT 1,
   computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_estimation_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE

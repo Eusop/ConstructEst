@@ -18,39 +18,12 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import FactorsAppliedBanner from './FactorsAppliedBanner';
+import MemberSheets from './MemberSheets';
 import { colors } from '../../../theme/palette';
 import { QUANTITY_TAKEOFF_MATERIALS } from '../data/quantityTakeoffMaterials';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
-import { formatQuantity } from '../../../utils/formatNumbers';
 
 const COLUMNS = ['MATERIAL', 'BASIS', 'QUANTITY', 'UNIT'];
-
-// "By source" grouping (see SOURCE_CATEGORIES in formulas.py). "Roofing" and
-// "Shared / Whole building" aren't floors: columns run through both floors,
-// footings are foundation level, and the roof sits above the top floor, so
-// forcing them into "Ground" or "Second" would be a false split.
-const SOURCE_CATEGORY_META = [
-  { key: 'ground', label: 'Ground floor' },
-  { key: 'second', label: 'Second floor' },
-  { key: 'roofing', label: 'Roofing' },
-  { key: 'shared', label: 'Shared / Whole building' },
-];
-
-// Splits each material's total into its 4 source buckets, keeping only
-// materials that contributed to a bucket. Bucket quantities are plain-rounded
-// (not ceiling'd like the total), so they may not sum exactly to the Total view.
-function buildSourceGroups(materials) {
-  return SOURCE_CATEGORY_META.map(({ key, label }) => ({
-    key,
-    label,
-    items: materials
-      .filter((material) => (material.sourceBreakdown?.[key] ?? 0) > 0)
-      .map((material) => {
-        const categoryQuantity = material.sourceBreakdown[key];
-        return { ...material, quantity: categoryQuantity, quantityLabel: formatQuantity(categoryQuantity, material.unit), piecesLabel: null };
-      }),
-  })).filter((group) => group.items.length > 0);
-}
 
 const DOT_COLORS = {
   blue: colors.iconBlueFg,
@@ -188,13 +161,13 @@ function buildMaterials(storeys) {
  * @param {object} props
  * @param {number} props.storeys Used to label the CHB basis (e.g. "(2 flr)").
  * @param {{cement: number, steel: number, roofing: number, wastage: number}} props.factors
+ * @param {Array<object>|null} [props.members] The engine's "By member" breakdown (see MemberSheets).
  * @param {() => void} props.onContinue Called when "Continue to Store Locator" is clicked.
  */
-function QuantityTakeoffTable({ storeys, factors, onContinue }) {
+function QuantityTakeoffTable({ storeys, factors, members = null, onContinue }) {
   const [viewMode, setViewMode] = useState('total');
   const materials = buildMaterials(storeys);
   const categoryGroups = groupMaterialsByCategory(materials);
-  const sourceGroups = viewMode === 'bySource' ? buildSourceGroups(materials) : [];
 
   return (
     // The extra wrapping Box is the fix: this card is Stack's last child, and
@@ -211,16 +184,16 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
           boxShadow: '0 2px 10px rgba(20, 30, 60, 0.06)',
           minWidth: 0,
           // No flex:1/minHeight/overflow clamp: the card sizes to its content
-          // (including when a "By source" accordion opens), and the page-level
+          // (including when an accordion opens), and the page-level
           // scroll region (DashboardLayout's Outlet wrapper) handles anything taller.
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-      {/* Always available, not only for 2-storey projects: every material's
-          sourceBreakdown tags ground/roofing/shared regardless of storeys, and
-          buildSourceGroups drops empty buckets, so 1-storey just has no "Second
-          floor" group. */}
+      {/* Total (what to buy, with the factors) or By member (worked out like
+          the engineer's manual sheets). "By source" was removed 2026-10-09:
+          its "Shared" group confused the engineer and By member shows the
+          per-floor numbers. */}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1}
@@ -242,45 +215,25 @@ function QuantityTakeoffTable({ storeys, factors, onContinue }) {
               fontSize: '0.8rem',
               color: 'text.secondary',
               px: 1.75,
+              whiteSpace: 'nowrap',
               '&.Mui-selected': { bgcolor: 'common.white', color: colors.accentBlue, boxShadow: '0 1px 4px rgba(20, 30, 60, 0.12)', '&:hover': { bgcolor: 'common.white' } },
             },
           }}
         >
           <ToggleButton value="total" disableRipple>Total</ToggleButton>
-          <ToggleButton value="bySource" disableRipple>By source</ToggleButton>
+          <ToggleButton value="byMember" disableRipple>By member</ToggleButton>
         </ToggleButtonGroup>
-        {viewMode === 'bySource' && (
+        {viewMode === 'byMember' && (
           <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
-            Grouped by which floor/element each material comes from — subtotals may not sum exactly to the Total view due to independent rounding.
+            Worked out per member: raw quantities, each rounded up per member. The Total view adds the
+            cement, steel and roofing factors and wastage and rounds once, so its totals are a little higher.
           </Typography>
         )}
       </Stack>
 
       <Box>
-      {viewMode === 'bySource' ? (
-        <Stack spacing={1.25} sx={{ p: { xs: 1.5, sm: 2.5 } }}>
-          {sourceGroups.map((group) => (
-            <Accordion
-              key={group.key}
-              disableGutters
-              elevation={0}
-              sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: '12px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: 'text.primary' }}>
-                  {group.label} <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.78rem' }}>({group.items.length})</Typography>
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails sx={{ pt: 0 }}>
-                <Stack spacing={1.25}>
-                  {group.items.map((material) => (
-                    <MaterialMobileCard key={material.key} material={material} />
-                  ))}
-                </Stack>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Stack>
+      {viewMode === 'byMember' ? (
+        <MemberSheets members={members} />
       ) : (
         <>
           <Stack spacing={1.25} sx={{ display: { xs: 'flex', md: 'none' }, p: { xs: 1.5, sm: 2.5 } }}>

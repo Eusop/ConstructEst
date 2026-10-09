@@ -61,6 +61,8 @@ Assumptions (ours unless a source is named):
 """
 import math
 
+from member_sheets import build_member_sheets
+
 WALL_HEIGHT_PER_STOREY_M = 3.0
 # Fallback only. floorToFloorHeight is the ground floor height and
 # secondFloorHeight the second floor's (same as the ground floor if blank).
@@ -270,6 +272,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # With a second floor file, storey 2 uses its own walls and openings.
     # Otherwise the ground floor geometry is reused for every storey.
     floor_geometries = [geometry, geometry2] if geometry2 is not None else [geometry]
+    member_walls = []  # per floor, for the "By member" breakdown
     for storey in range(storeys):
         storey_geometry = floor_geometries[storey] if storey < len(floor_geometries) else floor_geometries[-1]
         storey_category = "second" if storey_geometry is geometry2 else "ground"
@@ -292,11 +295,13 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         # split by how much of the floor's wall run is 6" thick.
         six_inch_share = (storey_geometry.get("six_inch_wall_length_m", 0.0) / storey_wall_length_m
                           if storey_wall_length_m > 0 else 0.0)
+        mortar_parts = []
         for chb_size, share in (('4"', 1 - six_inch_share), ('6"', six_inch_share)):
             area = net_wall_area * share
             if area <= 0:
                 continue
             bags_per_m2, sand_per_m2 = MORTAR_PER_M2[chb_size]
+            mortar_parts.append((chb_size, area, bags_per_m2, sand_per_m2))
             mortar_cement = area * bags_per_m2 * cement_factor
             mortar_sand = area * sand_per_m2
             acc.add("cement", mortar_cement, "Wall area x mortar rate", storey_category,
@@ -316,6 +321,9 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             f"{floor_label} walls, {wall_bar_mm}mm: {num(net_wall_area)} m2 x "
             f"({WALL_REBAR_VERTICAL_M_PER_M2} + {WALL_REBAR_HORIZONTAL_M_PER_M2}) m per m2 = "
             f"{num(wall_rebar_length_m)} m x {num(bar_unit_weight(wall_bar_mm), 3)} kg/m = {num(wall_rebar_kg)} kg")
+        member_walls.append({"label": floor_label, "length": storey_wall_length_m, "height": storey_h,
+                             "doors": storey_door_area_m2, "windows": storey_window_area_m2, "area": net_wall_area,
+                             "mortar": mortar_parts, "bar_mm": wall_bar_mm})
         wall_tie_wire_kg = net_wall_area * WALL_TIE_WIRE_KG_PER_M2
         tie_wire_by_category[storey_category] += wall_tie_wire_kg
         tie_wire_steps.append(
@@ -325,6 +333,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     ground_slab_volume = floor_area_m2 * 0.15
     acc.add_concrete_mix(ground_slab_volume, cement_factor, "Ground slab volume x mix rate", "ground",
                          f"Ground slab {num(floor_area_m2)} m2 x 0.15 m")
+    member_slabs = []
+    ground_bars = None
     bounds = geometry.get("floor_bounds")
     if bounds:
         floor_len = max(bounds[2] - bounds[0], 0.01)
@@ -342,6 +352,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             f"Ground slab, {ground_bar_mm}mm @ {num(ground_spacing)} m: {rebar_len_count} bars x {num(floor_wid)} m + {rebar_wid_count} bars x "
             f"{num(floor_len)} m = {num(ground_slab_rebar_length_m)} m x {num(bar_unit_weight(ground_bar_mm), 3)} kg/m = {num(ground_slab_rebar_kg)} kg")
         add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Ground slab", "ground")
+        ground_bars = (ground_bar_mm, ground_spacing, rebar_len_count, floor_wid, rebar_wid_count, floor_len, ground_slab_rebar_length_m)
+    member_slabs.append({"label": "Ground slab", "area": floor_area_m2, "t": 0.15, "bars": ground_bars})
 
     if storeys >= 2:
         # Use the 2nd floor's own footprint when its DXF is given (it can differ,
@@ -353,6 +365,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         suspended_slab_volume = suspended_floor_area_m2 * 0.125
         acc.add_concrete_mix(suspended_slab_volume, cement_factor, "Suspended slab volume x mix rate", suspended_category,
                              f"Second floor slab {num(suspended_floor_area_m2)} m2 x 0.125 m")
+        suspended_bars = None
         suspended_bounds = suspended_source.get("floor_bounds")
         if suspended_bounds:
             suspended_len = max(suspended_bounds[2] - suspended_bounds[0], 0.01)
@@ -369,6 +382,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                 f"Second floor slab, {second_bar_mm}mm @ {num(second_spacing)} m: {rebar_len_count} bars x {num(suspended_wid)} m + {rebar_wid_count} bars x "
                 f"{num(suspended_len)} m = {num(suspended_slab_rebar_length_m)} m x {num(bar_unit_weight(second_bar_mm), 3)} kg/m = {num(suspended_slab_rebar_kg)} kg")
             add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Second floor slab", suspended_category)
+            suspended_bars = (second_bar_mm, second_spacing, rebar_len_count, suspended_wid, rebar_wid_count, suspended_len, suspended_slab_rebar_length_m)
+        member_slabs.append({"label": "2nd floor slab", "area": suspended_floor_area_m2, "t": 0.125, "bars": suspended_bars})
 
     # --- Table 14: Column materials -----------------------------------------
     col_w, col_d, _ = default_column_size(storeys)
@@ -593,6 +608,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     tie_wire_steps.append(f"Footings: {num(footing_rebar_kg)} kg of bars x 1 kg per 100 kg = {num(footing_tie_wire_kg)} kg")
 
     # --- Table 18: Stair materials (2-storey only) --------------------------
+    member_stairs = None
     if storeys >= 2:
         # Table 18: all stair values are tunable (riser, tread, waist thickness,
         # rebar spacing). The stair rises the ground floor height.
@@ -622,6 +638,9 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             f"Stairs, 10mm @ {num(stair_rebar_spacing)} m: {stair_across_bars} bars x {num(stair_width)} m + "
             f"{stair_along_bars} bars x {num(slant)} m = {num(stair_rebar_length_m)} m x 0.617 kg/m = {num(stair_rebar_kg)} kg")
         add_grid_tie_wire(stair_across_bars, stair_along_bars, "Stairs", "shared")
+        member_stairs = {"riser": riser_height, "tread": tread_depth, "width": stair_width, "waist": waist_thickness,
+                         "risers": risers, "floor_h": floor_to_floor_h, "slant": slant, "spacing": stair_rebar_spacing,
+                         "across": stair_across_bars, "along": stair_along_bars, "length_m": stair_rebar_length_m}
 
     # --- Table 19: Scaffolding & Formwork ------------------------------------
     # Both floors' real areas when a second floor file is given, else floor area x storeys.
@@ -855,7 +874,55 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             "floorArea": round(geometry2["floor_area_m2"], 2),
         }
 
+    # "By member" breakdown, laid out like the engineer's manual sheets
+    # (member_sheets.py). Raw values: no factors or wastage.
+    has_below_ground = below_ground_h > 0 and column_count > 0
+    floor_names = ([("GF", "Ground floor"), ("2F", "2nd floor")] if geometry2 is not None
+                   else [("GF", "Ground floor")] if storeys == 1 else [("GF2F", "Ground + 2nd floor")])
+    names = ([("BGF", "Below ground floor")] if has_below_ground else []) + floor_names
+    column_segments = []
+    for (abbr, label), (w, d_, h, count) in zip(names, column_floors):
+        h_note = (f"footing depth - thickness of footing = {num(footing_depth)} - {num(footing_thickness)} = {num(h)} m"
+                  if abbr == "BGF" else None)
+        column_segments.append((abbr, label, w, d_, h, count, h_note))
+    beam_levels = []
+    if ground_beam_length > 0:
+        beam_levels.append(("GB", "Ground beam", ground_beam_length))
+    if "beamLength" in overrides:
+        beam_levels.append(("FB", "Floor beams (entered)", floor_beam_length))
+    elif geometry2 is not None:
+        beam_levels.append(("B1", "Ground floor plan beams" + (" (BEAM layer)" if ground_from_layer else " (wall run)"), ground_run))
+        beam_levels.append(("B2", "2nd floor plan beams" + (" (BEAM layer)" if second_from_layer else " (wall run)"), second_run))
+    else:
+        beam_levels.append(("FB", f"Floor beams ({storeys} floor{'s' if storeys > 1 else ''} x {num(ground_run)} m)", floor_beam_length))
+    roof_member = None
+    if include_roofing:
+        raw_roof_area = roof_floor_area_m2 * PITCH_MULTIPLIER
+        roof_member = {
+            "area": raw_roof_area, "floor_area": roof_floor_area_m2, "pitch": PITCH_MULTIPLIER,
+            "framing_kg_per_m2": framing_kg_per_m2, "angle_kg_per_m": angle_kg_per_m,
+            "sheet_cover": ROOF_SHEET_EFFECTIVE_WIDTH_M * (ROOF_SHEET_LENGTH_M - ROOF_SHEET_END_LAP_M),
+            "perimeter": roof_perimeter_m, "ridge": roof_ridge_length_m,
+            "purlins": purlins, "ridge_pcs": ridge, "flashing": flashing, "gutter": gutter,
+        }
+    member_breakdown = build_member_sheets({
+        "unit_weight": bar_unit_weight,
+        "column_form_bdft": COLUMN_FORM_BDFT_PER_SHEET, "beam_form_bdft": BEAM_FORM_BDFT_PER_SHEET,
+        "form_sheet_m2": FAJARDO_FORM_SHEET_M2,
+        "footing": {"w": footing_w, "l": footing_l, "t": footing_thickness, "count": footing_count, "rate": footing_rebar_rate},
+        "column": {"rate": column_rate, "main_mm": column_main_mm, "tie_mm": column_tie_mm, "segments": column_segments},
+        "beam": {"rate": beam_rate, "w": beam_w, "d": beam_d, "main_mm": beam_main_mm, "stirrup_mm": stirrup_mm, "levels": beam_levels},
+        "slabs": {"items": member_slabs, "form_area": total_floor_area_m2},
+        "stairs": member_stairs,
+        "walls": member_walls,
+        "roof": roof_member,
+        "scaffolding": {"parts": SCAFFOLD_SET_PARTS, "w": scaffolding_set_width, "h": scaffolding_set_height,
+                        "sets": scaffolding_set_count_override if scaffolding_set_count_override is not None else computed_scaffolding_sets,
+                        "text": scaffold_step},
+    })
+
     return {
         "measurements": measurements,
         "materials": materials,
+        "memberBreakdown": member_breakdown,
     }

@@ -34,7 +34,7 @@ const MATERIAL_COLORS = {
 
 /**
  * @param {Array<{key:string, name:string, quantity:number, unit:string, basis:string, unitCost:number, sourceBreakdown?: {ground:number, second:number, roofing:number, shared:number}}>} materials
- *   `sourceBreakdown` (see SOURCE_CATEGORIES in formulas.py) is only non-zero in more than one bucket for a 2-storey project with a separate second floor DXF. It is passed through so the "By source" view can group without re-deriving.
+ *   `sourceBreakdown` (see SOURCE_CATEGORIES in formulas.py) is only non-zero in more than one bucket for a 2-storey project with a separate second floor DXF. It is still passed through, though no view groups by it since "By source" was removed (2026-10-09).
  */
 export function loadQuantityTakeoff(materials) {
   QUANTITY_TAKEOFF_MATERIALS.length = 0;

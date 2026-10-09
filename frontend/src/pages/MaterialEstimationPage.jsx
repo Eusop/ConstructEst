@@ -248,6 +248,7 @@ function MaterialEstimationPage() {
       <QuantityTakeoffTable
         storeys={activeProject.storeys}
         factors={savedFactors}
+        members={activeProject.estimation?.memberBreakdown ?? null}
         onContinue={() => navigate(ROUTES.STORE_LOCATOR)}
       />
     </Stack>
