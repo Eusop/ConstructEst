@@ -47,10 +47,12 @@ function validate(form, isEdit) {
  * @param {object} props
  * @param {boolean} props.open
  * @param {object|null} props.user Null for "add" mode, a user record for "edit" mode.
+ * @param {boolean} [props.isSelf] Editing your own account: role and email are locked,
+ *   the same as the backend rules (own email from Profile, no self-demotion).
  * @param {() => void} props.onClose
  * @param {(form: object) => Promise<void>} props.onSubmit
  */
-function UserFormDialog({ open, user, onClose, onSubmit }) {
+function UserFormDialog({ open, user, isSelf = false, onClose, onSubmit }) {
   const isMobile = useIsMobile();
   const isEdit = Boolean(user);
   const [form, setForm] = useState(() => buildForm(user));
@@ -127,7 +129,16 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Email</Typography>
-              <FormTextField name="email" type="email" value={form.email} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('email'))} helperText={showError('email') || 'A new or changed email gets a verification code'} />
+              <FormTextField
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                disabled={isSelf}
+                error={Boolean(showError('email'))}
+                helperText={isSelf ? 'Change your own email from Profile' : showError('email') || 'A new or changed email gets a verification code'}
+              />
             </Box>
           </Stack>
 
@@ -144,6 +155,7 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
             <ToggleButtonGroup
               exclusive
               fullWidth
+              disabled={isSelf}
               value={form.accessRole}
               onChange={(event, value) => value && setForm((prev) => ({ ...prev, accessRole: value }))}
               sx={{
@@ -157,6 +169,11 @@ function UserFormDialog({ open, user, onClose, onSubmit }) {
               <ToggleButton value="user">User</ToggleButton>
               <ToggleButton value="admin">Admin</ToggleButton>
             </ToggleButtonGroup>
+            {isSelf && (
+              <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.75, ml: 1.75 }}>
+                You can&apos;t change your own role.
+              </Typography>
+            )}
           </Box>
         </Stack>
       </DialogContent>

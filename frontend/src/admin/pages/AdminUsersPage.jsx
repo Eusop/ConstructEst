@@ -578,7 +578,13 @@ function AdminUsersPage() {
         )}
       </Paper>
 
-      <UserFormDialog open={dialogOpen} user={editingUser} onClose={() => setDialogOpen(false)} onSubmit={handleSubmit} />
+      <UserFormDialog
+        open={dialogOpen}
+        user={editingUser}
+        isSelf={Boolean(editingUser) && editingUser.id === currentAdminId}
+        onClose={() => setDialogOpen(false)}
+        onSubmit={handleSubmit}
+      />
 
       <TypedConfirmDialog
         // Each dialog needs its own closed key, or React sees two 'closed' siblings.
