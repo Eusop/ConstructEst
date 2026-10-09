@@ -18,10 +18,11 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
 function buildForm(brand, unit) {
-  if (!brand) return { name: '', unit, price: '', available: true, stockQty: '' };
+  if (!brand) return { name: '', unit, spec: '', price: '', available: true, stockQty: '' };
   return {
     name: brand.name,
     unit: brand.unit ?? unit,
+    spec: brand.spec ?? '',
     price: String(brand.price ?? ''),
     available: brand.available,
     stockQty: brand.stockQty == null ? '' : String(brand.stockQty),
@@ -76,6 +77,7 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
       {
         name: form.name.trim(),
         unit: form.unit,
+        spec: form.spec.trim(),
         price: Number(form.price),
         available: form.available,
         stockQty: form.stockQty === '' ? null : Number(form.stockQty),
@@ -150,7 +152,19 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
                 slotProps={{ input: { endAdornment: <InputAdornment position="end">{form.unit}</InputAdornment> } }}
               />
             </Box>
-            <Box sx={{ flex: 1, display: { xs: 'none', sm: 'block' } }} />
+            {/* Shown in Brand Selection, the BOM and the PDF. Shared by every
+                store that sells this brand, like the name and unit. */}
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Spec</Typography>
+              <FormTextField
+                name="spec"
+                placeholder="e.g. 16mm x 6 m"
+                value={form.spec}
+                onChange={handleChange}
+                inputProps={{ maxLength: 150 }}
+                helperText="Same for every store with this brand"
+              />
+            </Box>
           </Stack>
 
           <QuotationFilePicker

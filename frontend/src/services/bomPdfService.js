@@ -25,14 +25,13 @@ function hexToRgb(hex) {
  * @param {object} bom
  * @param {string} bom.projectName
  * @param {Array<{label: string, value: string}>} bom.projectInfo Human-readable project facts.
- * @param {Array<{material: string, category: string, spec: string|null, available: boolean, quantityLabel: string, unit: string, unitPrice: number|null, amount: number|null}>} bom.lineItems
+ * @param {Array<{material: string, spec: string|null, available: boolean, quantityLabel: string, unit: string, unitPrice: number|null, amount: number|null}>} bom.lineItems
  * @param {number} bom.grandTotal
  * @param {Date} [bom.generatedAt]
  */
 function itemRow(item) {
   return [
     item.material,
-    item.category,
     // Sand and gravel have no spec, so show a dash like the on-screen table.
     item.spec || '—',
     item.quantityLabel,
@@ -44,7 +43,7 @@ function itemRow(item) {
 
 // Shaded full-width row naming a store (or the left-out list) above its items.
 function sectionRow(text) {
-  return [{ content: text, colSpan: 7, styles: { fontStyle: 'bold', fillColor: [232, 238, 248], textColor: [20, 20, 20] } }];
+  return [{ content: text, colSpan: 6, styles: { fontStyle: 'bold', fillColor: [232, 238, 248], textColor: [20, 20, 20] } }];
 }
 
 // One section per store when the BOM buys from more than one (migration 038),
@@ -61,7 +60,7 @@ function buildBody(lineItems, groups, excludedItems) {
   }
   if (excludedItems.length > 0) {
     body.push(sectionRow('Not included in this BOM (not priced)'));
-    excludedItems.forEach((item) => body.push([item.material, item.category || '', '—', item.quantityLabel, item.unit, '—', '—']));
+    excludedItems.forEach((item) => body.push([item.material, '—', item.quantityLabel, item.unit, '—', '—']));
   }
   return body;
 }
@@ -102,21 +101,22 @@ export function generateBomPdf({ projectName, projectInfo, lineItems, grandTotal
     // Small gap under the project details (infoY is already one line below the last one).
     startY: infoY + 2,
     margin: { left: marginX, right: marginX },
-    head: [['Material', 'Category', 'Spec', 'Quantity', 'Unit', 'Unit Cost', 'Total Cost']],
+    // No Category column (the engineer, 2026-10-10): it repeated what the material name says.
+    head: [['Material', 'Spec', 'Quantity', 'Unit', 'Unit Cost', 'Total Cost']],
     body: buildBody(lineItems, groups, excludedItems),
     headStyles: { fillColor: brandBlue, textColor: [255, 255, 255], fontStyle: 'bold' },
     // Number headers line up with their right-aligned values.
     didParseCell: (data) => {
-      if (data.section === 'head' && [3, 5, 6].includes(data.column.index)) data.cell.styles.halign = 'right';
+      if (data.section === 'head' && [2, 4, 5].includes(data.column.index)) data.cell.styles.halign = 'right';
     },
     styles: { fontSize: 9, cellPadding: 6, textColor: [40, 40, 40] },
     alternateRowStyles: { fillColor: [246, 248, 252] },
     columnStyles: {
-      3: { halign: 'right' },
+      2: { halign: 'right' },
       // Fixed widths so amounts like "Php 182,030.00" stay on one line
       // (wrapped amounts made every row two lines tall). Spec takes the rest.
-      5: { halign: 'right', cellWidth: 74 },
-      6: { halign: 'right', cellWidth: 82 },
+      4: { halign: 'right', cellWidth: 74 },
+      5: { halign: 'right', cellWidth: 82 },
     },
   });
 

@@ -37,37 +37,37 @@ INSERT INTO material_brands (material_key, material_name, unit, brand, spec, bas
 ('sand', 'Sand', 'm3', 'Local', NULL, 1300, 'Aggregate', 1),
 ('gravel', 'Gravel', 'm3', 'Local', NULL, 1250, 'Aggregate', 1),
 
-('steelRebar', 'Rebar', 'tons', 'SteelAsia', 'Grade 40', 58000, 'Reinforcement', 0),
-('steelRebar', 'Rebar', 'tons', 'Capitol Steel', 'Grade 40', 54500, 'Reinforcement', 0),
-('steelRebar', 'Rebar', 'tons', 'Pag-asa Steel', 'Grade 40', 61200, 'Reinforcement', 0),
+('steelRebar', 'Rebar', 'tons', 'SteelAsia', NULL, 58000, 'Reinforcement', 0),
+('steelRebar', 'Rebar', 'tons', 'Capitol Steel', NULL, 54500, 'Reinforcement', 0),
+('steelRebar', 'Rebar', 'tons', 'Pag-asa Steel', NULL, 61200, 'Reinforcement', 0),
 
 ('tieWire', 'Tie Wire', 'kg', 'Local GI', '#16 gauge', 85, 'Reinforcement', 0),
 ('tieWire', 'Tie Wire', 'kg', 'Firmex', '#16 gauge', 90, 'Reinforcement', 0),
 ('tieWire', 'Tie Wire', 'kg', 'GalvSteel', '#16 gauge', 105, 'Reinforcement', 0),
 
-('roofingSheets', 'Roofing', 'm2', 'DN Steel', '0.4mm', 520, 'Roofing', 0),
-('roofingSheets', 'Roofing', 'm2', 'Clark Steel', '0.5mm', 585, 'Roofing', 0),
-('roofingSheets', 'Roofing', 'm2', 'MetroTile', '0.35mm', 470, 'Roofing', 0),
+('roofingSheets', 'Roofing', 'm2', 'DN Steel', '0.4mm thick', 520, 'Roofing', 0),
+('roofingSheets', 'Roofing', 'm2', 'Clark Steel', '0.5mm thick', 585, 'Roofing', 0),
+('roofingSheets', 'Roofing', 'm2', 'MetroTile', '0.35mm thick', 470, 'Roofing', 0),
 
 ('purlins', 'Purlins', 'lengths', 'MetroTile', '2"x3" C-purlin, 6m', 750, 'Roofing', 0),
 ('purlins', 'Purlins', 'lengths', 'DN Steel', '2"x3" C-purlin, 6m', 850, 'Roofing', 0),
 ('purlins', 'Purlins', 'lengths', 'Clark Steel', '2"x3" C-purlin, 6m', 980, 'Roofing', 0),
 
-('ridge', 'Ridge', 'lengths', 'MetroTile', 'Ridge roll, 2.20m length', 143, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'DN Steel', 'Ridge roll, 2.20m length', 165, 'Roofing', 0),
-('ridge', 'Ridge', 'lengths', 'Clark Steel', 'Ridge roll, 2.20m length', 190.67, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'MetroTile', '2.40m', 143, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'DN Steel', '2.40m', 165, 'Roofing', 0),
+('ridge', 'Ridge', 'lengths', 'Clark Steel', '2.40m', 190.67, 'Roofing', 0),
 
-('flashing', 'Flashing', 'pcs', 'MetroTile', 'GI flashing, 2.30m length', 345, 'Roofing', 0),
-('flashing', 'Flashing', 'pcs', 'DN Steel', 'GI flashing, 2.30m length', 414, 'Roofing', 0),
-('flashing', 'Flashing', 'pcs', 'Clark Steel', 'GI flashing, 2.30m length', 483, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'MetroTile', '2.40m', 345, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'DN Steel', '2.40m', 414, 'Roofing', 0),
+('flashing', 'Flashing', 'pcs', 'Clark Steel', '2.40m', 483, 'Roofing', 0),
 
 ('angleBar', 'Angle Bar', 'lengths', 'Capitol Steel', '1/4"x1.5"x1.5", 6m', 560, 'Roofing', 0),
 ('angleBar', 'Angle Bar', 'lengths', 'SteelAsia', '1/4"x1.5"x1.5", 6m', 620, 'Roofing', 0),
 ('angleBar', 'Angle Bar', 'lengths', 'Pag-asa Steel', '1/4"x1.5"x1.5", 6m', 680, 'Roofing', 0),
 
-('gutter', 'Gutter', 'pcs', 'MetroTile', 'GI gutter, 2.35m length', 417.78, 'Roofing', 0),
-('gutter', 'Gutter', 'pcs', 'DN Steel', 'GI gutter, 2.35m length', 496.11, 'Roofing', 0),
-('gutter', 'Gutter', 'pcs', 'Clark Steel', 'GI gutter, 2.35m length', 574.44, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'MetroTile', '2.40m', 417.78, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'DN Steel', '2.40m', 496.11, 'Roofing', 0),
+('gutter', 'Gutter', 'pcs', 'Clark Steel', '2.40m', 574.44, 'Roofing', 0),
 
 ('plywood', 'Plywood', 'pcs', 'Generic Marine', '1/2" 4x8ft', 680, 'Formwork', 0),
 ('plywood', 'Plywood', 'pcs', 'Federation', '1/2" 4x8ft', 780, 'Formwork', 0),
@@ -144,7 +144,7 @@ VALUES (NULL, 1.08, 1.05, 1.07, 5.00);
 -- (see migrations/036_rebar_per_size.sql).
 INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, category, is_commodity)
 SELECT CONCAT('rebar', s.mm, 'mm'), CONCAT('Rebar ', s.mm, 'mm'), 'pcs', mb.brand,
-       CONCAT(COALESCE(mb.spec, 'Grade 40'), ', ', s.mm, 'mm x 6 m'),
+       CONCAT(s.mm, 'mm x 6 m'),
        ROUND(s.ref_price * mb.base_price / 54500, 2), mb.category, 0
 FROM material_brands mb
 JOIN (SELECT 10 AS mm, 175 AS ref_price UNION ALL SELECT 12, 218 UNION ALL SELECT 16, 355) s

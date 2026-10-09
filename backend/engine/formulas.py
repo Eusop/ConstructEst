@@ -136,8 +136,10 @@ ROOF_SHEET_EFFECTIVE_WIDTH_M = 0.70
 ROOF_SHEET_LENGTH_M = 2.44
 ROOF_SHEET_END_LAP_M = 0.30
 PURLIN_SPACING_M = 0.70
-# Effective length per piece (Table 6-6).
-ROOF_ACCESSORY_LENGTH_M = {"gutter": 2.35, "flashing": 2.30, "ridge": 2.20}
+# Length per piece. Ridge roll, flashing and gutter come in 2.4 m pieces,
+# the normal size (the engineer, 2026-10-10). Was Fajardo Table 6-6's
+# effective lengths of 2.20 / 2.30 / 2.35 m.
+ROOF_ACCESSORY_LENGTH_M = {"gutter": 2.40, "flashing": 2.40, "ridge": 2.40}
 # Frame lumber (Table 5-1): 2" x 2" frame per 2.88 m2 plywood form.
 FAJARDO_FORM_SHEET_M2 = 2.88
 COLUMN_FORM_BDFT_PER_SHEET = 29.67
@@ -904,6 +906,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             "sheet_cover": ROOF_SHEET_EFFECTIVE_WIDTH_M * (ROOF_SHEET_LENGTH_M - ROOF_SHEET_END_LAP_M),
             "perimeter": roof_perimeter_m, "ridge": roof_ridge_length_m,
             "purlins": purlins, "ridge_pcs": ridge, "flashing": flashing, "gutter": gutter,
+            "piece_m": ROOF_ACCESSORY_LENGTH_M,
         }
     member_breakdown = build_member_sheets({
         "unit_weight": bar_unit_weight,

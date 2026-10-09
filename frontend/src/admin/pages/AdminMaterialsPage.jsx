@@ -60,12 +60,13 @@ function AvailabilityChip({ available, sx }) {
   );
 }
 
-// Stock count, e.g. "Stock: 120 bags".
-function StockText({ stockQty, unit, sx }) {
+// Spec (brands only) and stock count, e.g. "16mm x 6 m · Stock: 120 pcs".
+function StockText({ spec, stockQty, unit, sx }) {
   const stock = formatStock(stockQty);
+  const stockText = stock == null ? 'Stock: not set' : `Stock: ${stock} ${unit}`;
   return (
     <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', ...sx }}>
-      {stock == null ? 'Stock: not set' : `Stock: ${stock} ${unit}`}
+      {spec ? `${spec} · ${stockText}` : stockText}
     </Typography>
   );
 }
@@ -122,7 +123,7 @@ function BrandMobileCard({ brand, onOpenMenu }) {
       </Stack>
       <Stack direction="row" spacing={1} sx={{ mt: 0.75, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
         <AvailabilityChip available={brand.available} />
-        <StockText stockQty={brand.stockQty} unit={brand.unit} />
+        <StockText spec={brand.spec} stockQty={brand.stockQty} unit={brand.unit} />
       </Stack>
     </Paper>
   );
@@ -608,7 +609,7 @@ function AdminMaterialsPage() {
                               </Typography>
                               <Box sx={{ order: 4, flexBasis: '100%', height: 0, display: { xs: 'block', sm: 'none' } }} />
                               <AvailabilityChip available={brand.available} sx={{ order: 5 }} />
-                              <StockText stockQty={brand.stockQty} unit={brand.unit} sx={{ order: 5 }} />
+                              <StockText spec={brand.spec} stockQty={brand.stockQty} unit={brand.unit} sx={{ order: 5 }} />
                               <Box sx={{ order: 6, flex: 1, display: { xs: 'none', sm: 'block' } }} />
                               <Tooltip title="Edit">
                                 <IconButton
