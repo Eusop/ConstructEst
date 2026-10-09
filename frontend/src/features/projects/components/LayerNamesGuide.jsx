@@ -12,8 +12,8 @@ import { useIsMobile } from '../../../hooks/useIsMobile';
 // so users rename their CAD layers before uploading.
 const LAYER_GROUPS = [
   { label: 'Required', names: ['WALL', 'DOOR', 'WINDOW', 'COLUMN (or COL)', 'STAIR', 'ROOF', 'FLOOR'] },
-  { label: 'Optional', note: 'improves the estimate', names: ['BEAM', 'CANTBEAM', 'TRUSS'] },
-  // FTG / FTBEAM (also Reply 4) aren't listed: the engine doesn't read them.
+  // FTBEAM on the ground floor file is the ground (footing tie) beam. FTG isn't read.
+  { label: 'Optional', note: 'improves the estimate', names: ['BEAM', 'CANTBEAM', 'FTBEAM', 'TRUSS'] },
 ];
 
 /**

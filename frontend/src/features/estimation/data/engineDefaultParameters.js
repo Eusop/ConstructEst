@@ -18,14 +18,16 @@ export function getEngineDefaults(storeys) {
     columnDepthSecond: isTwoStorey ? 0.25 : 0.20,
     beamWidth: 0.20,
     beamDepth: 0.30,
-  beamLength: null, // from the BEAM layer, else wall run length (not fixed)
+    beamLength: null, // from the BEAM layer, else wall run length (not fixed)
+    groundBeamLength: null, // from the FTBEAM layer, else none
+    wallBarMm: 10, // CHB wall bars
     beamRebarDiameterMm: 16, // main bars, the engineer's 16mm
     columnBarMm: 16, // main bars
     columnTieMm: 10, // lateral ties
     beamStirrupMm: 10,
     footingWidth: 0.60,
     footingLength: 0.60,
-    footingDepth: isTwoStorey ? 2.0 : 1.5, // below ground, sets the column bar length
+    footingDepth: isTwoStorey ? 2.0 : 1.5, // below ground: column part below ground = depth - thickness
     footingThickness: 0.30, // the pad itself: concrete, footing rebar and side forms
     footingCount: null, // one per ground floor column (Column count)
     footingRebarKgPerM3: 100, // the engineer's handwritten sheet, 2026-10-04

@@ -106,6 +106,7 @@ CREATE TABLE estimation_results (
   second_wall_length DECIMAL(10, 2) NULL,
   second_floor_area DECIMAL(10, 2) NULL,
   estimated_cost DECIMAL(14, 2) NULL,
+  computed_defaults JSON NULL,
   is_current TINYINT(1) NOT NULL DEFAULT 1,
   computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_estimation_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -244,6 +245,7 @@ CREATE TABLE project_design_overrides (
   beam_width DECIMAL(6, 3) NULL,
   beam_depth DECIMAL(6, 3) NULL,
   beam_length DECIMAL(10, 2) NULL,
+  ground_beam_length DECIMAL(10,2) NULL,
   footing_width DECIMAL(6, 3) NULL,
   footing_length DECIMAL(6, 3) NULL,
   footing_depth DECIMAL(6, 3) NULL,
@@ -281,6 +283,7 @@ CREATE TABLE project_design_overrides (
   scaffolding_uses SMALLINT UNSIGNED NULL,
   truss_framing_kg_per_m2 DECIMAL(6,2) NULL,
   angle_bar_kg_per_m DECIMAL(6,3) NULL,
+  wall_bar_mm SMALLINT UNSIGNED NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_design_overrides_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE KEY uq_design_overrides_project (project_id)

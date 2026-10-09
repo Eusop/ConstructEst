@@ -11,6 +11,9 @@ const FIELDS = [
   ['beamWidth', 'beam_width'],
   ['beamDepth', 'beam_depth'],
   ['beamLength', 'beam_length'],
+  // The engineer's sheets, 2026-10-09 (migration 040).
+  ['groundBeamLength', 'ground_beam_length'],
+  ['wallBarMm', 'wall_bar_mm'],
   ['footingWidth', 'footing_width'],
   ['footingLength', 'footing_length'],
   ['footingDepth', 'footing_depth'],
@@ -55,7 +58,7 @@ const FIELDS = [
 
 // Bar sizes stop at 16mm, the largest Tarlac stores usually carry, and a
 // spacing under 5 cm is a typo (engineers, 2026-10-03 meeting).
-const BAR_SIZE_KEYS = ['beamRebarDiameterMm', 'groundSlabBarMm', 'secondSlabBarMm', 'columnBarMm', 'columnTieMm', 'beamStirrupMm'];
+const BAR_SIZE_KEYS = ['beamRebarDiameterMm', 'groundSlabBarMm', 'secondSlabBarMm', 'columnBarMm', 'columnTieMm', 'beamStirrupMm', 'wallBarMm'];
 const SPACING_KEYS = ['groundSlabBarSpacing', 'secondSlabBarSpacing', 'columnTieSpacing', 'beamStirrupSpacing'];
 const ALLOWED_BAR_SIZES_MM = [10, 12, 16];
 const MIN_SPACING_M = 0.05;
@@ -90,6 +93,8 @@ function validateOverrides(overrides) {
     ['angleBarKgPerM', 0.5, 15, 'Angle bar weight must be 0.5 to 15 kg per m.'],
     ['floorToFloorHeight', 2, 8, 'Floor heights must be 2 to 8 m.'],
     ['secondFloorHeight', 2, 8, 'Floor heights must be 2 to 8 m.'],
+    ['footingDepth', 0.3, 5, 'Footing depth must be 0.30 to 5.00 m.'],
+    ['groundBeamLength', 0, 5000, 'Ground beam length must be 0 to 5,000 m.'],
   ];
   for (const [key, min, max, message] of ranges) {
     if (given(key) && !(Number(overrides[key]) >= min && Number(overrides[key]) <= max)) throw new HttpError(400, message);

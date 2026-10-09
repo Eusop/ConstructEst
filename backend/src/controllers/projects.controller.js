@@ -54,6 +54,10 @@ async function loadCurrentEstimation(projectId) {
     roofPerimeter: estimation.roof_perimeter,
     roofRidgeLength: estimation.roof_ridge_length,
   };
+  // What the engine used for blank Design parameters (migration 041). Null
+  // for estimates saved before it; Recalculate fills it in.
+  const computed = estimation.computed_defaults;
+  measurements.computedDefaults = typeof computed === 'string' ? JSON.parse(computed) : computed ?? null;
   if (estimation.ground_wall_length !== null) {
     measurements.groundFloor = { wallLength: estimation.ground_wall_length, floorArea: estimation.ground_floor_area };
     measurements.secondFloor = { wallLength: estimation.second_wall_length, floorArea: estimation.second_floor_area };
@@ -187,8 +191,8 @@ async function persistEstimation(projectId, engineResult) {
     `INSERT INTO estimation_results
        (project_id, total_wall_length, floor_area, roof_area, rooms_detected,
         door_area, window_area, column_count, floor_perimeter, roof_perimeter, roof_ridge_length,
-        ground_wall_length, ground_floor_area, second_wall_length, second_floor_area, estimated_cost)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ground_wall_length, ground_floor_area, second_wall_length, second_floor_area, estimated_cost, computed_defaults)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       projectId,
       engineResult.measurements.totalWallLength,
@@ -206,6 +210,7 @@ async function persistEstimation(projectId, engineResult) {
       secondFloor?.wallLength ?? null,
       secondFloor?.floorArea ?? null,
       estimatedCost,
+      engineResult.measurements.computedDefaults ? JSON.stringify(engineResult.measurements.computedDefaults) : null,
     ],
   );
 

@@ -25,7 +25,7 @@ import { colors } from '../theme/palette';
 
 const EMPTY_OVERRIDES = {
   columnWidth: null, columnDepth: null, columnHeight: null, columnCount: null,
-  beamWidth: null, beamDepth: null, beamLength: null,
+  beamWidth: null, beamDepth: null, beamLength: null, groundBeamLength: null, wallBarMm: null,
   footingWidth: null, footingLength: null, footingDepth: null,
   floorToFloorHeight: null, secondFloorHeight: null, stairWidth: null, buildingHeight: null,
   scaffoldingSetWidth: null, scaffoldingSetHeight: null, scaffoldingSetCount: null,
@@ -239,6 +239,7 @@ function MaterialEstimationPage() {
             onResetAll={handleResetOverrides}
             storeys={activeProject.storeys}
             effectiveDefaults={effectiveDefaults}
+            computedDefaults={activeProject.estimation?.measurements?.computedDefaults ?? null}
           />
           <CalibrationFactorsCard factors={draftFactors} onFactorChange={updateFactor} onResetDefaults={handleResetFactors} />
         </MobileTabSwitcher>

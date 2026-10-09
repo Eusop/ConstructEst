@@ -35,6 +35,9 @@ const GROUPS = [
       { key: 'footingWidth', label: 'Footing width', unit: 'm', step: 0.01 },
       { key: 'footingLength', label: 'Footing length', unit: 'm', step: 0.01 },
       { key: 'footingThickness', label: 'Footing thickness', unit: 'm', step: 0.05 },
+      // How deep the footing sits. Each ground column gets a part below ground,
+      // depth minus thickness (the engineer's sheets, 2026-10-09).
+      { key: 'footingDepth', label: 'Footing depth (below ground)', unit: 'm', step: 0.1 },
       { key: 'footingCount', label: 'Footing count', unit: 'pcs', step: 1, projectOnly: true },
       { key: 'footingRebarKgPerM3', label: 'Footing rebar (16mm)', unit: 'kg/m³', step: 5 },
     ],
@@ -52,8 +55,6 @@ const GROUPS = [
       // project, shown on the admin page (storeys unknown).
       { key: 'columnWidthSecond', label: '2nd floor column width', unit: 'm', step: 0.01, twoStoreyOnly: true },
       { key: 'columnDepthSecond', label: '2nd floor column length', unit: 'm', step: 0.01, twoStoreyOnly: true },
-      // Below ground. Not used in the quantities since column bars are by weight.
-      { key: 'footingDepth', label: 'Footing depth (below ground)', unit: 'm', step: 0.1 },
       // Rebar is always by weight: half main bars, half lateral ties. The sizes
       // only split each half into lengths (the engineer, 2026-10-05).
       { key: 'columnRebarKgPerM3', label: 'Concrete rebar ratio', unit: 'kg/m³', step: 5 },
@@ -68,10 +69,20 @@ const GROUPS = [
       { key: 'beamWidth', label: 'Beam width', unit: 'm', step: 0.01 },
       { key: 'beamDepth', label: 'Beam depth', unit: 'm', step: 0.01 },
       { key: 'beamLength', label: 'Beam total length', unit: 'm', step: 0.5 },
+      // Footing tie beam, same size as the other beams. Blank uses the FTBEAM layer, else none.
+      { key: 'groundBeamLength', label: 'Ground beam length', unit: 'm', step: 0.5, projectOnly: true },
       // Half main bars, half stirrups, by weight like the columns.
       { key: 'beamRebarKgPerM3', label: 'Concrete rebar ratio', unit: 'kg/m³', step: 5 },
       { key: 'beamRebarDiameterMm', label: 'Beam main bar size', unit: 'mm', options: BAR_SIZES_MM },
       { key: 'beamStirrupMm', label: 'Beam stirrup bar size', unit: 'mm', options: BAR_SIZES_MM },
+    ],
+  },
+  {
+    key: 'walls',
+    label: 'Walls',
+    fields: [
+      // CHB wall bars, 10mm unless changed (the engineer's sheets use 12mm).
+      { key: 'wallBarMm', label: 'CHB wall bar size', unit: 'mm', options: BAR_SIZES_MM },
     ],
   },
   {
@@ -118,7 +129,9 @@ const GROUPS = [
 ];
 
 // columnCount (detected from the DXF) and beamLength (from wall run) have no
-// fixed number to show. Every other placeholder is the value the engine will use,
+// fixed number. On a project, `computedDefaults` (saved with the last estimate,
+// migration 041) gives the number the engine actually used for those blank
+// fields. Every other placeholder is the value the engine will use,
 // computed for `storeys` when known (a project), or both the 1-storey and
 // 2-storey variants when not (the admin global page).
 //
@@ -126,18 +139,23 @@ const GROUPS = [
 // the project's real fallback chain (project override, admin global default,
 // engine default) from the backend. Only a project page can pass it; the admin
 // global page sets that global default, so its placeholder stays the engine default.
-function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) {
+function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}, computedDefaults = null) {
   // The second floor's column size falls back to the ground floor's (a value typed
   // in the ground field counts even before saving).
   if (fieldKey === 'columnWidthSecond' && overrides.columnWidth != null) return String(overrides.columnWidth);
   if (fieldKey === 'columnDepthSecond' && overrides.columnDepth != null) return String(overrides.columnDepth);
   if (fieldKey === 'columnWidthSecond') return fieldPlaceholder('columnWidth', storeys, effectiveDefaults);
   if (fieldKey === 'columnDepthSecond') return fieldPlaceholder('columnDepth', storeys, effectiveDefaults);
-  if (fieldKey === 'footingCount') return overrides.columnCount != null ? String(overrides.columnCount) : 'Same as columns';
+  // Footings follow the column count, including one typed but not saved yet.
+  if (fieldKey === 'footingCount' && overrides.columnCount != null) return String(overrides.columnCount);
   if (effectiveDefaults) {
     const value = effectiveDefaults[fieldKey];
     if (value != null) return String(value);
   }
+  // The number the engine used at the last Recalculate (e.g. beam length from the wall run).
+  if (computedDefaults?.[fieldKey] != null) return String(computedDefaults[fieldKey]);
+  if (fieldKey === 'footingCount') return 'Same as columns';
+  if (fieldKey === 'groundBeamLength') return '0';
   if (storeys != null) {
     const value = getEngineDefaults(storeys)[fieldKey];
     return value != null ? String(value) : 'Auto';
@@ -161,9 +179,10 @@ function fieldPlaceholder(fieldKey, storeys, effectiveDefaults, overrides = {}) 
  * @param {(key: string, value: number|null) => void} props.onOverrideChange
  * @param {() => void} props.onResetAll Clears every field back to "use engine default".
  * @param {number|null} [props.storeys] The project's storeys, to show the exact engine default as each placeholder (the paper gives column and footing defaults per 1- and 2-storey). Omit or pass null when there is no project (e.g. admin global defaults), and both variants are shown.
+ * @param {Record<string, number>|null} [props.computedDefaults] What the engine used for blank fields at the last Recalculate (column count, beam length, ground beam, building height, scaffold sets). Project page only.
  * @param {Record<string, number|null>|null} [props.effectiveDefaults] The project's real fallback chain (project override, admin global default, engine default), fetched from the backend. Used for placeholders instead of the hardcoded literals. Omit on the admin global page, which sets the global default itself.
  */
-function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null, effectiveDefaults = null }) {
+function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys = null, effectiveDefaults = null, computedDefaults = null }) {
   const isMobile = useIsMobile();
   // Decided once: Accordion warns if defaultExpanded changes later (e.g. rotating a tablet).
   const [openFirstGroup] = useState(!isMobile);
@@ -277,7 +296,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                         renderValue: (value) => (value === ''
                           ? (
                             <Typography component="span" sx={{ color: 'text.disabled' }}>
-                              {optionLabel(fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides), field.unit)}
+                              {optionLabel(fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides, computedDefaults), field.unit)}
                             </Typography>
                           )
                           : optionLabel(value, field.unit)),
@@ -296,7 +315,7 @@ function DesignParametersCard({ overrides, onOverrideChange, onResetAll, storeys
                     size="small"
                     value={overrides[field.key] ?? ''}
                     onChange={(event) => handleFieldChange(field.key, event.target.value)}
-                    placeholder={fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides)}
+                    placeholder={fieldPlaceholder(field.key, storeys, effectiveDefaults, overrides, computedDefaults)}
                     slotProps={{
                       inputLabel: { shrink: true },
                       input: { endAdornment: <Typography sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{field.unit}</Typography> },
