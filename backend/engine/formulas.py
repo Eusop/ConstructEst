@@ -21,7 +21,9 @@ pieces, frame lumber), Engr. Espiritu's replies, the paper.
 
 Assumptions (ours unless a source is named):
   - Rebar: 10mm for walls and ground slab, 12mm for the 2nd floor slab
-    (validation form). Stairs use 10mm (ours). Bar sizes stop at 16mm.
+    (validation form). Stairs use 10mm (ours). Bar sizes stop at 16mm. The
+    CHB wall bar size can be changed (wallBarMm), since the engineer's
+    2026-10-09 sheets use 12mm.
   - Column rebar is 180 kg per m3 of column concrete and beam rebar 160,
     each half main bars and half ties or stirrups (engineer). The main bar
     and tie sizes (default 16mm and 10mm) only split each half into lengths.
@@ -30,7 +32,10 @@ Assumptions (ours unless a source is named):
     the footing thickness (0.30 m, ours). Footing plan size defaults to
     0.60m x 0.60m (ours).
   - Columns are per floor when a second floor file is given (Reply 2), the
-    total height split evenly (ours). The 2-storey 0.25 m size is an
+    total height split evenly (ours). Each ground floor column also has a
+    part below ground, footing depth minus footing thickness, with the
+    ground column size (the engineer's sheets, 2026-10-09). Footing depth
+    defaults to 1.5 m for 1 storey and 2.0 m for 2 (the paper). The 2-storey 0.25 m size is an
     editable placeholder, not validated.
   - Tie length is 2(a + b) - 8 x 0.04 m cover + 2 x 0.06 m hooks, which gives
     Fajardo's 1.80 m tie for a 0.50 m column. Tie wire for bars with no
@@ -40,7 +45,10 @@ Assumptions (ours unless a source is named):
     adds interior scaffolding, at the top storey plus the roofing allowance
     (4.2m at the defaults, ours). Roofing adds one 1.2 m scaffold layer (ours).
   - Beam length comes from the BEAM layer (plus CANTBEAM) when a floor has
-    one (Reply 4), otherwise that floor's wall length.
+    one (Reply 4), otherwise that floor's wall length. The ground (footing
+    tie) beam is extra: its length is entered, or read from the ground
+    floor's FTBEAM layer, else 0. Same size as the other beams (the
+    engineer's sheets, 2026-10-09).
   - Purlin run is half the roof perimeter and gutter length the roof
     perimeter (ours). Hip rolls are not counted.
   - Form areas follow the engineer: columns (W + L) x 2 x H, beams
@@ -111,9 +119,11 @@ RATIO_TIE_BAR_MM = 10
 TRUSS_FRAMING_KG_PER_M2 = 17.5
 ANGLE_BAR_KG_PER_M = 3.4
 ANGLE_BAR_LENGTH_M = 6.0
-# Footing pad thickness. The paper's 1.5/2.0 m footing depth (below ground)
-# is not used for the quantities.
+# Footing pad thickness, and how deep the footing sits below ground (the
+# paper: 1.5 m for 1 storey, 2.0 m for 2). The column part below ground is
+# depth minus thickness.
 DEFAULT_FOOTING_THICKNESS_M = 0.30
+DEFAULT_FOOTING_DEPTH_M = {1: 1.5, 2: 2.0}
 REBAR_BAR_LENGTH_M = 6.0
 COLUMN_COVER_M = 0.04
 TIE_HOOK_M = 0.06
@@ -295,16 +305,17 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             acc.add("sand", mortar_sand, "Wall area x mortar rate", storey_category,
                     f"{floor_label} {chb_size} CHB mortar: {num(area)} m2 x {sand_per_m2} m3 per m2 = {num(mortar_sand, 3)} m3")
 
-        # Fajardo Table 3-5: 10mm vertical @ 0.60 m and horizontal every 3
-        # layers, per m2 of wall, hooks and laps included.
+        # Fajardo Table 3-5: vertical @ 0.60 m and horizontal every 3 layers,
+        # per m2 of wall, hooks and laps included. 10mm unless changed.
+        wall_bar_mm = int(overrides.get("wallBarMm") or 10)
         wall_rebar_length_m = net_wall_area * (WALL_REBAR_VERTICAL_M_PER_M2 + WALL_REBAR_HORIZONTAL_M_PER_M2)
-        wall_rebar_kg = wall_rebar_length_m * REBAR_UNIT_WEIGHT_10MM_KG_PER_M
+        wall_rebar_kg = wall_rebar_length_m * bar_unit_weight(wall_bar_mm)
         rebar_weight_by_category[storey_category] += wall_rebar_kg
-        add_bar_length(10, wall_rebar_length_m)
+        add_bar_length(wall_bar_mm, wall_rebar_length_m)
         rebar_steps.append(
-            f"{floor_label} walls, 10mm: {num(net_wall_area)} m2 x "
+            f"{floor_label} walls, {wall_bar_mm}mm: {num(net_wall_area)} m2 x "
             f"({WALL_REBAR_VERTICAL_M_PER_M2} + {WALL_REBAR_HORIZONTAL_M_PER_M2}) m per m2 = "
-            f"{num(wall_rebar_length_m)} m x 0.617 kg/m = {num(wall_rebar_kg)} kg")
+            f"{num(wall_rebar_length_m)} m x {num(bar_unit_weight(wall_bar_mm), 3)} kg/m = {num(wall_rebar_kg)} kg")
         wall_tie_wire_kg = net_wall_area * WALL_TIE_WIRE_KG_PER_M2
         tie_wire_by_category[storey_category] += wall_tie_wire_kg
         tie_wire_steps.append(
@@ -383,8 +394,18 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     else:
         column_floors = [(col_w, col_d, total_col_h, column_count)]
 
+    # Part below ground: from the footing up to the ground floor, footing
+    # depth minus footing thickness, one per ground column (the engineer's
+    # sheets, 2026-10-09). Same size as the ground floor columns.
+    footing_depth = overrides.get("footingDepth", DEFAULT_FOOTING_DEPTH_M[2 if storeys >= 2 else 1])
+    below_ground_h = max(footing_depth - overrides.get("footingThickness", DEFAULT_FOOTING_THICKNESS_M), 0.0)
+    if below_ground_h > 0 and column_count > 0:
+        column_floors.insert(0, (col_w, col_d, below_ground_h, column_count))
+
     column_volume = sum(w * d * h * n for w, d, h, n in column_floors)
     column_parts = ' + '.join(f"{n} x {num(w)} x {num(d)} x {num(h)} m" for w, d, h, n in column_floors)
+    if below_ground_h > 0 and column_count > 0:
+        column_parts += f', the first below ground ({num(footing_depth)} m footing depth minus footing thickness)'
     acc.add_concrete_mix(column_volume, cement_factor, "Column volume x count", "shared",
                          f"Columns ({column_parts})")
 
@@ -437,7 +458,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     else:
         default_beam_length = ground_run * storeys
         beam_from_layer = ground_from_layer
-    beam_length_total = overrides.get("beamLength", default_beam_length)
+    floor_beam_length = overrides.get("beamLength", default_beam_length)
+    # Ground (footing tie) beam, same size as the other beams (the engineer's
+    # sheets, 2026-10-09). Entered, or the ground floor's FTBEAM layer, else 0.
+    ground_beam_length = overrides.get("groundBeamLength", geometry.get("ftbeam_length_m", 0.0))
+    beam_length_total = floor_beam_length + ground_beam_length
     beam_volume = beam_w * beam_d * beam_length_total
     if "beamLength" in overrides:
         beam_basis = "Beam volume (beam length override)"
@@ -447,6 +472,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         beam_basis = "Beam volume (wall-run approximation)"
     beam_source = ('your beam length' if "beamLength" in overrides
                    else 'from the BEAM layer' if beam_from_layer else 'wall length used as beam run')
+    if ground_beam_length > 0:
+        ground_source = 'entered' if "groundBeamLength" in overrides else 'FTBEAM layer'
+        beam_source = (f"{num(floor_beam_length)} m floor beams, {beam_source}, + "
+                       f"{num(ground_beam_length)} m ground beam, {ground_source}")
     acc.add_concrete_mix(beam_volume, cement_factor, beam_basis, "shared",
                          f"Beams {num(beam_w)} x {num(beam_d)} m x {num(beam_length_total)} m ({beam_source})")
 
@@ -548,8 +577,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                          f"Footings {footing_count} x {num(footing_w)} x {num(footing_l)} x {num(footing_thickness)} m thick")
     # Footing forms: the four sides of each footing (engineers, 2026-10-03).
     footing_formwork_area = 2 * (footing_w + footing_l) * footing_thickness * footing_count
-    # Footing rebar: 150 kg of 16mm bars per m3 of footing concrete (the
-    # engineers, 2026-10-03 meeting). No bar grid to count ties from, so tie
+    # Footing rebar: 100 kg of 16mm bars per m3 of footing concrete (the
+    # engineer's sheet, 2026-10-04). No bar grid to count ties from, so tie
     # wire is 1 kg per 100 kg of bars (our assumption).
     footing_rebar_rate = overrides.get("footingRebarKgPerM3", FOOTING_REBAR_KG_PER_M3)
     footing_rebar_kg = footing_volume * footing_rebar_rate
@@ -800,6 +829,19 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         "floorPerimeter": round(total_floor_perimeter_m, 2),
         "roofPerimeter": round(roof_perimeter_m, 2),
         "roofRidgeLength": round(roof_ridge_length_m, 2),
+        "groundBeamLength": round(ground_beam_length, 2),
+        "columnBelowGroundHeight": round(below_ground_h, 2),
+        # What the engine uses when each of these Design parameters is blank,
+        # so the page can show the real number instead of "Auto".
+        "computedDefaults": {
+            "columnCount": detected_column_count or DEFAULT_COLUMN_COUNT,
+            "footingCount": column_count,
+            "columnHeight": round(sum(floor_heights), 2),
+            "beamLength": round(default_beam_length, 2),
+            "groundBeamLength": round(geometry.get("ftbeam_length_m", 0.0), 2),
+            "buildingHeight": round(sum(floor_heights) + (scaffolding_set_height if include_roofing else 0.0), 2),
+            "scaffoldingSetCount": round(computed_scaffolding_sets, 2),
+        },
     }
     if geometry2 is not None:
         # Per-floor breakdown, only when a second floor file was given. With

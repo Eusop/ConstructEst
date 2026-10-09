@@ -5,7 +5,7 @@ are returned in meters and square meters.
 
 Also reads optional layers from Engr. Espiritu's notation (Reply 4): COL (same
 as COLUMN), BEAM, CANTBEAM and TRUSS. A file without them returns 0 for each.
-FTG and FTBEAM are not read. Keep LayerNamesGuide.jsx in sync with LAYER_ALIASES.
+FTBEAM (footing tie beams) is read for the ground beam. FTG is not read. Keep LayerNamesGuide.jsx in sync with LAYER_ALIASES.
 
 Walls: a wall drawn as two parallel faces (LINE or polyline) is counted once,
 by pairing the faces (see wall_run_length). A wall drawn as one line counts as
@@ -31,6 +31,7 @@ LAYER_ALIASES = {
     # Optional layers (Reply 4's notation).
     "beam": "BEAM", "beams": "BEAM",
     "cantbeam": "CANTBEAM",
+    "ftbeam": "FTBEAM",
     "truss": "TRUSS", "trusses": "TRUSS",
 }
 
@@ -457,6 +458,7 @@ def extract_geometry(doc):
     # Optional layers. All 0 when the layer is missing.
     beam_length_m = member_run_length(msp, "BEAM")
     cantbeam_length_m = member_run_length(msp, "CANTBEAM")
+    ftbeam_length_m = member_run_length(msp, "FTBEAM")
     # truss_count is not used yet. Kept for a future rule turning trusses
     # into angle bar pieces (Reply 4).
     truss_count = sum(1 for e in entities_on_layer(msp, "TRUSS") if e.dxftype() in ("LINE", "LWPOLYLINE", "POLYLINE"))
@@ -476,6 +478,7 @@ def extract_geometry(doc):
         "floor_bounds": floor_bounds,
         "beam_length_m": beam_length_m,
         "cantbeam_length_m": cantbeam_length_m,
+        "ftbeam_length_m": ftbeam_length_m,
         "truss_count": truss_count,
         "truss_length_m": truss_length_m,
     }
