@@ -161,7 +161,7 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
                 placeholder="e.g. 16mm x 6 m"
                 value={form.spec}
                 onChange={handleChange}
-                inputProps={{ maxLength: 150 }}
+                slotProps={{ htmlInput: { maxLength: 150 } }}
                 helperText="Same for every store with this brand"
               />
             </Box>

@@ -69,8 +69,9 @@ function CalibrationFactorsCard({ factors, onFactorChange, onResetDefaults }) {
         </Link>
       </Stack>
       <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 3, flexShrink: 0 }}>
-        How much extra material each category buys above the bare rule-based formula, to
-        cover real-world waste. 0% uses the formula exactly as written.
+        Wastage is the general allowance for every material. The cement, steel and roofing
+        factors add extra to just those materials on top of it; leave them at 0% unless a
+        project needs more. 0% uses the formula exactly as written.
       </Typography>
 
       <Stack spacing={{ xs: 3, sm: 4 }} sx={{ flex: 1, justifyContent: 'center', width: '100%' }}>

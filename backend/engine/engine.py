@@ -8,8 +8,8 @@ as a child process. Reads one JSON object from stdin:
     "secondFloorDxfPath": "C:/.../uploads/169...-second-floor.dxf",  # optional, 2-storey only
     "storeys": 1,
     "includeRoofing": true,
-    "constants": { "cementFactor": 1.08, "steelFactor": 1.05,
-                    "roofingFactor": 1.07, "wastagePercent": 5 },
+    "constants": { "cementFactor": 1.0, "steelFactor": 1.0,
+                    "roofingFactor": 1.0, "wastagePercent": 5 },
     "overrides": { "buildingHeight": 6.0, "floorToFloorHeight": 3.0, ... }
   }
 

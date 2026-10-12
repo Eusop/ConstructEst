@@ -138,7 +138,7 @@ WHERE smp.stock_qty IS NULL;
 -- is the default row used when a project has no override.
 -- ---------------------------------------------------------------------------
 INSERT INTO estimation_constants (project_id, cement_factor, steel_factor, roofing_factor, wastage_percent)
-VALUES (NULL, 1.08, 1.05, 1.07, 5.00);
+VALUES (NULL, 1.00, 1.00, 1.00, 5.00);
 
 -- Rebar priced per 6 m bar by size, provisional prices and assumed stock
 -- (see migrations/036_rebar_per_size.sql).

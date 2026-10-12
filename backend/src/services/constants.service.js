@@ -8,7 +8,7 @@ export async function getEffectiveConstants(projectId) {
   }
 
   const [global] = await query('SELECT * FROM estimation_constants WHERE project_id IS NULL');
-  return toApiShape(global) ?? { cementFactor: 1.08, steelFactor: 1.05, roofingFactor: 1.07, wastagePercent: 5 };
+  return toApiShape(global) ?? { cementFactor: 1.0, steelFactor: 1.0, roofingFactor: 1.0, wastagePercent: 5 };
 }
 
 function toApiShape(row) {

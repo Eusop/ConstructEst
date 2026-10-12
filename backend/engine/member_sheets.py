@@ -256,7 +256,6 @@ def build_member_sheets(d):
                         {"material": "Cement", "quantity": up(cement), "unit": "bags"},
                         {"material": "Sand", "quantity": round(sand, 3), "unit": "cu.m"}]
                        + [{"material": f"Rebar {mm}mm", "quantity": up(m / BAR_M), "unit": "pcs"} for mm, m in sorted(bar_len.items())],
-            "note": "The Total view adds a 5% CHB allowance.",
         })
 
     # ---------------- Roof ----------------
@@ -283,7 +282,7 @@ def build_member_sheets(d):
             "sections": [{"title": "Roof covering", "lines": [
                 f"8 ft G.I. sheet covers {n(r['sheet_cover'], 3)} sq.m (0.70 m effective width x (2.44 - 0.30 end lap) m)",
                 f"Sheets = Area / {n(r['sheet_cover'], 3)} = {n(area)} / {n(r['sheet_cover'], 3)} = {pcs(sheets)}",
-                f"Purlins = (perimeter / 2) / 0.70 m spacing + 1 = {r['purlins']} rows",
+                f"Purlins = (perimeter / 2) / 0.70 m spacing + 1 = ({n(r['perimeter'])} / 2) / 0.70 + 1 = {n(r['perimeter'] / 2 / 0.70)} ≈ {up(r['perimeter'] / 2 / 0.70)} + 1 = {r['purlins']} rows",
                 f"Ridge roll = ridge / {n(r['piece_m']['ridge'])} m = {n(r['ridge'])} / {n(r['piece_m']['ridge'])} ≈ {r['ridge_pcs']} pcs",
                 f"Flashing = perimeter / {n(r['piece_m']['flashing'])} m = {n(r['perimeter'])} / {n(r['piece_m']['flashing'])} ≈ {r['flashing']} pcs",
                 f"Gutter = perimeter / {n(r['piece_m']['gutter'])} m = {n(r['perimeter'])} / {n(r['piece_m']['gutter'])} ≈ {r['gutter']} pcs"]}],
@@ -302,4 +301,47 @@ def build_member_sheets(d):
         "sections": [{"title": "Sets", "lines": [sc["text"]]}],
         "results": [{"material": "Scaffolding", "quantity": up(sc["sets"]), "unit": "sets"}],
     })
+    if d.get("bom") is not None:
+        for member in members:
+            member["note"] = bom_note(member["results"], d["bom"], d["factors"])
     return members
+
+
+# Materials only one member makes: the card can show the exact BOM figure.
+SINGLE_MEMBER = {"CHB": "hollowBlocks", "Angle Bar": "angleBar", "Roofing sheets": "roofingSheets",
+                 "Purlins": "purlins", "Ridge": "ridge", "Flashing": "flashing", "Gutter": "gutter",
+                 "Steel Props": "steelProps", "Scaffolding": "scaffolding"}
+
+
+def bom_note(results, bom, f):
+    """What the BOM adds on top of these raw numbers, so a card never looks
+    lower than the BOM without saying why. Matches the factors in formulas.py."""
+    wastage = f"{f['wastage_pct']:g}% wastage" if f["wastage_pct"] > 0 else None
+    cement = f"x {n(f['cement'])} cement factor" if f["cement"] != 1 else None
+    steel = f"x {n(f['steel'])} steel factor" if f["steel"] != 1 else None
+    roofing = f"x {n(f['roofing'])} roofing factor" if f["roofing"] != 1 else None
+    adds = {"CHB": ["5% CHB allowance"], "Angle Bar": [roofing, wastage], "Roofing sheets": [roofing, wastage],
+            "Purlins": [wastage], "Ridge": [wastage], "Flashing": [wastage], "Gutter": [wastage],
+            "Steel Props": [], "Scaffolding": [],
+            "Cement": [cement, wastage], "Sand": [wastage], "Gravel": [wastage],
+            "Plywood": [wastage], "Lumber": [wastage]}
+    exact, shared = [], {}
+    for r in results:
+        name = r["material"]
+        extra = [x for x in (adds.get(name) or ([steel, wastage] if name.startswith("Rebar") else [])) if x]
+        if name in SINGLE_MEMBER and SINGLE_MEMBER[name] in bom:
+            how = f" ({' and '.join(extra)})" if extra else ", same as here"
+            exact.append(f"{name} {bom[SINGLE_MEMBER[name]]:,} {r['unit']}{how}")
+        elif extra:
+            label = "rebar" if name.startswith("Rebar") else name.lower()
+            names = shared.setdefault(" and ".join(extra), [])
+            if label not in names:
+                names.append(label)
+    parts = []
+    if exact:
+        parts.append("In the BOM: " + "; ".join(exact) + ".")
+    if shared:
+        groups = [f"{', '.join(names[:-1]) + ' and ' + names[-1] if len(names) > 1 else names[0]} {how}"
+                  for how, names in shared.items()]
+        parts.append("The BOM adds up all members first, then applies " + "; ".join(groups) + ".")
+    return " ".join(parts) or None

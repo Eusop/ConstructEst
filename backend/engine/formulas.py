@@ -212,9 +212,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     geometry2 = geometry2 if storeys >= 2 else None
 
     acc = MaterialAccumulator()
-    cement_factor = constants.get("cementFactor", 1.08)
-    steel_factor = constants.get("steelFactor", 1.05)
-    roofing_factor = constants.get("roofingFactor", 1.07)
+    # Wastage is the general allowance. Cement, steel and roofing factors are
+    # optional extras for just those materials, off (1.00) unless an admin or
+    # user raises them, so nothing gets two waste allowances by default.
+    cement_factor = constants.get("cementFactor", 1.0)
+    steel_factor = constants.get("steelFactor", 1.0)
+    roofing_factor = constants.get("roofingFactor", 1.0)
     wastage_multiplier = 1 + (constants.get("wastagePercent", 5) / 100)
 
     wall_length_m = geometry["wall_length_m"]
@@ -551,7 +554,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                 f"{num(roofing_factor)} roofing factor = {num(roof_area_m2)} m2 / ({ROOF_SHEET_EFFECTIVE_WIDTH_M} m effective width x "
                 f"({ROOF_SHEET_LENGTH_M} m - {ROOF_SHEET_END_LAP_M} m end lap) = {num(sheet_cover_m2, 3)} m2 per sheet) = {num(sheets)} sheets")
         purlin_run_m = roof_perimeter_m / 2
-        purlins = ceil_int(purlin_run_m / PURLIN_SPACING_M) + 1
+        # round(..., 6) drops float noise (15.4 / 0.70 = 22.000000000000004 is 22 rows).
+        purlins = ceil_int(round(purlin_run_m / PURLIN_SPACING_M, 6)) + 1
         acc.add("purlins", purlins, "Roof run / purlin spacing", "roofing",
                 f"Roof run: {num(roof_perimeter_m)} m roof perimeter / 2 = {num(purlin_run_m)} m / {PURLIN_SPACING_M} m spacing, rounded up, + 1 = {purlins} rows")
         ridge_piece_m = ROOF_ACCESSORY_LENGTH_M["ridge"]
@@ -723,24 +727,27 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
 
     # --- Reinforcement rollup (rebar and tie wire) ---
     # Computed per category so each breakdown is correct. Weight already uses
-    # each diameter, so only the Steel Factor is applied here.
+    # each diameter. Rebar and tie wire get the general wastage plus the
+    # optional Steel Factor, applied here so the tons and bars match.
+    steel_multiplier = steel_factor * wastage_multiplier
+    steel_text = f"x {num(steel_factor)} steel factor x {num(wastage_multiplier)} ({num((wastage_multiplier - 1) * 100, 0)}% wastage)"
     for category, weight_kg in rebar_weight_by_category.items():
         if weight_kg > 0:
-            acc.add("steelRebar", weight_kg * steel_factor / 1000, "Reinforcement length x unit weight", category)
+            acc.add("steelRebar", weight_kg * steel_multiplier / 1000, "Reinforcement length x unit weight", category)
     for category, tie_kg in tie_wire_by_category.items():
         if tie_kg > 0:
-            acc.add("tieWire", tie_kg * steel_factor, "Ties counted from the bars", category)
+            acc.add("tieWire", tie_kg * steel_multiplier, "Ties counted from the bars", category)
     total_rebar_kg = sum(rebar_weight_by_category.values())
     if total_rebar_kg > 0:
-        adjusted_total_kg = total_rebar_kg * steel_factor
+        adjusted_total_kg = total_rebar_kg * steel_multiplier
         acc.steps["steelRebar"] = rebar_steps + [
-            f"Total {num(total_rebar_kg)} kg x {num(steel_factor)} steel factor = {num(adjusted_total_kg)} kg / 1,000 = {num(adjusted_total_kg / 1000, 3)} tons"]
-    # Rebar is bought as 6 m bars. Same steel factor as the weight, then each
+            f"Total {num(total_rebar_kg)} kg {steel_text} = {num(adjusted_total_kg)} kg / 1,000 = {num(adjusted_total_kg / 1000, 3)} tons"]
+    # Rebar is bought as 6 m bars. Same multiplier as the weight, then each
     # size is rounded up to whole bars (cutting waste is not optimized).
     bar_pieces = [
         {"diameterMm": diameter_mm,
-         "lengthM": round(length_m * steel_factor, 2),
-         "pieces": ceil_int(length_m * steel_factor / REBAR_BAR_LENGTH_M)}
+         "lengthM": round(length_m * steel_multiplier, 2),
+         "pieces": ceil_int(length_m * steel_multiplier / REBAR_BAR_LENGTH_M)}
         for diameter_mm, length_m in sorted(bar_length_by_diameter.items()) if length_m > 0
     ]
     if bar_pieces:
@@ -749,12 +756,13 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     total_tie_wire_kg = sum(tie_wire_by_category.values())
     if total_tie_wire_kg > 0:
         acc.steps["tieWire"] = tie_wire_steps + [
-            f"Total {num(total_tie_wire_kg)} kg x {num(steel_factor)} steel factor = {num(total_tie_wire_kg * steel_factor)} kg"]
+            f"Total {num(total_tie_wire_kg)} kg {steel_text} = {num(total_tie_wire_kg * steel_multiplier)} kg"]
 
     # Wastage applies to items prone to cut or spill loss. CHB already has 5%
-    # (Table 12); rebar and tie wire use the Steel Factor instead.
+    # (Table 12); rebar and tie wire got it above with the Steel Factor. Steel props
+    # and scaffolding are reused, not cut or used up, so they get none.
     wastage_keys = {"cement", "sand", "gravel", "roofingSheets", "purlins", "ridge",
-                     "flashing", "angleBar", "gutter", "plywood", "lumber", "steelProps", "scaffolding"}
+                     "flashing", "angleBar", "gutter", "plywood", "lumber"}
     for key in wastage_keys:
         if key in acc.totals:
             before_wastage = acc.totals[key]
@@ -922,6 +930,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         "scaffolding": {"parts": SCAFFOLD_SET_PARTS, "w": scaffolding_set_width, "h": scaffolding_set_height,
                         "sets": scaffolding_set_count_override if scaffolding_set_count_override is not None else computed_scaffolding_sets,
                         "text": scaffold_step},
+        # For the "In the BOM" note on each card.
+        "bom": {m["key"]: m["quantity"] for m in materials},
+        "factors": {"cement": cement_factor, "steel": steel_factor, "roofing": roofing_factor,
+                    "wastage_pct": (wastage_multiplier - 1) * 100},
     })
 
     return {

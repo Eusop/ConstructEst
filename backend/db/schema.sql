@@ -223,9 +223,9 @@ CREATE TABLE project_material_suppliers (
 CREATE TABLE estimation_constants (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   project_id INT UNSIGNED NULL,
-  cement_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.08,
-  steel_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.05,
-  roofing_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.07,
+  cement_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.00,
+  steel_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.00,
+  roofing_factor DECIMAL(6, 3) NOT NULL DEFAULT 1.00,
   wastage_percent DECIMAL(5, 2) NOT NULL DEFAULT 5.00,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_constants_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
