@@ -54,7 +54,11 @@ function BrandSelectionPage() {
   const [tier, setTier] = useState(initialSelection?.tier ?? 'standard');
   const [choices, setChoices] = useState(initialSelection?.choices ?? null);
   // materialKey -> another store id, or EXCLUDED. Filled from the saved BOM on load.
-  const [suppliers, setSuppliers] = useState(initialSelection?.suppliers ?? null);
+  // The copy in memory is only reused for the store it was made for, so a new
+  // store starts clean (TC-U41).
+  const [suppliers, setSuppliers] = useState(
+    initialSelection?.storeId === storeId ? initialSelection?.suppliers ?? null : null,
+  );
 
   useEffect(() => {
     if (!activeProject || typeof activeProject.id !== 'number' || !storeId) return undefined;
@@ -168,7 +172,7 @@ function BrandSelectionPage() {
 
   const handleContinue = async () => {
     const savedSuppliers = mode === 'manual' ? (suppliers ?? {}) : {};
-    const brandSelection = { mode, tier: mode === 'automatic' ? tier : null, choices, suppliers: savedSuppliers };
+    const brandSelection = { mode, tier: mode === 'automatic' ? tier : null, choices, suppliers: savedSuppliers, storeId };
     setIsSaving(true);
     try {
       const bom = await apiRequest(`/projects/${activeProject.id}/brand-selection`, {

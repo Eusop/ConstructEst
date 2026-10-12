@@ -184,7 +184,11 @@ function StoreLocatorPage() {
         8000,
       );
     }
-    updateActiveProject({ selectedStoreId: id });
+    // Other store and left out picks belong to the old store, so drop them.
+    const brandSelection = activeProject?.brandSelection;
+    updateActiveProject(id !== selectedStoreId && brandSelection
+      ? { selectedStoreId: id, brandSelection: { ...brandSelection, suppliers: {}, storeId: id } }
+      : { selectedStoreId: id });
   };
 
   // The locate button means "use my device's location again".
