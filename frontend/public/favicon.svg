@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="230 236 564 564">
+  <!-- House and bars from the ConstructEst logo (same as BrandMark), orange on transparent -->
+  <g fill="#F7931E">
+    <path d="M266 476 335 416V307h62v55l115-101 245 215v89L512 350 266 565Z"/>
+    <rect x="355" y="622" width="84" height="84" rx="6"/>
+    <rect x="469" y="569" width="85" height="137" rx="6"/>
+    <rect x="584" y="517" width="84" height="189" rx="6"/>
+    <rect x="322" y="733" width="380" height="42" rx="10"/>
+  </g>
+</svg>
