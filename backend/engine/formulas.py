@@ -136,6 +136,7 @@ ROOF_SHEET_EFFECTIVE_WIDTH_M = 0.70
 ROOF_SHEET_LENGTH_M = 2.44
 ROOF_SHEET_END_LAP_M = 0.30
 PURLIN_SPACING_M = 0.70
+ROOF_PURLIN_LENGTH_M = 6.0  # purlins are sold in 6 m lengths
 # Length per piece. Ridge roll, flashing and gutter come in 2.4 m pieces,
 # the normal size (the engineer, 2026-10-10). Was Fajardo Table 6-6's
 # effective lengths of 2.20 / 2.30 / 2.35 m.
@@ -154,6 +155,13 @@ FRACTIONAL_UNITS = ("m3", "tons", "kg")
 
 def ceil_int(value):
     return int(math.ceil(value)) if value > 0 else 0
+
+
+def slab_fill(area, length, width):
+    """Slab area / its bounding box (1 for a rectangle), so a bar grid laid
+    over the box is cut down to the slab itself."""
+    box = length * width
+    return min(area / box, 1.0) if box > 0 and area > 0 else 1.0
 
 
 def default_column_size(storeys):
@@ -258,13 +266,15 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     def add_bar_length(diameter_mm, length_m):
         bar_length_by_diameter[diameter_mm] = bar_length_by_diameter.get(diameter_mm, 0.0) + length_m
 
-    def add_grid_tie_wire(bars_a, bars_b, label, category):
-        # One tie at every crossing of a bar grid (Fajardo p. 110).
-        crossings = bars_a * bars_b
+    def add_grid_tie_wire(bars_a, bars_b, label, category, fill=1.0):
+        # One tie at every crossing of a bar grid (Fajardo p. 110), only
+        # inside the slab (fill = slab area / bounding box).
+        crossings = ceil_int(round(bars_a * bars_b * fill, 6))
         kg = crossings * GRID_TIE_LENGTH_M / TIE_WIRE_M_PER_KG
         tie_wire_by_category[category] += kg
+        fill_text = f" x {num(fill, 3)} slab area / box" if fill < 1 else ""
         tie_wire_steps.append(
-            f"{label}: {bars_a} x {bars_b} = {crossings:,} crossings x {GRID_TIE_LENGTH_M} m / "
+            f"{label}: {bars_a} x {bars_b}{fill_text} = {crossings:,} crossings x {GRID_TIE_LENGTH_M} m / "
             f"{TIE_WIRE_M_PER_KG} m per kg = {num(kg)} kg")
 
     # --- Table 12: Wall materials -----------------------------------------
@@ -349,15 +359,19 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         ground_spacing = overrides.get("groundSlabBarSpacing", 0.30)
         rebar_len_count = ceil_int(floor_len / ground_spacing) + 1
         rebar_wid_count = ceil_int(floor_wid / ground_spacing) + 1
-        ground_slab_rebar_length_m = rebar_len_count * floor_wid + rebar_wid_count * floor_len
+        # The bar grid is laid over the outline's bounding box, so scale it to
+        # the slab's real area (an L-shaped slab is smaller than its box).
+        ground_fill = slab_fill(floor_area_m2, floor_len, floor_wid)
+        ground_slab_rebar_length_m = (rebar_len_count * floor_wid + rebar_wid_count * floor_len) * ground_fill
         ground_slab_rebar_kg = ground_slab_rebar_length_m * bar_unit_weight(ground_bar_mm)
         rebar_weight_by_category["ground"] += ground_slab_rebar_kg
         add_bar_length(ground_bar_mm, ground_slab_rebar_length_m)
         rebar_steps.append(
-            f"Ground slab, {ground_bar_mm}mm @ {num(ground_spacing)} m: {rebar_len_count} bars x {num(floor_wid)} m + {rebar_wid_count} bars x "
-            f"{num(floor_len)} m = {num(ground_slab_rebar_length_m)} m x {num(bar_unit_weight(ground_bar_mm), 3)} kg/m = {num(ground_slab_rebar_kg)} kg")
-        add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Ground slab", "ground")
-        ground_bars = (ground_bar_mm, ground_spacing, rebar_len_count, floor_wid, rebar_wid_count, floor_len, ground_slab_rebar_length_m)
+            f"Ground slab, {ground_bar_mm}mm @ {num(ground_spacing)} m: ({rebar_len_count} bars x {num(floor_wid)} m + {rebar_wid_count} bars x "
+            f"{num(floor_len)} m) x {num(ground_fill, 3)} slab area / box = {num(ground_slab_rebar_length_m)} m x "
+            f"{num(bar_unit_weight(ground_bar_mm), 3)} kg/m = {num(ground_slab_rebar_kg)} kg")
+        add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Ground slab", "ground", ground_fill)
+        ground_bars = (ground_bar_mm, ground_spacing, rebar_len_count, floor_wid, rebar_wid_count, floor_len, ground_slab_rebar_length_m, ground_fill)
     member_slabs.append({"label": "Ground slab", "area": floor_area_m2, "t": 0.15, "bars": ground_bars})
 
     if storeys >= 2:
@@ -379,15 +393,17 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             second_spacing = overrides.get("secondSlabBarSpacing", 0.15)
             rebar_len_count = ceil_int(suspended_len / second_spacing) + 1
             rebar_wid_count = ceil_int(suspended_wid / second_spacing) + 1
-            suspended_slab_rebar_length_m = rebar_len_count * suspended_wid + rebar_wid_count * suspended_len
+            suspended_fill = slab_fill(suspended_floor_area_m2, suspended_len, suspended_wid)
+            suspended_slab_rebar_length_m = (rebar_len_count * suspended_wid + rebar_wid_count * suspended_len) * suspended_fill
             suspended_slab_rebar_kg = suspended_slab_rebar_length_m * bar_unit_weight(second_bar_mm)
             rebar_weight_by_category[suspended_category] += suspended_slab_rebar_kg
             add_bar_length(second_bar_mm, suspended_slab_rebar_length_m)
             rebar_steps.append(
-                f"Second floor slab, {second_bar_mm}mm @ {num(second_spacing)} m: {rebar_len_count} bars x {num(suspended_wid)} m + {rebar_wid_count} bars x "
-                f"{num(suspended_len)} m = {num(suspended_slab_rebar_length_m)} m x {num(bar_unit_weight(second_bar_mm), 3)} kg/m = {num(suspended_slab_rebar_kg)} kg")
-            add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Second floor slab", suspended_category)
-            suspended_bars = (second_bar_mm, second_spacing, rebar_len_count, suspended_wid, rebar_wid_count, suspended_len, suspended_slab_rebar_length_m)
+                f"Second floor slab, {second_bar_mm}mm @ {num(second_spacing)} m: ({rebar_len_count} bars x {num(suspended_wid)} m + {rebar_wid_count} bars x "
+                f"{num(suspended_len)} m) x {num(suspended_fill, 3)} slab area / box = {num(suspended_slab_rebar_length_m)} m x "
+                f"{num(bar_unit_weight(second_bar_mm), 3)} kg/m = {num(suspended_slab_rebar_kg)} kg")
+            add_grid_tie_wire(rebar_len_count, rebar_wid_count, "Second floor slab", suspended_category, suspended_fill)
+            suspended_bars = (second_bar_mm, second_spacing, rebar_len_count, suspended_wid, rebar_wid_count, suspended_len, suspended_slab_rebar_length_m, suspended_fill)
         member_slabs.append({"label": "2nd floor slab", "area": suspended_floor_area_m2, "t": 0.125, "bars": suspended_bars})
 
     # --- Table 14: Column materials -----------------------------------------
@@ -538,7 +554,12 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # --- Table 16: Roofing materials ----------------------------------------
     # The roof sits on the top floor, so read ROOF from the second floor file if given.
     roof_source = geometry2 if geometry2 is not None else geometry
-    roof_floor_area_m2 = roof_source["floor_area_m2"]
+    # Plan area inside the closed ROOF outline, eaves included (the Domain
+    # Expert Evaluation's rule, 2026-10-16). Top floor area only when the roof
+    # outline is not a closed shape.
+    roof_from_outline = roof_source.get("roof_plan_area_m2", 0.0) > 0
+    roof_floor_area_m2 = roof_source["roof_plan_area_m2"] if roof_from_outline else roof_source["floor_area_m2"]
+    roof_area_label = "roof outline" if roof_from_outline else "top floor"
     roof_perimeter_m = roof_source["roof_perimeter_m"]
     roof_ridge_length_m = roof_source["roof_ridge_length_m"]
 
@@ -550,14 +571,18 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         sheet_cover_m2 = ROOF_SHEET_EFFECTIVE_WIDTH_M * (ROOF_SHEET_LENGTH_M - ROOF_SHEET_END_LAP_M)
         sheets = roof_area_m2 / sheet_cover_m2
         acc.add("roofingSheets", sheets, "Roof area / sheet coverage", "roofing",
-                f"Roof area: {num(roof_floor_area_m2)} m2 top floor x {num(PITCH_MULTIPLIER, 3)} pitch (1:3) x "
+                f"Roof area: {num(roof_floor_area_m2)} m2 {roof_area_label} x {num(PITCH_MULTIPLIER, 3)} pitch (1:3) x "
                 f"{num(roofing_factor)} roofing factor = {num(roof_area_m2)} m2 / ({ROOF_SHEET_EFFECTIVE_WIDTH_M} m effective width x "
                 f"({ROOF_SHEET_LENGTH_M} m - {ROOF_SHEET_END_LAP_M} m end lap) = {num(sheet_cover_m2, 3)} m2 per sheet) = {num(sheets)} sheets")
-        purlin_run_m = roof_perimeter_m / 2
-        # round(..., 6) drops float noise (15.4 / 0.70 = 22.000000000000004 is 22 rows).
-        purlins = ceil_int(round(purlin_run_m / PURLIN_SPACING_M, 6)) + 1
-        acc.add("purlins", purlins, "Roof run / purlin spacing", "roofing",
-                f"Roof run: {num(roof_perimeter_m)} m roof perimeter / 2 = {num(purlin_run_m)} m / {PURLIN_SPACING_M} m spacing, rounded up, + 1 = {purlins} rows")
+        # Purlins in 6 m lengths: one line every 0.70 m across the slope, so
+        # their total length is the roof area / spacing. Counted as lengths to
+        # match how they are bought (was rows, labelled lengths).
+        purlin_total_m = roof_area_m2 / PURLIN_SPACING_M
+        # round(..., 6) drops float noise before rounding up.
+        purlins = ceil_int(round(purlin_total_m / ROOF_PURLIN_LENGTH_M, 6))
+        acc.add("purlins", purlins, "Roof area / purlin spacing / 6 m", "roofing",
+                f"Roof area {num(roof_area_m2)} m2 / {PURLIN_SPACING_M} m spacing = {num(purlin_total_m)} m / "
+                f"{num(ROOF_PURLIN_LENGTH_M)} m per length, rounded up = {purlins} lengths")
         ridge_piece_m = ROOF_ACCESSORY_LENGTH_M["ridge"]
         ridge = ceil_int(roof_ridge_length_m / ridge_piece_m)
         acc.add("ridge", ridge, "Ridge length / ridge roll length", "roofing",
@@ -651,6 +676,9 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     # --- Table 19: Scaffolding & Formwork ------------------------------------
     # Both floors' real areas when a second floor file is given, else floor area x storeys.
     total_floor_area_m2 = floor_area_m2 + geometry2["floor_area_m2"] if geometry2 is not None else floor_area_m2 * storeys
+    # Only suspended slabs need forms and props. The ground slab is poured on
+    # the ground (the Domain Expert Evaluation, 2026-10-16), so a bungalow has none.
+    suspended_slab_area_m2 = total_floor_area_m2 - floor_area_m2
 
     # Coverage per scaffolding set, 1.8m x 1.2m (Table 19, OK'd in Reply 2). Overridable.
     scaffolding_set_width = overrides.get("scaffoldingSetWidth", 1.8)
@@ -691,8 +719,9 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         "shared",
         scaffold_step,
     )
-    acc.add("steelProps", total_floor_area_m2 / 1.0, "Slab area / coverage per prop", "shared",
-            f"Slab area {num(total_floor_area_m2)} m2 (all floors) / 1.0 m2 per prop = {num(total_floor_area_m2 / 1.0)} props")
+    acc.add("steelProps", suspended_slab_area_m2 / 1.0, "Suspended slab area / coverage per prop", "shared",
+            f"Suspended slab area {num(suspended_slab_area_m2)} m2 (no props under the ground slab) / 1.0 m2 per prop = "
+            f"{num(suspended_slab_area_m2 / 1.0)} props")
 
     # Form areas as the engineer writes them (2026-10-04): columns
     # (W + L) x 2 x H, beams (W + 2D) x L (two sides and a bottom), footings
@@ -700,10 +729,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     column_formwork_area = sum(2 * (w + d) * h * n for w, d, h, n in column_floors)
     beam_perimeter = 2 * beam_d + beam_w
     beam_formwork_area = beam_perimeter * beam_length_total
-    formwork_area = total_floor_area_m2 + column_formwork_area + beam_formwork_area + footing_formwork_area
+    formwork_area = suspended_slab_area_m2 + column_formwork_area + beam_formwork_area + footing_formwork_area
     # One 1.22m x 2.44m sheet covers 2.98 m2 (Reply 10). The 5-10% cutting
     # allowance is the wastage multiplier applied below, so it is not added here.
-    formwork_text = (f"Formwork area: slabs {num(total_floor_area_m2)} m2 + columns {num(column_formwork_area)} m2 "
+    formwork_text = (f"Formwork area: suspended slab {num(suspended_slab_area_m2)} m2 + columns {num(column_formwork_area)} m2 "
                      f"+ beams {num(beam_perimeter)} m (2 sides + bottom) x {num(beam_length_total)} m "
                      f"+ footing sides {num(footing_formwork_area)} m2 = {num(formwork_area)} m2")
     plywood = formwork_area / (1.22 * 2.44)
@@ -909,11 +938,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     if include_roofing:
         raw_roof_area = roof_floor_area_m2 * PITCH_MULTIPLIER
         roof_member = {
-            "area": raw_roof_area, "floor_area": roof_floor_area_m2, "pitch": PITCH_MULTIPLIER,
+            "area": raw_roof_area, "floor_area": roof_floor_area_m2, "area_label": roof_area_label, "pitch": PITCH_MULTIPLIER,
             "framing_kg_per_m2": framing_kg_per_m2, "angle_kg_per_m": angle_kg_per_m,
             "sheet_cover": ROOF_SHEET_EFFECTIVE_WIDTH_M * (ROOF_SHEET_LENGTH_M - ROOF_SHEET_END_LAP_M),
             "perimeter": roof_perimeter_m, "ridge": roof_ridge_length_m,
-            "purlins": purlins, "ridge_pcs": ridge, "flashing": flashing, "gutter": gutter,
+            "purlins": purlins, "purlin_m": raw_roof_area / PURLIN_SPACING_M, "ridge_pcs": ridge, "flashing": flashing, "gutter": gutter,
             "piece_m": ROOF_ACCESSORY_LENGTH_M,
         }
     member_breakdown = build_member_sheets({
@@ -923,7 +952,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         "footing": {"w": footing_w, "l": footing_l, "t": footing_thickness, "count": footing_count, "rate": footing_rebar_rate},
         "column": {"rate": column_rate, "main_mm": column_main_mm, "tie_mm": column_tie_mm, "segments": column_segments},
         "beam": {"rate": beam_rate, "w": beam_w, "d": beam_d, "main_mm": beam_main_mm, "stirrup_mm": stirrup_mm, "levels": beam_levels},
-        "slabs": {"items": member_slabs, "form_area": total_floor_area_m2},
+        "slabs": {"items": member_slabs, "form_area": suspended_slab_area_m2},
         "stairs": member_stairs,
         "walls": member_walls,
         "roof": roof_member,

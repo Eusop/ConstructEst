@@ -426,6 +426,9 @@ def extract_geometry(doc):
 
     roof_perimeter_m = 0.0
     roof_ridge_length_m = 0.0
+    # Plan area inside the closed ROOF outline(s), eaves included. 0 when the
+    # roof is not drawn as a closed polyline (then the top floor area is used).
+    roof_plan_area_m2 = 0.0
     roof_bounds = None
     roof_entities = entities_on_layer(msp, "ROOF")
     for e in roof_entities:
@@ -436,6 +439,8 @@ def extract_geometry(doc):
                 # an extra closing segment.
                 roof_perimeter_m += polyline_length(points, is_closed_polyline(e))
                 roof_bounds = merge_bounds(roof_bounds, points)
+                if is_closed_polyline(e) and len(points) >= 3:
+                    roof_plan_area_m2 += shoelace_area(points)
         elif e.dxftype() == "LINE":
             p1 = (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M)
             p2 = (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)
@@ -475,6 +480,7 @@ def extract_geometry(doc):
         "column_count": column_count,
         "roof_perimeter_m": roof_perimeter_m,
         "roof_ridge_length_m": roof_ridge_length_m,
+        "roof_plan_area_m2": roof_plan_area_m2,
         "floor_bounds": floor_bounds,
         "beam_length_m": beam_length_m,
         "cantbeam_length_m": cantbeam_length_m,
