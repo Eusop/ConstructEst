@@ -281,12 +281,17 @@ def build_member_sheets(d):
         })
         members.append({
             "key": "roofing", "title": "Roofing",
-            "given": [f"Area = {n(area)} sq.m (sloped)", f"Roof perimeter = {n(r['perimeter'])} m, ridge = {n(r['ridge'])} m"],
+            "given": [f"Area = {n(area)} sq.m (sloped)",
+                      f"Roof perimeter = {n(r['perimeter'])} m, ridge = {n(r['ridge'])} m"
+                      + (f", hips = {n(r['hip_plan'])} m (plan)" if r['hip_plan'] > 0 else "")],
             "sections": [{"title": "Roof covering", "lines": [
                 f"8 ft G.I. sheet covers {n(r['sheet_cover'], 3)} sq.m (0.70 m effective width x (2.44 - 0.30 end lap) m)",
                 f"Sheets = Area / {n(r['sheet_cover'], 3)} = {n(area)} / {n(r['sheet_cover'], 3)} = {pcs(sheets)}",
                 f"Purlins = Area / 0.70 m spacing / 6 m = {n(area)} / 0.70 = {n(r['purlin_m'])} m / 6 = {pcs(r['purlin_m'] / BAR_M)} (6 m lengths)",
-                f"Ridge roll = ridge / {n(r['piece_m']['ridge'])} m = {n(r['ridge'])} / {n(r['piece_m']['ridge'])} ≈ {r['ridge_pcs']} pcs",
+                (f"Ridge roll = (ridge + hips x {n(r['hip_slope'], 3)} slope) / {n(r['piece_m']['ridge'])} m = "
+                 f"({n(r['ridge'])} + {n(r['hip_plan'])} x {n(r['hip_slope'], 3)}) / {n(r['piece_m']['ridge'])} ≈ {r['ridge_pcs']} pcs"
+                 if r['hip_plan'] > 0 else
+                 f"Ridge roll = ridge / {n(r['piece_m']['ridge'])} m = {n(r['ridge'])} / {n(r['piece_m']['ridge'])} ≈ {r['ridge_pcs']} pcs"),
                 f"Flashing = perimeter / {n(r['piece_m']['flashing'])} m = {n(r['perimeter'])} / {n(r['piece_m']['flashing'])} ≈ {r['flashing']} pcs",
                 f"Gutter = perimeter / {n(r['piece_m']['gutter'])} m = {n(r['perimeter'])} / {n(r['piece_m']['gutter'])} ≈ {r['gutter']} pcs"]}],
             "results": [{"material": "Roofing sheets", "quantity": up(sheets), "unit": "sheets"},

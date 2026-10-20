@@ -85,6 +85,8 @@ COLUMN_REBAR_BAR_COUNT = 4
 
 # NSCP 2016 moderate slope, rise:run = 1:3 -> sqrt(rise^2 + run^2) / run = sqrt(10) / 3
 PITCH_MULTIPLIER = math.sqrt(10) / 3
+# Same 1:3 slope along a hip at 45 degrees in plan: sqrt(1 + (1/3)^2 / 2).
+HIP_SLOPE_MULTIPLIER = math.sqrt(1 + (1 / 3) ** 2 / 2)
 
 # Values from Max Fajardo's Simplified Construction Estimate, the reference
 # the engineers use (docs/fajardo-comparison.md). They replace our paper's
@@ -564,6 +566,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     roof_area_label = "roof outline" if roof_from_outline else "top floor"
     roof_perimeter_m = roof_source["roof_perimeter_m"]
     roof_ridge_length_m = roof_source["roof_ridge_length_m"]
+    # Hips are measured in plan; a 45 degree hip on a 1:3 roof is longer by
+    # sqrt(1 + (1/3)^2 / 2) = 1.027 (geometry, ours).
+    roof_hip_plan_m = roof_source.get("roof_hip_length_m", 0.0)
+    roof_hip_length_m = roof_hip_plan_m * HIP_SLOPE_MULTIPLIER
 
     roof_area_m2 = 0.0
     if include_roofing:
@@ -586,9 +592,13 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
                 f"Roof area {num(roof_area_m2)} m2 / {PURLIN_SPACING_M} m spacing = {num(purlin_total_m)} m / "
                 f"{num(ROOF_PURLIN_LENGTH_M)} m per length, rounded up = {purlins} lengths")
         ridge_piece_m = ROOF_ACCESSORY_LENGTH_M["ridge"]
-        ridge = ceil_int(roof_ridge_length_m / ridge_piece_m)
-        acc.add("ridge", ridge, "Ridge length / ridge roll length", "roofing",
-                f"Ridge length {num(roof_ridge_length_m)} m / {ridge_piece_m} m per ridge roll, rounded up = {ridge} pieces")
+        # Ridge roll covers the ridge and every hip of a hip roof.
+        ridge_roll_m = roof_ridge_length_m + roof_hip_length_m
+        ridge = ceil_int(round(ridge_roll_m / ridge_piece_m, 6))
+        hip_text = (f" + hips {num(roof_hip_plan_m)} m x {num(HIP_SLOPE_MULTIPLIER, 3)} slope = {num(roof_hip_length_m)} m"
+                    if roof_hip_plan_m > 0 else "")
+        acc.add("ridge", ridge, "(Ridge + hips) / ridge roll length", "roofing",
+                f"Ridge {num(roof_ridge_length_m)} m{hip_text} = {num(ridge_roll_m)} m / {ridge_piece_m} m per ridge roll, rounded up = {ridge} pieces")
         flashing_piece_m = ROOF_ACCESSORY_LENGTH_M["flashing"]
         flashing = ceil_int(roof_perimeter_m / flashing_piece_m)
         acc.add("flashing", flashing, "Roof perimeter / flashing length", "roofing",
@@ -890,6 +900,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         "floorPerimeter": round(total_floor_perimeter_m, 2),
         "roofPerimeter": round(roof_perimeter_m, 2),
         "roofRidgeLength": round(roof_ridge_length_m, 2),
+        "roofHipLength": round(roof_hip_plan_m, 2),
         "groundBeamLength": round(ground_beam_length, 2),
         "columnBelowGroundHeight": round(below_ground_h, 2),
         # What the engine uses when each of these Design parameters is blank,
@@ -945,6 +956,7 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
             "framing_kg_per_m2": framing_kg_per_m2, "angle_kg_per_m": angle_kg_per_m,
             "sheet_cover": ROOF_SHEET_EFFECTIVE_WIDTH_M * (ROOF_SHEET_LENGTH_M - ROOF_SHEET_END_LAP_M),
             "perimeter": roof_perimeter_m, "ridge": roof_ridge_length_m,
+            "hip_plan": roof_hip_plan_m, "hip_slope": HIP_SLOPE_MULTIPLIER,
             "purlins": purlins, "purlin_m": raw_roof_area / PURLIN_SPACING_M, "ridge_pcs": ridge, "flashing": flashing, "gutter": gutter,
             "piece_m": ROOF_ACCESSORY_LENGTH_M,
         }

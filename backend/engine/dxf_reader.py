@@ -33,6 +33,7 @@ LAYER_ALIASES = {
     "cantbeam": "CANTBEAM",
     "ftbeam": "FTBEAM",
     "truss": "TRUSS", "trusses": "TRUSS",
+    "hip": "HIP", "hips": "HIP",
 }
 
 # Splits a layer name on non-alphanumeric characters, so "WALL-150" and
@@ -126,6 +127,74 @@ def merge_bounds(current, points):
 
 # Endpoints within 1mm count as the same point when joining loose lines.
 JOIN_TOLERANCE_M = 0.001
+# A hip line meets a ridge end (within 5 cm) and runs to a roof corner. The
+# corner may sit inside the eave line, so it only has to be within 0.5 m.
+RIDGE_END_TOLERANCE_M = 0.05
+ROOF_CORNER_TOLERANCE_M = 0.5
+
+
+def line_points(entity):
+    return ((entity.dxf.start.x * MM_TO_M, entity.dxf.start.y * MM_TO_M),
+            (entity.dxf.end.x * MM_TO_M, entity.dxf.end.y * MM_TO_M))
+
+
+def outline_corners(points):
+    """(corner, is_outside) for each vertex of a closed outline. An outside
+    corner gets a hip; an inside corner (an L-shaped roof) gets a valley."""
+    n = len(points)
+    signed = sum(points[i][0] * points[(i + 1) % n][1] - points[(i + 1) % n][0] * points[i][1] for i in range(n))
+    corners = []
+    for i in range(n):
+        a, b, c = points[i - 1], points[i], points[(i + 1) % n]
+        cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])
+        corners.append((b, (cross > 0) == (signed > 0)))
+    return corners
+
+
+def roof_lines(msp, ridge_lines, outline_points):
+    """Splits the roof lines into ridge joints, hips and valleys.
+
+    Ridge lines are the LINEs on ROOF that do not run to a roof corner. Other
+    lines on a roof layer (any name with ROOF, or HIP) count when they touch a
+    ridge end: both ends on ridge ends is a short ridge joint, the other end
+    near an outside corner is a hip, near an inside corner a valley (ours).
+    """
+    ends = [p for line in ridge_lines for p in line]
+    corners = outline_corners(outline_points) if len(outline_points) >= 3 else []
+
+    def near(p, pts, tol):
+        return any(segment_length(p, q) <= tol for q in pts)
+
+    def corner_kind(p):
+        best = None
+        for q, outside in corners:
+            d = segment_length(p, q)
+            if d <= ROOF_CORNER_TOLERANCE_M and (best is None or d < best[0]):
+                best = (d, outside)
+        return None if best is None else ('hip' if best[1] else 'valley')
+
+    joint_m = hip_m = valley_m = 0.0
+    for e in msp:
+        if e.dxftype() != "LINE":
+            continue
+        raw = (e.dxf.layer or "").upper()
+        layer = entity_layer(e)
+        if layer == "ROOF" or not ("ROOF" in raw or layer == "HIP"):
+            continue
+        p1, p2 = line_points(e)
+        length = segment_length(p1, p2)
+        on1, on2 = near(p1, ends, RIDGE_END_TOLERANCE_M), near(p2, ends, RIDGE_END_TOLERANCE_M)
+        if on1 and on2:
+            joint_m += length
+        elif on1 or on2:
+            kind = corner_kind(p2 if on1 else p1)
+            if kind == 'hip' or (kind is None and layer == "HIP"):
+                hip_m += length
+            elif kind == 'valley':
+                valley_m += length
+        elif layer == "HIP":
+            hip_m += length
+    return joint_m, hip_m, valley_m
 
 
 def _same_point(a, b):
@@ -430,6 +499,8 @@ def extract_geometry(doc):
     # roof is not drawn as a closed polyline (then the top floor area is used).
     roof_plan_area_m2 = 0.0
     roof_bounds = None
+    roof_outline = []  # the largest closed ROOF outline, for finding hip corners
+    ridge_lines = []
     roof_entities = entities_on_layer(msp, "ROOF")
     for e in roof_entities:
         if e.dxftype() in ("LWPOLYLINE", "POLYLINE"):
@@ -441,12 +512,31 @@ def extract_geometry(doc):
                 roof_bounds = merge_bounds(roof_bounds, points)
                 if is_closed_polyline(e) and len(points) >= 3:
                     roof_plan_area_m2 += shoelace_area(points)
+                    if shoelace_area(points) > shoelace_area(roof_outline):
+                        roof_outline = points
         elif e.dxftype() == "LINE":
-            p1 = (e.dxf.start.x * MM_TO_M, e.dxf.start.y * MM_TO_M)
-            p2 = (e.dxf.end.x * MM_TO_M, e.dxf.end.y * MM_TO_M)
-            length = segment_length(p1, p2)
-            # A LINE on ROOF is treated as an explicit ridge line.
-            roof_ridge_length_m = max(roof_ridge_length_m, length)
+            ridge_lines.append(line_points(e))
+
+    # LINEs on ROOF are the ridge, all of them added up (a ridge is often drawn
+    # in pieces). A ROOF line that runs to an outline corner is a hip instead.
+    roof_hip_length_m = 0.0
+    roof_valley_length_m = 0.0
+    corners = outline_corners(roof_outline) if len(roof_outline) >= 3 else []
+    true_ridges = []
+    for p1, p2 in ridge_lines:
+        hits = [outside for q, outside in corners
+                if min(segment_length(p1, q), segment_length(p2, q)) <= ROOF_CORNER_TOLERANCE_M]
+        if not hits:
+            true_ridges.append((p1, p2))
+        elif hits[0]:
+            roof_hip_length_m += segment_length(p1, p2)
+        else:
+            roof_valley_length_m += segment_length(p1, p2)
+    roof_ridge_length_m = sum(segment_length(p1, p2) for p1, p2 in true_ridges)
+    joint_m, hip_m, valley_m = roof_lines(msp, true_ridges, roof_outline)
+    roof_ridge_length_m += joint_m
+    roof_hip_length_m += hip_m
+    roof_valley_length_m += valley_m
 
     # With no ridge LINE, the ridge is the shorter side of the roof outline's
     # bounding box (a simple gable). With no ROOF layer it falls back to the
@@ -480,6 +570,8 @@ def extract_geometry(doc):
         "column_count": column_count,
         "roof_perimeter_m": roof_perimeter_m,
         "roof_ridge_length_m": roof_ridge_length_m,
+        "roof_hip_length_m": roof_hip_length_m,
+        "roof_valley_length_m": roof_valley_length_m,
         "roof_plan_area_m2": roof_plan_area_m2,
         "floor_bounds": floor_bounds,
         "beam_length_m": beam_length_m,

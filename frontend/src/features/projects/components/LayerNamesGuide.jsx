@@ -13,7 +13,9 @@ import { useIsMobile } from '../../../hooks/useIsMobile';
 const LAYER_GROUPS = [
   { label: 'Required', names: ['WALL', 'DOOR', 'WINDOW', 'COLUMN (or COL)', 'STAIR', 'ROOF', 'FLOOR'] },
   // FTBEAM on the ground floor file is the ground (footing tie) beam. FTG isn't read.
-  { label: 'Optional', note: 'improves the estimate', names: ['BEAM', 'CANTBEAM', 'FTBEAM', 'TRUSS'] },
+  // HIP: hip lines of a hip roof. Lines on any ROOF layer that run from a ridge end
+  // to a roof corner are also read as hips.
+  { label: 'Optional', note: 'improves the estimate', names: ['BEAM', 'CANTBEAM', 'FTBEAM', 'TRUSS', 'HIP'] },
 ];
 
 /**
@@ -60,7 +62,8 @@ function LayerNamesGuide() {
         </Box>
         <Typography sx={{ color: 'text.secondary', fontSize: { xs: '0.72rem', sm: '0.78rem' }, mt: 1.5 }}>
           Prefixes and suffixes are fine (A-WALL, WALL-150). Rename your layers before uploading. Draw beams and
-          trusses as centerlines, not as two edge lines.
+          trusses as centerlines, not as two edge lines. On ROOF, draw only the closed roof outline and the ridge
+          lines; hips go on HIP (or on a roof layer, from a ridge end to a corner).
         </Typography>
       </AccordionDetails>
     </Accordion>
