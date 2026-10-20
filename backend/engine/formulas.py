@@ -139,6 +139,9 @@ ROOF_SHEET_LENGTH_M = 2.44
 ROOF_SHEET_END_LAP_M = 0.30
 PURLIN_SPACING_M = 0.70
 ROOF_PURLIN_LENGTH_M = 6.0  # purlins are sold in 6 m lengths
+# Steel props under suspended slabs at 0.9 m x 0.9 m spacing.
+PROP_SPACING_M = 0.9
+PROP_AREA_M2 = PROP_SPACING_M * PROP_SPACING_M
 # Length per piece. Ridge roll, flashing and gutter come in 2.4 m pieces,
 # the normal size (the engineer, 2026-10-10). Was Fajardo Table 6-6's
 # effective lengths of 2.20 / 2.30 / 2.35 m.
@@ -731,9 +734,10 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         "shared",
         scaffold_step,
     )
-    acc.add("steelProps", suspended_slab_area_m2 / 1.0, "Suspended slab area / coverage per prop", "shared",
-            f"Suspended slab area {num(suspended_slab_area_m2)} m2 (no props under the ground slab) / 1.0 m2 per prop = "
-            f"{num(suspended_slab_area_m2 / 1.0)} props")
+    acc.add("steelProps", suspended_slab_area_m2 / PROP_AREA_M2, "Suspended slab area / coverage per prop", "shared",
+            f"Suspended slab area {num(suspended_slab_area_m2)} m2 (no props under the ground slab) / "
+            f"{num(PROP_AREA_M2)} m2 per prop ({PROP_SPACING_M} m x {PROP_SPACING_M} m spacing) = "
+            f"{num(suspended_slab_area_m2 / PROP_AREA_M2)} props")
 
     # Form areas as the engineer writes them (2026-10-04): columns
     # (W + L) x 2 x H, beams (W + 2D) x L (two sides and a bottom), footings
@@ -836,6 +840,9 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
     materials = []
     for key, (name, unit) in material_meta.items():
         if key in ("roofingSheets", "purlins", "ridge", "flashing", "angleBar", "gutter") and not include_roofing:
+            continue
+        # A bungalow has no suspended slab, so no steel props: leave the row out.
+        if key == "steelProps" and acc.totals.get(key, 0.0) <= 0:
             continue
         raw_qty = acc.totals.get(key, 0.0)
         if unit not in WHOLE_UNITS and unit not in FRACTIONAL_UNITS:
@@ -967,7 +974,8 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         "footing": {"w": footing_w, "l": footing_l, "t": footing_thickness, "count": footing_count, "rate": footing_rebar_rate},
         "column": {"rate": column_rate, "main_mm": column_main_mm, "tie_mm": column_tie_mm, "segments": column_segments},
         "beam": {"rate": beam_rate, "w": beam_w, "d": beam_d, "main_mm": beam_main_mm, "stirrup_mm": stirrup_mm, "levels": beam_levels},
-        "slabs": {"items": member_slabs, "form_area": suspended_slab_area_m2},
+        "slabs": {"items": member_slabs, "form_area": suspended_slab_area_m2,
+                  "prop_area": PROP_AREA_M2, "prop_spacing": PROP_SPACING_M},
         "stairs": member_stairs,
         "walls": member_walls,
         "roof": roof_member,

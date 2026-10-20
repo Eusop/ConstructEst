@@ -195,11 +195,12 @@ def build_member_sheets(d):
             {"title": "Concrete", "lines": concrete + mix_lines(vt)},
             {"title": "Rebar", "lines": rebar or ["No floor outline read, so no slab bars"]},
             {"title": "Formworks", "lines": ([f"Total area = suspended slab area = {n(s['form_area'])} sq.m (the ground slab rests on the ground: no forms, no props)"] + form_lines
-                                             + [f"Steel props = suspended slab area / 1.0 sq.m per prop = {n(s['form_area'])} / 1.0 = {pcs(s['form_area'])}",
+                                             + [f"Steel props = suspended slab area / {n(s['prop_area'])} sq.m per prop ({n(s['prop_spacing'])} m x {n(s['prop_spacing'])} m spacing) = "
+                                                f"{n(s['form_area'])} / {n(s['prop_area'])} = {pcs(s['form_area'] / s['prop_area'])}",
                                                 "No lumber frames for slab forms: the steel props carry them"])
                                             if s['form_area'] > 0 else ["No suspended slab: the ground slab rests on the ground, so no slab forms or steel props"]},
         ],
-        "results": results + (form_results + [{"material": "Steel Props", "quantity": up(s["form_area"]), "unit": "pcs"}] if s["form_area"] > 0 else []),
+        "results": results + (form_results + [{"material": "Steel Props", "quantity": up(s["form_area"] / s["prop_area"]), "unit": "pcs"}] if s["form_area"] > 0 else []),
     })
 
     # ---------------- Stairs ----------------
@@ -268,23 +269,20 @@ def build_member_sheets(d):
         weight = area * r["framing_kg_per_m2"]
         angle_m = weight / r["angle_kg_per_m"]
         sheets = area / r["sheet_cover"]
+        # One Roof card, like the other members: truss framing and roof
+        # covering are its two sections (the engineer's sheets had them apart).
         members.append({
-            "key": "roofFraming", "title": "Roof Steel Framing (for trusses)",
-            "given": [f"Area weight ratio = {n(r['framing_kg_per_m2'], 1)} kg/sq.m",
-                      f"Area = {r['area_label']} {n(r['floor_area'])} sq.m x {n(r['pitch'], 3)} (1:3 pitch) = {n(area)} sq.m"],
-            "sections": [{"title": "Angle bar", "lines": [
+            "key": "roofing", "title": "Roof",
+            "given": [f"Area = {r['area_label']} {n(r['floor_area'])} sq.m x {n(r['pitch'], 3)} (1:3 pitch) = {n(area)} sq.m (sloped)",
+                      f"Area weight ratio (truss framing) = {n(r['framing_kg_per_m2'], 1)} kg/sq.m",
+                      f"Roof perimeter = {n(r['perimeter'])} m, ridge = {n(r['ridge'])} m"
+                      + (f", hips = {n(r['hip_plan'])} m (plan)" if r['hip_plan'] > 0 else "")],
+            "sections": [{"title": "Truss framing (angle bar)", "lines": [
                 f"Total weight = Area x Area weight ratio = {n(area)} x {n(r['framing_kg_per_m2'], 1)} = {n(weight)} kg",
                 f"Use 38 x 38 x 6 mm angle bar = {n(r['angle_kg_per_m'], 1)} kg/m (unit weight)",
                 f"Length = Total weight / Unit weight = {n(weight)} / {n(r['angle_kg_per_m'], 1)} = {n(angle_m)} m",
-                f"Quantity = Length / 6 m = {n(angle_m)} / 6 = {pcs(angle_m / BAR_M)} (38 x 38 x 6 mm x 6 m angle bar)"]}],
-            "results": [{"material": "Angle Bar", "quantity": up(angle_m / BAR_M), "unit": "pcs"}],
-        })
-        members.append({
-            "key": "roofing", "title": "Roofing",
-            "given": [f"Area = {n(area)} sq.m (sloped)",
-                      f"Roof perimeter = {n(r['perimeter'])} m, ridge = {n(r['ridge'])} m"
-                      + (f", hips = {n(r['hip_plan'])} m (plan)" if r['hip_plan'] > 0 else "")],
-            "sections": [{"title": "Roof covering", "lines": [
+                f"Quantity = Length / 6 m = {n(angle_m)} / 6 = {pcs(angle_m / BAR_M)} (38 x 38 x 6 mm x 6 m angle bar)"]},
+                         {"title": "Roof covering", "lines": [
                 f"8 ft G.I. sheet covers {n(r['sheet_cover'], 3)} sq.m (0.70 m effective width x (2.44 - 0.30 end lap) m)",
                 f"Sheets = Area / {n(r['sheet_cover'], 3)} = {n(area)} / {n(r['sheet_cover'], 3)} = {pcs(sheets)}",
                 f"Purlins = Area / 0.70 m spacing / 6 m = {n(area)} / 0.70 = {n(r['purlin_m'])} m / 6 = {pcs(r['purlin_m'] / BAR_M)} (6 m lengths)",
@@ -294,7 +292,8 @@ def build_member_sheets(d):
                  f"Ridge roll = ridge / {n(r['piece_m']['ridge'])} m = {n(r['ridge'])} / {n(r['piece_m']['ridge'])} ≈ {r['ridge_pcs']} pcs"),
                 f"Flashing = perimeter / {n(r['piece_m']['flashing'])} m = {n(r['perimeter'])} / {n(r['piece_m']['flashing'])} ≈ {r['flashing']} pcs",
                 f"Gutter = perimeter / {n(r['piece_m']['gutter'])} m = {n(r['perimeter'])} / {n(r['piece_m']['gutter'])} ≈ {r['gutter']} pcs"]}],
-            "results": [{"material": "Roofing sheets", "quantity": up(sheets), "unit": "sheets"},
+            "results": [{"material": "Angle Bar", "quantity": up(angle_m / BAR_M), "unit": "pcs"},
+                        {"material": "Roofing sheets", "quantity": up(sheets), "unit": "sheets"},
                         {"material": "Purlins", "quantity": up(r["purlin_m"] / BAR_M), "unit": "lengths"},
                         {"material": "Ridge", "quantity": r["ridge_pcs"], "unit": "pcs"},
                         {"material": "Flashing", "quantity": r["flashing"], "unit": "pcs"},
