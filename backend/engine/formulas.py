@@ -302,9 +302,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         wall_text = (f"{floor_label} walls: {num(storey_wall_length_m)} m x {num(storey_h)} m - "
                      f"{num(storey_door_area_m2)} m2 doors - {num(storey_window_area_m2)} m2 windows = {num(net_wall_area)} m2")
 
-        chb = net_wall_area * 12.5 * 1.05
+        # Table 12's 5% CHB allowance is the general wastage below (default 5%),
+        # so the wastage setting moves CHB like every other material.
+        chb = net_wall_area * 12.5
         acc.add("hollowBlocks", chb, "Wall area / coverage", storey_category,
-                f"{wall_text} x 12.5 pcs per m2 x 1.05 = {num(chb)} pcs")
+                f"{wall_text} x 12.5 pcs per m2 = {num(chb)} pcs")
 
         # Mortar per CHB size (Fajardo Table 2-2, class B). The wall area is
         # split by how much of the floor's wall run is 6" thick.
@@ -787,10 +789,11 @@ def compute_materials(geometry, storeys, include_roofing, constants, overrides, 
         acc.steps["tieWire"] = tie_wire_steps + [
             f"Total {num(total_tie_wire_kg)} kg {steel_text} = {num(total_tie_wire_kg * steel_multiplier)} kg"]
 
-    # Wastage applies to items prone to cut or spill loss. CHB already has 5%
-    # (Table 12); rebar and tie wire got it above with the Steel Factor. Steel props
-    # and scaffolding are reused, not cut or used up, so they get none.
-    wastage_keys = {"cement", "sand", "gravel", "roofingSheets", "purlins", "ridge",
+    # Wastage applies to items prone to cut or spill loss, CHB included (its
+    # Table 12 allowance is this 5%); rebar and tie wire got it above with the
+    # Steel Factor. Steel props and scaffolding are reused, not cut or used up,
+    # so they get none.
+    wastage_keys = {"hollowBlocks", "cement", "sand", "gravel", "roofingSheets", "purlins", "ridge",
                      "flashing", "angleBar", "gutter", "plywood", "lumber"}
     for key in wastage_keys:
         if key in acc.totals:

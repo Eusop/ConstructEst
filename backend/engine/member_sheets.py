@@ -323,7 +323,7 @@ def bom_note(results, bom, f):
     cement = f"x {n(f['cement'])} cement factor" if f["cement"] != 1 else None
     steel = f"x {n(f['steel'])} steel factor" if f["steel"] != 1 else None
     roofing = f"x {n(f['roofing'])} roofing factor" if f["roofing"] != 1 else None
-    adds = {"CHB": ["5% CHB allowance"], "Angle Bar": [roofing, wastage], "Roofing sheets": [roofing, wastage],
+    adds = {"CHB": [wastage], "Angle Bar": [roofing, wastage], "Roofing sheets": [roofing, wastage],
             "Purlins": [wastage], "Ridge": [wastage], "Flashing": [wastage], "Gutter": [wastage],
             "Steel Props": [], "Scaffolding": [],
             "Cement": [cement, wastage], "Sand": [wastage], "Gravel": [wastage],
