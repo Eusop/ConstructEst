@@ -538,13 +538,14 @@ def extract_geometry(doc):
     roof_hip_length_m += hip_m
     roof_valley_length_m += valley_m
 
-    # With no ridge LINE, the ridge is the shorter side of the roof outline's
-    # bounding box (a simple gable). With no ROOF layer it falls back to the
-    # floor boundary. Both are our assumptions, not from the paper.
+    # With no ridge LINE, the roof is taken as a simple gable whose ridge runs
+    # along the longer side of the roof outline's bounding box. With no ROOF
+    # layer it falls back to the floor boundary. Both are our assumptions, not
+    # from the paper.
     bounds_for_ridge = roof_bounds if roof_bounds else floor_bounds
     if roof_ridge_length_m == 0.0 and bounds_for_ridge:
         xmin, ymin, xmax, ymax = bounds_for_ridge
-        roof_ridge_length_m = min(xmax - xmin, ymax - ymin)
+        roof_ridge_length_m = max(xmax - xmin, ymax - ymin)
 
     if not roof_entities and floor_bounds:
         xmin, ymin, xmax, ymax = floor_bounds
