@@ -1,2 +1,6 @@
 learning-guide/
 docs/
+
+# Sample drawings kept local only: the downloaded 523 house and the locale architect PDFs.
+backend/sample-dxf/523_House_*.dxf
+backend/sample-dxf/*.pdf

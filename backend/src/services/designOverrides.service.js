@@ -78,8 +78,9 @@ function validateOverrides(overrides) {
   if (given('footingThickness') && !(Number(overrides.footingThickness) >= 0.1 && Number(overrides.footingThickness) <= 2)) {
     throw new HttpError(400, 'Footing thickness must be between 0.10 m and 2.00 m.');
   }
-  if (given('formworkUses') && ![1, 2, 3].includes(Number(overrides.formworkUses))) {
-    throw new HttpError(400, 'Formwork uses must be 1, 2 or 3.');
+  // The engineers said about 3 uses; 5 is the team's upper limit.
+  if (given('formworkUses') && ![1, 2, 3, 4, 5].includes(Number(overrides.formworkUses))) {
+    throw new HttpError(400, 'Formwork uses must be a whole number from 1 to 5.');
   }
   if (given('scaffoldingUses') && !(Number.isInteger(Number(overrides.scaffoldingUses)) && Number(overrides.scaffoldingUses) >= 1 && Number(overrides.scaffoldingUses) <= 10)) {
     throw new HttpError(400, 'Scaffolding uses must be a whole number from 1 to 10.');

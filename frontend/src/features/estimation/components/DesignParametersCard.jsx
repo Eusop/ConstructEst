@@ -115,10 +115,10 @@ const GROUPS = [
   {
     key: 'scaffolding',
     // Reuse divides the price only (engineers, 2026-10-03: formwork about 3
-    // uses, scaffolding about 4).
+    // uses, scaffolding about 4). Formwork goes up to 5 (team limit).
     label: 'Formwork & Scaffolding',
     fields: [
-      { key: 'formworkUses', label: 'Formwork uses (plywood, lumber)', unit: 'uses', options: [1, 2, 3] },
+      { key: 'formworkUses', label: 'Formwork uses (plywood, lumber)', unit: 'uses', options: [1, 2, 3, 4, 5] },
       { key: 'scaffoldingUses', label: 'Scaffolding uses', unit: 'uses', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
       { key: 'buildingHeight', label: 'Building height', unit: 'm', step: 0.1 },
       { key: 'scaffoldingSetWidth', label: 'Scaffold set width', unit: 'm', step: 0.01 },

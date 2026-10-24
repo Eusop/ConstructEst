@@ -56,7 +56,7 @@ Assumptions (ours unless a source is named):
     get no frame lumber, since the steel props support them.
   - Formwork is a one-time purchase of the full quantity (Table 19, a local
     civil engineer 2026-09-07). Reuse is a price option in
-    optimization.service.js (formwork 1 to 3 uses, scaffolding 4 by default),
+    optimization.service.js (formwork 1 to 5 uses, scaffolding 4 by default),
     which also lists lumber in whole pieces and rebar in 6 m bars.
 """
 import math
