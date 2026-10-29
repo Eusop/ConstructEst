@@ -189,7 +189,7 @@ function UserMobileCard({ user, onOpenMenu }) {
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
         <Stack direction="row" spacing={0.75}>
           <Chip
-            label={user.accessRole === 'admin' ? 'Admin' : 'User'}
+            label={user.accessRole === 'admin' ? (user.isMainAdmin ? 'Main admin' : 'Admin') : 'User'}
             size="small"
             sx={{
               height: 20,
@@ -270,6 +270,12 @@ function AdminUsersPage() {
     const intervalId = setInterval(refresh, ADMIN_LIST_REFRESH_MS);
     return () => clearInterval(intervalId);
   }, []);
+
+  // Only the main admin (the first admin account) can change other admin
+  // accounts; the backend enforces it too (assertCanManage in admin.controller.js).
+  const isMainAdminViewer = users.some((u) => u.id === currentAdminId && u.isMainAdmin);
+  const isLockedAdmin = (user) => isAdminAccount(user) && user.id !== currentAdminId && !isMainAdminViewer;
+  const LOCKED_TEXT = 'Only the main admin can change another admin account';
 
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -524,7 +530,7 @@ function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={user.accessRole === 'admin' ? 'Admin' : 'User'}
+                        label={user.accessRole === 'admin' ? (user.isMainAdmin ? 'Main admin' : 'Admin') : 'User'}
                         size="small"
                         sx={{
                           fontWeight: 700,
@@ -543,10 +549,12 @@ function AdminUsersPage() {
                     <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{formatDate(user.createdAt)}</TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end' }}>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={() => handleEdit(user)}>
-                            <EditRoundedIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title={isLockedAdmin(user) ? LOCKED_TEXT : 'Edit'}>
+                          <span>
+                            <IconButton size="small" aria-label="Edit" disabled={isLockedAdmin(user)} onClick={() => handleEdit(user)}>
+                              <EditRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                         {/* Admin accounts can't be deactivated (the backend rejects it too),
                             or an admin could lock every admin out. Shown disabled, not hidden,
@@ -560,10 +568,12 @@ function AdminUsersPage() {
                         </Tooltip>
                         {/* Same admin protection as Deactivate. Delete is permanent, so it
                             also needs a typed-DELETE confirm below. */}
-                        <Tooltip title="Password help">
-                          <IconButton size="small" aria-label="Password help" onClick={(event) => setPasswordMenu({ anchorEl: event.currentTarget, user })}>
-                            <KeyRoundedIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title={isLockedAdmin(user) ? LOCKED_TEXT : 'Password help'}>
+                          <span>
+                            <IconButton size="small" aria-label="Password help" disabled={isLockedAdmin(user)} onClick={(event) => setPasswordMenu({ anchorEl: event.currentTarget, user })}>
+                              <KeyRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                         <Tooltip title={isAdminAccount(user) ? 'Admin accounts cannot be deleted' : 'Delete'}>
                           <span>
@@ -696,6 +706,7 @@ function AdminUsersPage() {
       {/* Mobile only: opened from UserMobileCard's kebab button. */}
       <Menu anchorEl={rowMenu?.anchorEl} open={Boolean(rowMenu)} onClose={closeRowMenu} disableScrollLock>
         <MenuItem
+          disabled={Boolean(rowMenu && isLockedAdmin(rowMenu.user))}
           onClick={() => {
             handleEdit(rowMenu.user);
             closeRowMenu();
@@ -741,6 +752,7 @@ function AdminUsersPage() {
           <ListItemText>{rowMenu && isAdminAccount(rowMenu.user) ? 'Admins cannot be deleted' : 'Delete'}</ListItemText>
         </MenuItem>
         <MenuItem
+          disabled={Boolean(rowMenu && isLockedAdmin(rowMenu.user))}
           onClick={() => {
             setPendingResetCodeUser(rowMenu.user);
             closeRowMenu();
@@ -752,7 +764,7 @@ function AdminUsersPage() {
           <ListItemText>Send reset code</ListItemText>
         </MenuItem>
         <MenuItem
-          disabled={Boolean(rowMenu && rowMenu.user.id === currentAdminId)}
+          disabled={Boolean(rowMenu && (rowMenu.user.id === currentAdminId || isLockedAdmin(rowMenu.user)))}
           onClick={() => {
             setPendingTempPasswordUser(rowMenu.user);
             closeRowMenu();

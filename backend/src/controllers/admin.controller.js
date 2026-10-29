@@ -57,9 +57,29 @@ export const listAdminActivity = asyncHandler(async (req, res) => {
 
 // --- Users -------------------------------------------------------------
 
+// The main admin is the first admin account ever made (lowest id), the
+// system owner. Only it can change other admin accounts, and its own role
+// can't be removed, so another admin can't take over the system.
+async function mainAdminId() {
+  const [row] = await query("SELECT MIN(id) AS id FROM users WHERE access_role = 'admin'");
+  return row?.id ?? null;
+}
+
+// Stops an admin who is not the main admin from changing another admin's
+// account (role, email, name, reset code or temporary password).
+async function assertCanManage(req, targetId) {
+  const [target] = await query('SELECT access_role FROM users WHERE id = ?', [targetId]);
+  if (!target || target.access_role !== 'admin') return;
+  if (String(targetId) === String(req.user.id)) return;
+  if (String(await mainAdminId()) !== String(req.user.id)) {
+    throw new HttpError(403, 'Only the main admin can change another admin account.');
+  }
+}
+
 export const listUsers = asyncHandler(async (req, res) => {
   const users = await query('SELECT * FROM users ORDER BY created_at DESC');
-  res.json({ users: users.map((u) => ({ ...toPublicUser(u), isActive: Boolean(u.is_active), isVerified: Boolean(u.is_verified), emailVerified: Boolean(u.email_verified_at) })) });
+  const mainId = await mainAdminId();
+  res.json({ users: users.map((u) => ({ ...toPublicUser(u), isActive: Boolean(u.is_active), isVerified: Boolean(u.is_verified), emailVerified: Boolean(u.email_verified_at), isMainAdmin: u.id === mainId })) });
 });
 
 export const createUser = asyncHandler(async (req, res) => {
@@ -98,6 +118,7 @@ export const createUser = asyncHandler(async (req, res) => {
 });
 
 export const updateUser = asyncHandler(async (req, res) => {
+  await assertCanManage(req, req.params.id);
   const { firstName, lastName, email, accessRole } = req.body;
   const fields = [];
   const params = [];
@@ -199,6 +220,7 @@ async function loadPasswordTarget(req) {
 }
 
 export const sendUserResetCode = asyncHandler(async (req, res) => {
+  await assertCanManage(req, req.params.id);
   const target = await loadPasswordTarget(req);
   const wait = cooldownSecondsLeft(target);
   if (wait > 0) throw new HttpError(429, `A code was just sent. Try again in ${wait} seconds.`);
@@ -217,6 +239,7 @@ export const setTemporaryPassword = asyncHandler(async (req, res) => {
   if (Number(req.params.id) === Number(req.user.id)) {
     throw new HttpError(400, 'Change your own password from Profile.');
   }
+  await assertCanManage(req, req.params.id);
   const target = await loadPasswordTarget(req);
   const temporaryPassword = generateTemporaryPassword();
   // Clears any pending reset code, so only the temporary password works.
