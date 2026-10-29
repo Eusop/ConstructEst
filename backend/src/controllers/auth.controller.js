@@ -24,6 +24,50 @@ function isValidCode(value) {
   return /^\d{6}$/.test(String(value ?? ''));
 }
 
+// Failed sign-ins per email or User ID. After 5 wrong passwords within 15
+// minutes, that account's login is blocked for 15 minutes so passwords can't
+// be guessed. Kept in memory, so a server restart clears it.
+const MAX_LOGIN_FAILURES = 5;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
+const loginFailures = new Map(); // identifier -> { count, firstAt, lockedUntil }
+
+function loginKey(identifier) {
+  return String(identifier).trim().toLowerCase();
+}
+
+function loginMinutesLocked(key) {
+  const entry = loginFailures.get(key);
+  if (!entry || !entry.lockedUntil) return 0;
+  const left = entry.lockedUntil - Date.now();
+  if (left <= 0) {
+    loginFailures.delete(key);
+    return 0;
+  }
+  return Math.ceil(left / 60000);
+}
+
+function recordLoginFailure(key) {
+  const now = Date.now();
+  // Drop old entries now and then so the map does not keep growing.
+  if (loginFailures.size > 1000) {
+    for (const [k, e] of loginFailures) {
+      if ((e.lockedUntil || e.firstAt + LOGIN_LOCK_MS) < now) loginFailures.delete(k);
+    }
+  }
+  let entry = loginFailures.get(key);
+  if (!entry || now - entry.firstAt > LOGIN_LOCK_MS) {
+    entry = { count: 0, firstAt: now, lockedUntil: 0 };
+  }
+  entry.count += 1;
+  if (entry.count >= MAX_LOGIN_FAILURES) entry.lockedUntil = now + LOGIN_LOCK_MS;
+  loginFailures.set(key, entry);
+  return MAX_LOGIN_FAILURES - entry.count; // attempts left
+}
+
+function tooManyLoginsError(minutes) {
+  return new HttpError(429, `Too many failed sign-in attempts. Please try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`, 'TOO_MANY_LOGIN_ATTEMPTS');
+}
+
 export const register = asyncHandler(async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
 
@@ -84,6 +128,10 @@ export const login = asyncHandler(async (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier || !password) throw new HttpError(400, 'Email/User ID and password are required.');
 
+  const key = loginKey(identifier);
+  const minutesLocked = loginMinutesLocked(key);
+  if (minutesLocked > 0) throw tooManyLoginsError(minutesLocked);
+
   // Fetch the user even if pending or deactivated, so a wrong password gives
   // the same generic error either way. Trim since a copied ID may have spaces.
   const [user] = await query(
@@ -92,8 +140,14 @@ export const login = asyncHandler(async (req, res) => {
   );
 
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    throw new HttpError(401, 'Incorrect email/User ID or password.');
+    const left = recordLoginFailure(key);
+    if (left <= 0) throw tooManyLoginsError(LOGIN_LOCK_MS / 60000);
+    const warning = left === 1
+      ? '1 attempt left before sign-in is blocked for 15 minutes.'
+      : `${left} attempts left.`;
+    throw new HttpError(401, `Incorrect email/User ID or password. ${warning}`);
   }
+  loginFailures.delete(key);
 
   // The email must be verified first. There is no admin approval step.
   if (!user.email_verified_at) {
