@@ -132,6 +132,7 @@ function UserFormDialog({ open, user, isSelf = false, onClose, onSubmit }) {
               <FormTextField
                 name="email"
                 type="email"
+                autoComplete="off"
                 value={form.email}
                 onChange={handleChange}
                 onBlur={handleBlur}
@@ -145,7 +146,8 @@ function UserFormDialog({ open, user, isSelf = false, onClose, onSubmit }) {
           {!isEdit && (
             <Box>
               <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: 'text.primary', mb: 0.75 }}>Password</Typography>
-              <PasswordField name="password" value={form.password} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('password'))} helperText={showError('password') || ' '} />
+              {/* new-password: stops the browser filling in the admin's own saved password. */}
+              <PasswordField name="password" autoComplete="new-password" value={form.password} onChange={handleChange} onBlur={handleBlur} error={Boolean(showError('password'))} helperText={showError('password') || ' '} />
               <PasswordStrengthMeter password={form.password} />
             </Box>
           )}

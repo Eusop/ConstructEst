@@ -419,8 +419,13 @@ function AdminUsersPage() {
             }}
           >
             <SearchRoundedIcon sx={{ fontSize: 20, color: 'text.secondary', flexShrink: 0 }} />
+            {/* type="search" and autocomplete off: without them the browser
+                takes this box for a username and fills in the admin's ID. */}
             <Box
               component="input"
+              type="search"
+              name="user-search"
+              autoComplete="off"
               placeholder="Search users by name, User ID, or email"
               value={search}
               onChange={(event) => setSearch(event.target.value)}

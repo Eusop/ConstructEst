@@ -21,6 +21,27 @@ import { isRequired } from '../../../utils/validators';
 
 const INITIAL_FORM = { identifier: '', password: '' };
 
+// "Keep me signed in" remembers the last choice on this computer. Unchecked
+// the first time, which is the safer default on a shared computer. Storage
+// can be blocked (private mode), so both reads and writes are guarded.
+const KEEP_SIGNED_IN_KEY = 'constructest_keep_signed_in';
+
+function readKeepSignedIn() {
+  try {
+    return localStorage.getItem(KEEP_SIGNED_IN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveKeepSignedIn(value) {
+  try {
+    localStorage.setItem(KEEP_SIGNED_IN_KEY, value ? '1' : '0');
+  } catch {
+    // Storage blocked: the box just starts unchecked next time.
+  }
+}
+
 function validate(form) {
   const errors = {};
   if (!isRequired(form.identifier)) errors.identifier = 'Email or User ID is required';
@@ -37,7 +58,7 @@ function validate(form) {
  */
 function LoginForm() {
   const [form, setForm] = useState(INITIAL_FORM);
-  const [keepSignedIn, setKeepSignedIn] = useState(true);
+  const [keepSignedIn, setKeepSignedIn] = useState(readKeepSignedIn);
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,6 +98,7 @@ function LoginForm() {
     setIsSubmitting(true);
     try {
       const user = await loginRequest({ ...form, keepSignedIn });
+      saveKeepSignedIn(keepSignedIn);
       setCurrentUser(user.userName, user.accessRole);
       updateProfile({
         id: user.id, userId: user.userId, email: user.email, avatarUrl: user.avatarUrl,
