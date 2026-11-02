@@ -1,3 +1,10 @@
+// For price and stock inputs: keeps digits and one decimal point, up to 2
+// decimals (the database columns are DECIMAL(12,2)). Also cleans pasted text.
+export function keepDecimal(value) {
+  const [whole, ...rest] = String(value).replace(/[^\d.]/g, '').split('.');
+  return rest.length > 0 ? `${whole}.${rest.join('').slice(0, 2)}` : whole;
+}
+
 export function isRequired(value) {
   return value.trim().length > 0;
 }

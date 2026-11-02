@@ -13,7 +13,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import FormTextField from '../../components/FormTextField';
 import QuotationFilePicker from './QuotationFilePicker';
-import { isRequired } from '../../utils/validators';
+import { isRequired, keepDecimal } from '../../utils/validators';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { colors } from '../../theme/palette';
 
@@ -59,7 +59,8 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const isNumberField = name === 'price' || name === 'stockQty';
+    setForm((prev) => ({ ...prev, [name]: isNumberField ? keepDecimal(value) : value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
@@ -114,7 +115,7 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
                 onChange={handleChange}
                 error={Boolean(errors.price)}
                 helperText={errors.price || ' '}
-                slotProps={{ input: { startAdornment: <InputAdornment position="start">₱</InputAdornment> } }}
+                slotProps={{ htmlInput: { inputMode: 'decimal' }, input: { startAdornment: <InputAdornment position="start">₱</InputAdornment> } }}
               />
             </Box>
             <Box sx={{ flex: 1 }}>
@@ -149,7 +150,7 @@ function BrandFormDialog({ open, materialName, unit, brand, onClose, onSubmit })
                 onChange={handleChange}
                 error={Boolean(errors.stockQty)}
                 helperText={errors.stockQty || ' '}
-                slotProps={{ input: { endAdornment: <InputAdornment position="end">{form.unit}</InputAdornment> } }}
+                slotProps={{ htmlInput: { inputMode: 'decimal' }, input: { endAdornment: <InputAdornment position="end">{form.unit}</InputAdornment> } }}
               />
             </Box>
             {/* Shown in Brand Selection, the BOM and the PDF. Shared by every

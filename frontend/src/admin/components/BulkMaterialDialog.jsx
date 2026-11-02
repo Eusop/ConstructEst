@@ -12,6 +12,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormTextField from '../../components/FormTextField';
 import QuotationFilePicker from './QuotationFilePicker';
+import { keepDecimal } from '../../utils/validators';
 import { colors } from '../../theme/palette';
 
 /**
@@ -72,12 +73,12 @@ function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit 
             <FormTextField
               value={form.price}
               onChange={(event) => {
-                setForm((prev) => ({ ...prev, price: event.target.value }));
+                setForm((prev) => ({ ...prev, price: keepDecimal(event.target.value) }));
                 setError('');
               }}
               error={Boolean(error)}
               helperText={error || ' '}
-              slotProps={{ input: { startAdornment: <InputAdornment position="start">₱</InputAdornment> } }}
+              slotProps={{ htmlInput: { inputMode: 'decimal' }, input: { startAdornment: <InputAdornment position="start">₱</InputAdornment> } }}
             />
           </Box>
           <Box>
@@ -105,12 +106,12 @@ function BulkMaterialDialog({ open, materialName, unit, data, onClose, onSubmit 
               placeholder="Leave blank if not known"
               value={form.stockQty}
               onChange={(event) => {
-                setForm((prev) => ({ ...prev, stockQty: event.target.value }));
+                setForm((prev) => ({ ...prev, stockQty: keepDecimal(event.target.value) }));
                 setStockError('');
               }}
               error={Boolean(stockError)}
               helperText={stockError || ' '}
-              slotProps={{ input: { endAdornment: <InputAdornment position="end">{unit}</InputAdornment> } }}
+              slotProps={{ htmlInput: { inputMode: 'decimal' }, input: { endAdornment: <InputAdornment position="end">{unit}</InputAdornment> } }}
             />
           </Box>
 

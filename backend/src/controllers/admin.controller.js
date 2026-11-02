@@ -287,6 +287,7 @@ export const createMaterial = asyncHandler(async (req, res) => {
   if (!materialKey || !materialName || !unit || !brand || basePrice == null) {
     throw new HttpError(400, 'materialKey, materialName, unit, brand, and basePrice are required.');
   }
+  parsePrice(basePrice);
   const result = await query(
     `INSERT INTO material_brands (material_key, material_name, unit, brand, spec, base_price, category, is_commodity)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -299,6 +300,7 @@ export const createMaterial = asyncHandler(async (req, res) => {
 
 export const updateMaterial = asyncHandler(async (req, res) => {
   const { materialName, unit, brand, spec, basePrice, category } = req.body;
+  if (basePrice !== undefined) parsePrice(basePrice);
   const fields = [];
   const params = [];
   const set = (col, val) => { if (val !== undefined) { fields.push(`${col} = ?`); params.push(val); } };
@@ -436,6 +438,15 @@ function parseStockQty(value, saved) {
   return n;
 }
 
+// The form blocks letters, but the API can be called directly, so check here too.
+function parsePrice(value) {
+  const n = Number(value);
+  if (String(value).trim() === '' || !Number.isFinite(n) || n < 0) {
+    throw new HttpError(400, 'Price must be a number, 0 or more.');
+  }
+  return n;
+}
+
 // Setting or changing a price needs a quotation file as proof (PDF/Word/Excel,
 // see uploadQuotation in upload.js). The exceptions are `usesCatalogPrice`, used
 // when "Add materials to store" just copies a catalog price, and saving the
@@ -444,7 +455,7 @@ export const upsertStoreMaterialPrice = asyncHandler(async (req, res) => {
   const { storeId, materialBrandId } = req.params;
   const { price, inStock } = req.body;
   if (price == null) throw new HttpError(400, 'price is required.');
-  const numericPrice = Number(price);
+  const numericPrice = parsePrice(price);
   const stockFlag = truthy(inStock, true);
 
   const [[store], [brand], [existing]] = await Promise.all([
