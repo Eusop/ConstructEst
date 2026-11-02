@@ -18,7 +18,7 @@ function SummaryRow({ label, value, valueColor = 'common.white' }) {
 }
 
 /**
- * Dark cost breakdown: raw subtotal, the optimization saving, and the grand
+ * Dark cost breakdown: the highest-priced brands total, the optimization saving, and the grand
  * total against the budget ceiling, with the "Download PDF report" action on
  * the same row as the grand total.
  *
@@ -35,12 +35,13 @@ function SummaryRow({ label, value, valueColor = 'common.white' }) {
  */
 function BomCostSummaryCard({ ceilingLabel, subtotalLabel, savingLabel, grandTotalLabel, ceilingDeltaLabel, withinBudget, missingCount = 0, onDownloadPdf }) {
   const deltaColor = withinBudget ? colors.iconGreenFg : colors.iconRedFg;
+  const DeltaIcon = withinBudget ? CheckCircleRoundedIcon : WarningAmberRoundedIcon;
 
   return (
     <Box sx={{ borderRadius: 3, bgcolor: colors.ctaBackground, p: { xs: 2, sm: 1.75, md: 3 } }}>
       <Stack spacing={{ xs: 1.25, sm: 1, md: 1.25 }}>
         {ceilingLabel && <SummaryRow label="Budget ceiling" value={ceilingLabel} />}
-        <SummaryRow label="Subtotal" value={subtotalLabel} />
+        <SummaryRow label="Before optimization" value={subtotalLabel} />
         <SummaryRow label="Optimization saving" value={savingLabel} valueColor={colors.iconGreenFg} />
       </Stack>
 
@@ -55,7 +56,7 @@ function BomCostSummaryCard({ ceilingLabel, subtotalLabel, savingLabel, grandTot
           <Typography sx={{ fontSize: '0.85rem', color: 'grey.500' }}>Grand total</Typography>
           <Typography sx={{ fontSize: { xs: '1.5rem', sm: '1.4rem' }, fontWeight: 800, color: 'common.white' }}>{grandTotalLabel}</Typography>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: { xs: 0.75, sm: 0.5 } }}>
-            <CheckCircleRoundedIcon sx={{ fontSize: 15, color: deltaColor }} />
+            <DeltaIcon sx={{ fontSize: 15, color: deltaColor }} />
             <Typography sx={{ fontSize: '0.8rem', color: deltaColor }}>{ceilingDeltaLabel}</Typography>
           </Stack>
           {missingCount > 0 && (

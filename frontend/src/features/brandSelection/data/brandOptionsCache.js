@@ -64,13 +64,7 @@ let currentStoreId = null;
 
 export const OPTIMIZATION_TIERS = {
   premium: { key: 'premium', label: 'Premium', description: 'Highest-priced brands', choices: {} },
-  standard: {
-    key: 'standard',
-    label: 'Standard',
-    description: 'Middle-priced brands',
-    recommended: true,
-    choices: {},
-  },
+  standard: { key: 'standard', label: 'Standard', description: 'Middle-priced brands', choices: {} },
   budget: { key: 'budget', label: 'Budget', description: 'Cheapest brands', choices: {} },
 };
 

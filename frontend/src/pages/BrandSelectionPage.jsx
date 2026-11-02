@@ -211,7 +211,7 @@ function BrandSelectionPage() {
         // natural-height content, and shrinking this wrapper let the "Continue"
         // button spill on top of the cards.
         <Stack spacing={2.5} sx={{ minWidth: 0 }}>
-          <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} realUnitPrices={realUnitPrices} />
+          <OptimizationTierCards selectedTier={tier} onSelectTier={handleSelectTier} storeId={storeId} realUnitPrices={realUnitPrices} budgetCeiling={activeProject?.budgetCeiling} />
           {suppliers && Object.keys(suppliers).length > 0 && (
             <Typography sx={{ fontSize: '0.8rem', color: colors.orangeDark }}>
               Automatic buys everything at the selected store. Your other-store picks from Manual are not used unless you switch back to Manual.

@@ -1,6 +1,7 @@
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { colors } from '../../../theme/palette';
 
 /**
@@ -12,6 +13,7 @@ import { colors } from '../../../theme/palette';
 function BudgetBadge({ withinBudget }) {
   const bg = withinBudget ? colors.iconGreenBg : colors.iconRedBg;
   const fg = withinBudget ? colors.iconGreenFg : colors.iconRedFg;
+  const Icon = withinBudget ? CheckCircleRoundedIcon : WarningAmberRoundedIcon;
 
   return (
     <Stack
@@ -19,7 +21,7 @@ function BudgetBadge({ withinBudget }) {
       spacing={0.5}
       sx={{ alignItems: 'center', bgcolor: bg, color: fg, borderRadius: 999, px: 1.5, py: 0.5, flexShrink: 0 }}
     >
-      <CheckCircleRoundedIcon sx={{ fontSize: 16 }} />
+      <Icon sx={{ fontSize: 16 }} />
       <Typography sx={{ fontSize: '0.85rem', fontWeight: 700 }}>{withinBudget ? 'Within budget' : 'Over budget'}</Typography>
     </Stack>
   );

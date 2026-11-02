@@ -16,9 +16,20 @@ const TIER_ICONS = {
   budget: { Icon: SavingsRoundedIcon, bg: colors.iconGreenBg, fg: colors.iconGreenFg },
 };
 
+// FR-4: the ceiling decides the badge. Standard if it fits (or no ceiling),
+// otherwise Budget, which is the closest option when nothing fits.
+function pickRecommendation(totals, budgetCeiling) {
+  const ceiling = Number(String(budgetCeiling ?? '').replace(/,/g, ''));
+  if (!Number.isFinite(ceiling) || ceiling <= 0 || totals.standard <= ceiling) {
+    return { key: 'standard', label: 'Recommended' };
+  }
+  return { key: 'budget', label: totals.budget <= ceiling ? 'Recommended' : 'Closest to budget' };
+}
+
 /**
  * Premium / Standard / Budget tier cards. Each maps to a fixed brand choice per
- * material (see OPTIMIZATION_TIERS), and totals are computed live.
+ * material (see OPTIMIZATION_TIERS), and totals are computed live. The badge
+ * only suggests a tier; it does not change the selected one.
  *
  * @param {object} props
  * @param {string} props.selectedTier
@@ -28,8 +39,14 @@ const TIER_ICONS = {
  *   per-material prices from the backend's BOM, used for the materials that
  *   have no brand options (sand/gravel) so these totals agree with the Bill
  *   of Materials page instead of pricing those two from flat literals.
+ * @param {string|number|null} [props.budgetCeiling] The project's budget ceiling.
  */
-function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPrices = null }) {
+function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPrices = null, budgetCeiling = null }) {
+  const totals = Object.fromEntries(
+    Object.keys(OPTIMIZATION_TIERS).map((key) => [key, computeTierTotal(key, storeId, realUnitPrices)]),
+  );
+  const recommendation = pickRecommendation(totals, budgetCeiling);
+
   return (
     // A row at every size: below `sm` all three cards shrink into one horizontal
     // row (description dropped, "Recommended" as a small caption under the label,
@@ -40,7 +57,8 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
       {Object.values(OPTIMIZATION_TIERS).map((tier) => {
         const { Icon, bg, fg } = TIER_ICONS[tier.key];
         const selected = tier.key === selectedTier;
-        const total = computeTierTotal(tier.key, storeId, realUnitPrices);
+        const total = totals[tier.key];
+        const badge = tier.key === recommendation.key ? recommendation.label : null;
 
         return (
           <Paper
@@ -82,9 +100,9 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
               </Box>
               {/* Desktop/tablet only: no room for a pill beside a 24px icon on a phone
                   (the mobile version is the caption under the label below). */}
-              {tier.recommended && (
+              {badge && (
                 <Box sx={{ display: { xs: 'none', sm: 'block' }, bgcolor: colors.iconGreenBg, color: colors.iconGreenFg, borderRadius: 999, px: 1.1, py: 0.3 }}>
-                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700 }}>Recommended</Typography>
+                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700 }}>{badge}</Typography>
                 </Box>
               )}
             </Stack>
@@ -100,11 +118,11 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
               <Typography sx={{ fontWeight: 800, fontSize: '0.7rem', color: 'text.primary', mt: 0.5 }}>
                 {formatPeso(total)}
               </Typography>
-              {tier.recommended && (
+              {badge && (
                 // Was 0.56rem, too small to read on a phone. Now the smallest
                 // caption size used elsewhere in the app.
                 <Typography sx={{ fontSize: '0.64rem', fontWeight: 700, color: colors.iconGreenFg, lineHeight: 1.4, mt: 0.25 }}>
-                  Recommended
+                  {badge}
                 </Typography>
               )}
             </Box>
