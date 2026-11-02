@@ -6,7 +6,7 @@ import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import DiamondRoundedIcon from '@mui/icons-material/DiamondRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import { OPTIMIZATION_TIERS } from '../data/brandOptionsCache';
-import { computeTierTotal } from '../utils/computeBom';
+import { computeBom, computeTierTotal } from '../utils/computeBom';
 import { colors } from '../../../theme/palette';
 import { formatPeso } from '../../../utils/formatNumbers';
 
@@ -45,7 +45,10 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
   const totals = Object.fromEntries(
     Object.keys(OPTIMIZATION_TIERS).map((key) => [key, computeTierTotal(key, storeId, realUnitPrices)]),
   );
-  const recommendation = pickRecommendation(totals, budgetCeiling);
+  // A partly stocked store gets no badge: its totals leave out what it doesn't
+  // sell, so a tier could look within budget when the job costs more.
+  const isPartialStore = computeBom(OPTIMIZATION_TIERS.standard.choices, storeId, realUnitPrices).lineItems.some((item) => !item.available);
+  const recommendation = isPartialStore ? { key: null, label: null } : pickRecommendation(totals, budgetCeiling);
 
   return (
     // A row at every size: below `sm` all three cards shrink into one horizontal
@@ -145,6 +148,11 @@ function OptimizationTierCards({ selectedTier, onSelectTier, storeId, realUnitPr
     <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
       For each material at this store: Budget takes the cheapest brand, Standard the middle-priced brand, and Premium the highest-priced brand.
     </Typography>
+    {isPartialStore && (
+      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: colors.orangeDark }}>
+        This store doesn&apos;t sell every material, so these totals leave some out and no tier is recommended.
+      </Typography>
+    )}
     </Stack>
   );
 }

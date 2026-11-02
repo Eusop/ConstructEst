@@ -71,7 +71,10 @@ export function computeBom(choices = OPTIMIZATION_TIERS.standard.choices, storeI
     // Falls back to 0 (unitPrice is undefined for non-commodities) when a material
     // has no brand at this store, e.g. it's unavailable or no choice was made.
     // Otherwise unitPrice stays undefined and crashes BomTable's formatNumber.
-    const unitPrice = brandOption?.price ?? realUnitPrices?.[material.key] ?? base.unitPrice ?? 0;
+    // Once the store's real prices are loaded, the flat BASE_PRICING is not used,
+    // or a store that doesn't sell sand or gravel would still be charged for them.
+    const fallbackPrice = realUnitPrices ? realUnitPrices[material.key] : base.unitPrice;
+    const unitPrice = brandOption?.price ?? fallbackPrice ?? 0;
     const brand = brandOption?.brand ?? base.brand;
 
     return {
