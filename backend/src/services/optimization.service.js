@@ -12,6 +12,9 @@ const DEFAULT_FORMWORK_USES = 1;
 const DEFAULT_SCAFFOLDING_USES = 4;
 // What one set holds, from the engineer's example (same as formulas.py).
 const SCAFFOLD_SET_PARTS = '1 set = 2 H-frames, 2 cross braces, 4 joint pins';
+// A brand a store can sell now. A stock count of 0 means out of stock, the same
+// as the admin's Out of stock switch. A blank count means not known, so it stays.
+const SELLABLE = 'smp.in_stock = 1 AND (smp.stock_qty IS NULL OR smp.stock_qty > 0)';
 
 function usesFor(materialKey, reuse) {
   if (materialKey === 'scaffolding') return reuse.scaffoldingUses;
@@ -122,7 +125,7 @@ export async function getStoreOptimization(projectId) {
         `SELECT smp.price, mb.spec
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
-         WHERE smp.store_id = ? AND mb.material_key = ? AND smp.in_stock = 1
+         WHERE smp.store_id = ? AND mb.material_key = ? AND ${SELLABLE}
          ORDER BY smp.price ASC LIMIT 1`,
         [store.id, material.material_key],
       );
@@ -135,7 +138,7 @@ export async function getStoreOptimization(projectId) {
            FROM store_material_prices smp
            JOIN material_brands mb ON mb.id = smp.material_brand_id
            JOIN stores s ON s.id = smp.store_id
-           WHERE mb.material_key = ? AND smp.in_stock = 1 AND s.id != ? AND s.is_active = 1
+           WHERE mb.material_key = ? AND ${SELLABLE} AND s.id != ? AND s.is_active = 1
            ORDER BY s.name`,
           [material.material_key, store.id],
         );
@@ -191,7 +194,7 @@ export async function getBrandCatalog(projectId, storeId) {
        FROM material_brands mb
        JOIN store_material_prices smp ON smp.material_brand_id = mb.id
        JOIN stores s ON s.id = smp.store_id
-       WHERE mb.material_key = ? AND smp.store_id = ? AND mb.is_commodity = 0 AND smp.in_stock = 1
+       WHERE mb.material_key = ? AND smp.store_id = ? AND mb.is_commodity = 0 AND ${SELLABLE}
        ORDER BY smp.price ASC`,
       [material.material_key, storeId],
     );
@@ -219,7 +222,7 @@ export async function getAllStoreCatalog(projectId) {
   const keys = materials.map((m) => m.material_key);
   const stores = await query('SELECT id, name FROM stores WHERE is_active = 1 ORDER BY name');
   const catalog = Object.fromEntries(stores.map((s) => [s.id, {}]));
-  if (keys.length === 0) return { stores, catalog };
+  if (keys.length === 0) return { stores, catalog, outOfStock: {} };
 
   const rows = await query(
     `SELECT mb.id, mb.material_key, mb.brand, mb.spec, mb.is_commodity, smp.price, smp.stock_qty,
@@ -227,7 +230,7 @@ export async function getAllStoreCatalog(projectId) {
      FROM material_brands mb
      JOIN store_material_prices smp ON smp.material_brand_id = mb.id
      JOIN stores s ON s.id = smp.store_id
-     WHERE s.is_active = 1 AND smp.in_stock = 1 AND mb.material_key IN (?)
+     WHERE s.is_active = 1 AND ${SELLABLE} AND mb.material_key IN (?)
      ORDER BY smp.price ASC`,
     [keys],
   );
@@ -244,7 +247,22 @@ export async function getAllStoreCatalog(projectId) {
       storeId: row.store_id,
     });
   }
-  return { stores, catalog };
+  // Kept apart from `catalog` so tiers and totals can never pick one. Only the
+  // Manual dropdowns read this, to show them greyed out.
+  const outRows = await query(
+    `SELECT mb.id, mb.material_key, mb.brand, mb.spec, smp.store_id
+     FROM material_brands mb
+     JOIN store_material_prices smp ON smp.material_brand_id = mb.id
+     JOIN stores s ON s.id = smp.store_id
+     WHERE s.is_active = 1 AND NOT (${SELLABLE}) AND mb.material_key IN (?)
+     ORDER BY mb.brand`,
+    [keys],
+  );
+  const outOfStock = {};
+  for (const row of outRows) {
+    ((outOfStock[row.store_id] ??= {})[row.material_key] ??= []).push({ id: row.id, brand: row.brand, spec: row.spec });
+  }
+  return { stores, catalog, outOfStock };
 }
 
 // The other-store and left-out choices belong to the store they were saved
@@ -295,7 +313,7 @@ export async function computeBom(projectId, storeId) {
         `SELECT mb.brand, mb.category, mb.spec, smp.price, smp.stock_qty
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
-         WHERE smp.store_id = ? AND smp.material_brand_id = ?`,
+         WHERE smp.store_id = ? AND smp.material_brand_id = ? AND ${SELLABLE}`,
         [lineStoreId, selectionByKey[material.material_key]],
       );
     }
@@ -304,7 +322,7 @@ export async function computeBom(projectId, storeId) {
         `SELECT mb.brand, mb.category, mb.spec, smp.price, smp.stock_qty
          FROM store_material_prices smp
          JOIN material_brands mb ON mb.id = smp.material_brand_id
-         WHERE smp.store_id = ? AND mb.material_key = ? AND smp.in_stock = 1
+         WHERE smp.store_id = ? AND mb.material_key = ? AND ${SELLABLE}
          ORDER BY smp.price ASC LIMIT 1`,
         [lineStoreId, material.material_key],
       );

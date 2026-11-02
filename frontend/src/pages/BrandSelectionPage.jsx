@@ -89,9 +89,9 @@ function BrandSelectionPage() {
 
     // Every store's options, for the per-material supplier dropdown (Manual).
     apiRequest(`/projects/${activeProject.id}/brand-catalog/all-stores`)
-      .then(({ stores, catalog }) => {
+      .then(({ stores, catalog, outOfStock }) => {
         if (cancelled) return;
-        loadAllStoreCatalog(stores, catalog);
+        loadAllStoreCatalog(stores, catalog, outOfStock);
         setAllStoresLoadedFor(activeProject.id);
       })
       .catch(() => {

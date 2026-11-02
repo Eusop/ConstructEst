@@ -109,12 +109,21 @@ export function loadBrandCatalog(storeId, catalog) {
 export const ALL_STORE_OPTIONS = {};
 // Active stores in name order: [{ id, name }].
 export const ALL_STORES = [];
+// storeId -> materialKey -> out-of-stock brands. Apart from the options above, so
+// tiers and totals never use them. Only the Manual dropdowns show them, greyed out.
+const OUT_OF_STOCK_OPTIONS = {};
 
-export function loadAllStoreCatalog(stores, catalog) {
+export function loadAllStoreCatalog(stores, catalog, outOfStock = {}) {
   ALL_STORES.length = 0;
   ALL_STORES.push(...stores);
   Object.keys(ALL_STORE_OPTIONS).forEach((key) => delete ALL_STORE_OPTIONS[key]);
   Object.assign(ALL_STORE_OPTIONS, catalog);
+  Object.keys(OUT_OF_STOCK_OPTIONS).forEach((key) => delete OUT_OF_STOCK_OPTIONS[key]);
+  Object.assign(OUT_OF_STOCK_OPTIONS, outOfStock);
+}
+
+export function getOutOfStockOptions(storeId, materialKey) {
+  return OUT_OF_STOCK_OPTIONS[storeId]?.[materialKey] ?? [];
 }
 
 export function getStoreBrandOptions(storeId, materialKey) {
@@ -128,6 +137,12 @@ export function getSupplierOptions(materialKey) {
     .map((store) => ({ id: store.id, name: store.name, price: ALL_STORE_OPTIONS[store.id]?.[materialKey]?.[0]?.price }))
     .filter((store) => store.price != null)
     .sort((a, b) => a.price - b.price);
+}
+
+/** Other stores that normally sell this material but have every brand out of stock. */
+export function getOutOfStockStores(materialKey) {
+  return ALL_STORES.filter((store) => getOutOfStockOptions(store.id, materialKey).length > 0
+    && !ALL_STORE_OPTIONS[store.id]?.[materialKey]?.length);
 }
 
 export function getStoreName(storeId) {

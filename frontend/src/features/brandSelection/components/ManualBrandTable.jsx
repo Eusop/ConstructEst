@@ -18,7 +18,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import { BRAND_MATERIAL_SHORT_LABELS, getStoreBrandOptions, getSupplierOptions, getStoreName } from '../data/brandOptionsCache';
+import { BRAND_MATERIAL_SHORT_LABELS, getStoreBrandOptions, getSupplierOptions, getStoreName, getOutOfStockOptions, getOutOfStockStores } from '../data/brandOptionsCache';
 import { EXCLUDED } from '../utils/computeBom';
 import { PRICED_MATERIALS } from '../../projects/data/parsedProjectCache';
 import { groupMaterialsByCategory } from '../../../data/materialCategories';
@@ -57,6 +57,7 @@ function rowState(materialKey, storeId, choices, suppliers) {
 /** The selected store first, then every other store that sells it (cheapest first), then "leave it out". */
 function SupplierSelect({ materialKey, storeId, value, onChange, small = false }) {
   const others = getSupplierOptions(materialKey).filter((store) => store.id !== storeId);
+  const outStores = getOutOfStockStores(materialKey).filter((store) => store.id !== storeId);
   const mainHasIt = getStoreBrandOptions(storeId, materialKey).length > 0;
   const label = value === EXCLUDED ? "Don't include in BOM" : getStoreName(value) ?? '';
   return (
@@ -82,12 +83,17 @@ function SupplierSelect({ materialKey, storeId, value, onChange, small = false }
       }}
     >
       <MenuItem value={storeId}>
-        {getStoreName(storeId)} (selected store){mainHasIt ? '' : ' · not sold here'}
+        {getStoreName(storeId)} (selected store){mainHasIt ? '' : getOutOfStockOptions(storeId, materialKey).length > 0 ? ' · out of stock' : ' · not sold here'}
       </MenuItem>
-      {others.length > 0 && <ListSubheader sx={{ lineHeight: '28px' }}>Other stores</ListSubheader>}
+      {others.length + outStores.length > 0 && <ListSubheader sx={{ lineHeight: '28px' }}>Other stores</ListSubheader>}
       {others.map((store) => (
         <MenuItem key={store.id} value={store.id}>
           {store.name} · from {formatPeso(store.price)}
+        </MenuItem>
+      ))}
+      {outStores.map((store) => (
+        <MenuItem key={store.id} value={store.id} disabled>
+          {store.name} · out of stock
         </MenuItem>
       ))}
       <Divider />
@@ -106,7 +112,7 @@ function BrandCell({ materialKey, row, onChoiceChange, small = false }) {
   if (!row.selected) {
     return (
       <Typography sx={{ color: colors.orangeDark, fontWeight: 600, fontSize: small ? '0.75rem' : '0.82rem' }}>
-        Not sold at this store. Choose another supplier.
+        {getOutOfStockOptions(row.supplier, materialKey).length > 0 ? 'Out of stock at this store.' : 'Not sold at this store.'} Choose another supplier.
       </Typography>
     );
   }
@@ -139,6 +145,12 @@ function BrandCell({ materialKey, row, onChoiceChange, small = false }) {
       {row.options.map((option) => (
         <MenuItem key={option.id} value={option.id} sx={small ? { fontSize: '0.8rem' } : undefined}>
           {option.brand} · {option.spec}
+        </MenuItem>
+      ))}
+      {/* Shown so the user knows the store sells it, but it can't be picked. */}
+      {getOutOfStockOptions(row.supplier, materialKey).map((option) => (
+        <MenuItem key={option.id} value={option.id} disabled sx={small ? { fontSize: '0.8rem' } : undefined}>
+          {option.brand} · {option.spec} · Out of stock
         </MenuItem>
       ))}
     </TextField>
