@@ -3,6 +3,7 @@ import path from 'node:path';
 import { HttpError } from '../middleware/errorHandler.js';
 
 const ENGINE_SCRIPT = path.resolve('engine/engine.py');
+const PREVIEW_SCRIPT = path.resolve('engine/preview.py');
 
 // A normal floor plan parses in under a second, so a minute means something is
 // stuck (a bad DXF, or `python` waiting on a prompt). Without a timeout a hung
@@ -18,9 +19,28 @@ const ENGINE_TIMEOUT_MS = Number(process.env.ENGINE_TIMEOUT_MS) || 60_000;
  * @returns {Promise<{ measurements: object, materials: object[] }>}
  */
 export function runDxfEngine(request) {
+  // Shape check: persistEstimation destructures measurements directly, so a
+  // short response would fail later as an unrelated TypeError.
+  return runPython(ENGINE_SCRIPT, request, (parsed) => typeof parsed.measurements === 'object' && Array.isArray(parsed.materials),
+    'Estimation engine returned an unexpected response shape (expected measurements + materials).');
+}
+
+/**
+ * Lines and shapes of a saved DXF for the Explore floor plan preview
+ * (engine/preview.py). No text is returned.
+ *
+ * @param {{ dxfPath: string }} request
+ * @returns {Promise<{ shapes: object[], bounds: object }>}
+ */
+export function runPreviewEngine(request) {
+  return runPython(PREVIEW_SCRIPT, request, (parsed) => Array.isArray(parsed.shapes) && typeof parsed.bounds === 'object',
+    'Floor plan preview returned an unexpected response shape (expected shapes + bounds).');
+}
+
+function runPython(script, request, isValidShape, shapeMessage) {
   return new Promise((resolve, reject) => {
     const pythonBin = process.env.PYTHON_BIN || 'python';
-    const child = spawn(pythonBin, [ENGINE_SCRIPT], { cwd: path.resolve('engine') });
+    const child = spawn(pythonBin, [script], { cwd: path.resolve('engine') });
 
     let stdout = '';
     let stderr = '';
@@ -71,10 +91,8 @@ export function runDxfEngine(request) {
         return;
       }
 
-      // Shape check: persistEstimation destructures measurements directly, so a
-      // short response would fail later as an unrelated TypeError.
-      if (!parsed || typeof parsed.measurements !== 'object' || !Array.isArray(parsed.materials)) {
-        failWith(500, 'Estimation engine returned an unexpected response shape (expected measurements + materials).');
+      if (!parsed || !isValidShape(parsed)) {
+        failWith(500, shapeMessage);
         return;
       }
 

@@ -17,6 +17,7 @@ import SellRoundedIcon from '@mui/icons-material/SellRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import BrandMark from '../components/BrandMark';
 import { colors } from '../theme/palette';
@@ -39,6 +40,8 @@ const WORKSPACE_ITEMS = [
       { label: 'Bill of Materials', icon: DescriptionRoundedIcon, to: ROUTES.BILL_OF_MATERIALS },
     ],
   },
+  // Browse shared projects (Nov 3 2026 defense recommendation).
+  { label: 'Explore', icon: SearchRoundedIcon, to: ROUTES.EXPLORE },
 ];
 
 const UTILITY_ITEMS = [

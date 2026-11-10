@@ -61,6 +61,9 @@ function toContextProject(serverProject, extra = {}) {
         ? (serverProject.hasBrandSelection ? 'Optimized' : 'Estimated')
         : serverProject.status === 'failed' ? 'Failed' : 'Parsing',
     selectedStoreId: serverProject.selectedStoreId,
+    // Explore Projects sharing (migration 046), off by default.
+    shareInExplore: Boolean(serverProject.shareInExplore),
+    shareFloorPlan: Boolean(serverProject.shareFloorPlan),
     brandSelection: null,
     createdAt: new Date(serverProject.createdAt).getTime(),
     estimation: null,

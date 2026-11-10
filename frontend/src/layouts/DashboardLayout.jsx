@@ -18,6 +18,7 @@ const PAGE_HEADERS = {
   [ROUTES.DASHBOARD]: { title: 'Dashboard' },
   [ROUTES.PROJECTS]: { title: 'Projects' },
   [ROUTES.PROFILE]: { title: 'Profile' },
+  [ROUTES.EXPLORE]: { title: 'Explore' },
 };
 
 // New Project's header depends on screen size: mobile has no room for the full

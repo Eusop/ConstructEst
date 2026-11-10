@@ -12,6 +12,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import QuantityTakeoffTable from '../features/estimation/components/QuantityTakeoffTable';
 import DesignParametersCard from '../features/estimation/components/DesignParametersCard';
+import ShareProjectControl from '../features/projects/components/ShareProjectControl';
 import CalibrationFactorsCard from '../features/settings/components/CalibrationFactorsCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
 import MobileTabSwitcher from '../components/MobileTabSwitcher';
@@ -230,6 +231,8 @@ function MaterialEstimationPage() {
           </Button>
         </Stack>
       </Stack>
+
+      <ShareProjectControl />
 
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} sx={{ alignItems: 'stretch' }}>
         <MobileTabSwitcher labels={['Design', 'Calibration']}>

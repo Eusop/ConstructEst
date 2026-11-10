@@ -7,6 +7,7 @@ import {
   getProject,
   deleteProject,
   getProjectStores,
+  updateProjectSharing,
   getProjectBrandCatalog,
   postBrandSelection,
   getProjectBom,
@@ -29,6 +30,7 @@ router.get('/:id', getProject);
 router.delete('/:id', deleteProject);
 
 router.get('/:id/stores', getProjectStores);
+router.patch('/:id/sharing', updateProjectSharing);
 router.get('/:id/brand-catalog', getProjectBrandCatalog);
 router.get('/:id/brand-catalog/all-stores', getProjectAllStoreCatalog);
 router.post('/:id/brand-selection', postBrandSelection);

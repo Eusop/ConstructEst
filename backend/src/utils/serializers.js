@@ -27,6 +27,9 @@ export function toPublicProject(row) {
     hasSecondFloorFile: Boolean(row.second_floor_dxf_path),
     status: row.status,
     selectedStoreId: row.selected_store_id,
+    // Explore Projects sharing (migration 046), off by default.
+    shareInExplore: Boolean(row.share_in_explore),
+    shareFloorPlan: Boolean(row.share_floor_plan),
     createdAt: row.created_at,
     // Only the project list query selects this column.
     ...(row.has_brand_selection !== undefined && { hasBrandSelection: Boolean(row.has_brand_selection) }),

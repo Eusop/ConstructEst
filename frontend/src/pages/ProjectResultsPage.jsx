@@ -10,6 +10,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import FloorPlanPreviewCard from '../features/projects/components/FloorPlanPreviewCard';
 import ExtractedMeasurementsCard from '../features/projects/components/ExtractedMeasurementsCard';
 import NoActiveProjectState from '../features/projects/components/NoActiveProjectState';
+import ShareProjectControl from '../features/projects/components/ShareProjectControl';
 import { useProjects } from '../context/ProjectsContext';
 import { loadParsedProject } from '../features/projects/data/parsedProjectCache';
 import { ROUTES } from '../routes/paths';
@@ -93,6 +94,7 @@ function ProjectResultsPage() {
             secondFloorBounds={secondFloorFileValidation.bounds}
           />
           <ExtractedMeasurementsCard storeys={activeProject.storeys} />
+          <ShareProjectControl />
           <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
             <Button
               onClick={() => navigate(ROUTES.MATERIAL_ESTIMATION)}

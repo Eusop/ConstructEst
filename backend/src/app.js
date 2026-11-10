@@ -9,6 +9,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import userRoutes from './routes/users.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import constantsRoutes from './routes/constants.routes.js';
+import exploreRoutes from './routes/explore.routes.js';
 import { AVATAR_DIR } from './middleware/upload.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
@@ -47,6 +48,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/estimation-constants', constantsRoutes);
+app.use('/api/explore', exploreRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

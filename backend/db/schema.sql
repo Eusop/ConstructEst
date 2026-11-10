@@ -75,6 +75,11 @@ CREATE TABLE projects (
   second_floor_dxf_path VARCHAR(500) NULL,
   second_floor_dxf_original_name VARCHAR(255) NULL,
   selected_store_id INT UNSIGNED NULL,
+  -- Explore Projects sharing, opt-in (migration 046).
+  share_in_explore TINYINT(1) NOT NULL DEFAULT 0,
+  share_floor_plan TINYINT(1) NOT NULL DEFAULT 0,
+  shared_at TIMESTAMP NULL,
+  floor_plan_preview JSON NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

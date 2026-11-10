@@ -322,6 +322,30 @@ export const getProjectStores = asyncHandler(async (req, res) => {
   res.json({ stores });
 });
 
+// Share a project in Explore Projects, and optionally its floor plan. Owner
+// only: an admin can view projects but not share someone else's.
+export const updateProjectSharing = asyncHandler(async (req, res) => {
+  const project = await loadProjectOr404(req.params.id);
+  if (project.user_id !== req.user.id) throw new HttpError(403, 'Only the owner can share this project.');
+  const { shareInExplore, shareFloorPlan } = req.body ?? {};
+  if (typeof shareInExplore !== 'boolean') throw new HttpError(400, 'shareInExplore must be true or false.');
+  if (shareInExplore) {
+    // Only Complete projects (estimate done and brand selection saved) can be shared.
+    const [{ done }] = await query('SELECT EXISTS(SELECT 1 FROM project_brand_selections WHERE project_id = ?) AS done', [project.id]);
+    if (project.status !== 'parsed' || !done) throw new HttpError(400, 'Only a Complete project can be shared. Finish Brand Selection first.');
+  }
+  // The floor plan can only be shared while the project itself is shared.
+  const floorPlan = shareInExplore && shareFloorPlan === true;
+  await query(
+    `UPDATE projects SET share_in_explore = ?, share_floor_plan = ?,
+       shared_at = CASE WHEN ? = 0 THEN NULL WHEN share_in_explore = 1 THEN shared_at ELSE NOW() END
+     WHERE id = ?`,
+    [shareInExplore ? 1 : 0, floorPlan ? 1 : 0, shareInExplore ? 1 : 0, project.id],
+  );
+  const [updated] = await query('SELECT * FROM projects WHERE id = ?', [project.id]);
+  res.json({ project: toPublicProject(updated) });
+});
+
 export const getProjectBrandCatalog = asyncHandler(async (req, res) => {
   const project = await loadProjectOr404(req.params.id);
   assertAccess(project, req.user);
